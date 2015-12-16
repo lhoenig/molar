@@ -1,0 +1,344 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		374F11CD1C21C6320070747D /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 374F11CC1C21C6320070747D /* Foundation.framework */; };
+		374F11D81C21C6320070747D /* AppSwitcher.mm in Sources */ = {isa = PBXBuildFile; fileRef = 374F11D71C21C6320070747D /* AppSwitcher.mm */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		374F11C91C21C6320070747D /* AppSwitcher.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = AppSwitcher.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		374F11CC1C21C6320070747D /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		374F11D11C21C6320070747D /* control.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = control.txt; path = Package/DEBIAN/control.txt; sourceTree = "<group>"; };
+		374F11D21C21C6320070747D /* control */ = {isa = PBXFileReference; lastKnownFileType = text; name = control; path = Package/DEBIAN/control; sourceTree = "<group>"; };
+		374F11D41C21C6320070747D /* PackageVersion.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PackageVersion.plist; sourceTree = "<group>"; };
+		374F11D51C21C6320070747D /* AppSwitcher-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AppSwitcher-Prefix.pch"; sourceTree = "<group>"; };
+		374F11D61C21C6320070747D /* AppSwitcher.xm */ = {isa = PBXFileReference; lastKnownFileType = text; path = AppSwitcher.xm; sourceTree = "<group>"; };
+		374F11D71C21C6320070747D /* AppSwitcher.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = AppSwitcher.mm; sourceTree = "<group>"; };
+		374F11DC1C21C6320070747D /* AppSwitcher.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = AppSwitcher.plist; path = Package/Library/MobileSubstrate/DynamicLibraries/AppSwitcher.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		374F11C51C21C6320070747D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				374F11CD1C21C6320070747D /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		374F11BE1C21C6320070747D = {
+			isa = PBXGroup;
+			children = (
+				374F11CE1C21C6320070747D /* AppSwitcher */,
+				374F11CB1C21C6320070747D /* Frameworks */,
+				374F11CA1C21C6320070747D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		374F11CA1C21C6320070747D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				374F11C91C21C6320070747D /* AppSwitcher.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		374F11CB1C21C6320070747D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				374F11CC1C21C6320070747D /* Foundation.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		374F11CE1C21C6320070747D /* AppSwitcher */ = {
+			isa = PBXGroup;
+			children = (
+				374F11D61C21C6320070747D /* AppSwitcher.xm */,
+				374F11D71C21C6320070747D /* AppSwitcher.mm */,
+				374F11CF1C21C6320070747D /* Package */,
+				374F11D31C21C6320070747D /* Supporting Files */,
+			);
+			path = AppSwitcher;
+			sourceTree = "<group>";
+		};
+		374F11CF1C21C6320070747D /* Package */ = {
+			isa = PBXGroup;
+			children = (
+				374F11D01C21C6320070747D /* DEBIAN */,
+				374F11D91C21C6320070747D /* Library */,
+			);
+			name = Package;
+			sourceTree = "<group>";
+		};
+		374F11D01C21C6320070747D /* DEBIAN */ = {
+			isa = PBXGroup;
+			children = (
+				374F11D11C21C6320070747D /* control.txt */,
+				374F11D21C21C6320070747D /* control */,
+			);
+			name = DEBIAN;
+			sourceTree = "<group>";
+		};
+		374F11D31C21C6320070747D /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				374F11D41C21C6320070747D /* PackageVersion.plist */,
+				374F11D51C21C6320070747D /* AppSwitcher-Prefix.pch */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		374F11D91C21C6320070747D /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				374F11DA1C21C6320070747D /* MobileSubstrate */,
+			);
+			name = Library;
+			sourceTree = "<group>";
+		};
+		374F11DA1C21C6320070747D /* MobileSubstrate */ = {
+			isa = PBXGroup;
+			children = (
+				374F11DB1C21C6320070747D /* DynamicLibraries */,
+			);
+			name = MobileSubstrate;
+			sourceTree = "<group>";
+		};
+		374F11DB1C21C6320070747D /* DynamicLibraries */ = {
+			isa = PBXGroup;
+			children = (
+				374F11DC1C21C6320070747D /* AppSwitcher.plist */,
+			);
+			name = DynamicLibraries;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		374F11C61C21C6320070747D /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		374F11C81C21C6320070747D /* AppSwitcher */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 374F11DF1C21C6320070747D /* Build configuration list for PBXNativeTarget "AppSwitcher" */;
+			buildPhases = (
+				374F11C31C21C6320070747D /* ShellScript */,
+				374F11C41C21C6320070747D /* Sources */,
+				374F11C51C21C6320070747D /* Frameworks */,
+				374F11C61C21C6320070747D /* Headers */,
+				374F11C71C21C6320070747D /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AppSwitcher;
+			productName = AppSwitcher;
+			productReference = 374F11C91C21C6320070747D /* AppSwitcher.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		374F11BF1C21C6320070747D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0640;
+				TargetAttributes = {
+					374F11C81C21C6320070747D = {
+						CreatedOnToolsVersion = 6.4;
+					};
+				};
+			};
+			buildConfigurationList = 374F11C21C21C6320070747D /* Build configuration list for PBXProject "AppSwitcher" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 374F11BE1C21C6320070747D;
+			productRefGroup = 374F11CA1C21C6320070747D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				374F11C81C21C6320070747D /* AppSwitcher */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		374F11C31C21C6320070747D /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/opt/iOSOpenDev/bin/iosod --xcbp-logos";
+		};
+		374F11C71C21C6320070747D /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/opt/iOSOpenDev/bin/iosod --xcbp";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		374F11C41C21C6320070747D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				374F11D81C21C6320070747D /* AppSwitcher.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		374F11DD1C21C6320070747D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = "*.nib *.lproj *.gch (*) .DS_Store CVS .svn .git .hg *.xcodeproj *.xcode *.pbproj *.pbxproj";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(iOSOpenDevPath)/frameworks/**",
+					"$(SDKROOT)/System/Library/PrivateFrameworks",
+				);
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = "$(iOSOpenDevPath)/include/**";
+				IPHONEOS_DEPLOYMENT_TARGET = 8.4;
+				LIBRARY_SEARCH_PATHS = "$(iOSOpenDevPath)/lib/**";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = NO;
+				iOSOpenDevPath = /opt/iOSOpenDev;
+			};
+			name = Debug;
+		};
+		374F11DE1C21C6320070747D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				EXCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = "*.nib *.lproj *.gch (*) .DS_Store CVS .svn .git .hg *.xcodeproj *.xcode *.pbproj *.pbxproj";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(iOSOpenDevPath)/frameworks/**",
+					"$(SDKROOT)/System/Library/PrivateFrameworks",
+				);
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = "$(iOSOpenDevPath)/include/**";
+				IPHONEOS_DEPLOYMENT_TARGET = 8.4;
+				LIBRARY_SEARCH_PATHS = "$(iOSOpenDevPath)/lib/**";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+				iOSOpenDevPath = /opt/iOSOpenDev;
+			};
+			name = Release;
+		};
+		374F11E01C21C6320070747D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "AppSwitcher/AppSwitcher-Prefix.pch";
+				INSTALL_PATH = /Library/MobileSubstrate/DynamicLibraries;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				iOSOpenDevBuildPackageOnAnyBuild = NO;
+				iOSOpenDevCopyOnBuild = NO;
+				iOSOpenDevDevice = "";
+				iOSOpenDevInstallOnAnyBuild = NO;
+				iOSOpenDevInstallOnProfiling = YES;
+				iOSOpenDevRespringOnInstall = YES;
+				iOSOpenDevUsePackageVersionPList = YES;
+			};
+			name = Debug;
+		};
+		374F11E11C21C6320070747D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "AppSwitcher/AppSwitcher-Prefix.pch";
+				INSTALL_PATH = /Library/MobileSubstrate/DynamicLibraries;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				iOSOpenDevBuildPackageOnAnyBuild = NO;
+				iOSOpenDevCopyOnBuild = NO;
+				iOSOpenDevDevice = "";
+				iOSOpenDevInstallOnAnyBuild = NO;
+				iOSOpenDevInstallOnProfiling = YES;
+				iOSOpenDevRespringOnInstall = YES;
+				iOSOpenDevUsePackageVersionPList = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		374F11C21C21C6320070747D /* Build configuration list for PBXProject "AppSwitcher" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				374F11DD1C21C6320070747D /* Debug */,
+				374F11DE1C21C6320070747D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		374F11DF1C21C6320070747D /* Build configuration list for PBXNativeTarget "AppSwitcher" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				374F11E01C21C6320070747D /* Debug */,
+				374F11E11C21C6320070747D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 374F11BF1C21C6320070747D /* Project object */;
+}
