@@ -9,6 +9,10 @@
 /* Begin PBXBuildFile section */
 		374F11CD1C21C6320070747D /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 374F11CC1C21C6320070747D /* Foundation.framework */; };
 		374F11D81C21C6320070747D /* AppSwitcher.mm in Sources */ = {isa = PBXBuildFile; fileRef = 374F11D71C21C6320070747D /* AppSwitcher.mm */; };
+		37D222741C21C7E1004D8F68 /* libsubstrate.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222731C21C7E1004D8F68 /* libsubstrate.dylib */; };
+		37D222761C21E56E004D8F68 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222751C21E56E004D8F68 /* UIKit.framework */; };
+		37D222781C22302C004D8F68 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222771C22302C004D8F68 /* CoreGraphics.framework */; };
+		80A3F4801C416DF5001D4F51 /* IOKit.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 80A3F47F1C416DF5001D4F51 /* IOKit.tbd */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,9 +22,15 @@
 		374F11D21C21C6320070747D /* control */ = {isa = PBXFileReference; lastKnownFileType = text; name = control; path = Package/DEBIAN/control; sourceTree = "<group>"; };
 		374F11D41C21C6320070747D /* PackageVersion.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PackageVersion.plist; sourceTree = "<group>"; };
 		374F11D51C21C6320070747D /* AppSwitcher-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AppSwitcher-Prefix.pch"; sourceTree = "<group>"; };
-		374F11D61C21C6320070747D /* AppSwitcher.xm */ = {isa = PBXFileReference; lastKnownFileType = text; path = AppSwitcher.xm; sourceTree = "<group>"; };
+		374F11D61C21C6320070747D /* AppSwitcher.xm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = AppSwitcher.xm; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		374F11D71C21C6320070747D /* AppSwitcher.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = AppSwitcher.mm; sourceTree = "<group>"; };
 		374F11DC1C21C6320070747D /* AppSwitcher.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = AppSwitcher.plist; path = Package/Library/MobileSubstrate/DynamicLibraries/AppSwitcher.plist; sourceTree = "<group>"; };
+		3778B0CE1C359C5800B0EC1D /* IOKit */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = IOKit; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit; sourceTree = DEVELOPER_DIR; };
+		37D222731C21C7E1004D8F68 /* libsubstrate.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsubstrate.dylib; path = ../../../../opt/iOSOpenDev/lib/libsubstrate.dylib; sourceTree = "<group>"; };
+		37D222751C21E56E004D8F68 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		37D222771C22302C004D8F68 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		80A3F47E1C416B90001D4F51 /* IOKit */ = {isa = PBXFileReference; lastKnownFileType = folder; path = IOKit; sourceTree = "<group>"; };
+		80A3F47F1C416DF5001D4F51 /* IOKit.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = IOKit.tbd; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit.tbd; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -28,6 +38,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				80A3F4801C416DF5001D4F51 /* IOKit.tbd in Frameworks */,
+				37D222781C22302C004D8F68 /* CoreGraphics.framework in Frameworks */,
+				37D222761C21E56E004D8F68 /* UIKit.framework in Frameworks */,
+				37D222741C21C7E1004D8F68 /* libsubstrate.dylib in Frameworks */,
 				374F11CD1C21C6320070747D /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -55,6 +69,11 @@
 		374F11CB1C21C6320070747D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				80A3F47F1C416DF5001D4F51 /* IOKit.tbd */,
+				3778B0CE1C359C5800B0EC1D /* IOKit */,
+				37D222771C22302C004D8F68 /* CoreGraphics.framework */,
+				37D222751C21E56E004D8F68 /* UIKit.framework */,
+				37D222731C21C7E1004D8F68 /* libsubstrate.dylib */,
 				374F11CC1C21C6320070747D /* Foundation.framework */,
 			);
 			name = Frameworks;
@@ -63,6 +82,7 @@
 		374F11CE1C21C6320070747D /* AppSwitcher */ = {
 			isa = PBXGroup;
 			children = (
+				80A3F47E1C416B90001D4F51 /* IOKit */,
 				374F11D61C21C6320070747D /* AppSwitcher.xm */,
 				374F11D71C21C6320070747D /* AppSwitcher.mm */,
 				374F11CF1C21C6320070747D /* Package */,
@@ -228,6 +248,7 @@
 		374F11DD1C21C6320070747D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer: lukas.javageek@gmail.com (Y4APWPX72C)";
 				COPY_PHASE_STRIP = NO;
 				EXCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = "*.nib *.lproj *.gch (*) .DS_Store CVS .svn .git .hg *.xcodeproj *.xcode *.pbproj *.pbxproj";
 				FRAMEWORK_SEARCH_PATHS = (
@@ -258,6 +279,7 @@
 		374F11DE1C21C6320070747D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer: lukas.javageek@gmail.com (Y4APWPX72C)";
 				COPY_PHASE_STRIP = YES;
 				EXCLUDED_RECURSIVE_SEARCH_PATH_SUBDIRECTORIES = "*.nib *.lproj *.gch (*) .DS_Store CVS .svn .git .hg *.xcodeproj *.xcode *.pbproj *.pbxproj";
 				FRAMEWORK_SEARCH_PATHS = (
@@ -281,16 +303,22 @@
 		374F11E01C21C6320070747D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_IDENTITY = "iPhone Developer: lukas.javageek@gmail.com (Y4APWPX72C)";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "AppSwitcher/AppSwitcher-Prefix.pch";
 				INSTALL_PATH = /Library/MobileSubstrate/DynamicLibraries;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/iOSOpenDev/lib,
+					"$(DEVELOPER_DIR)/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/IOKit.framework/Versions/A",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/**";
 				iOSOpenDevBuildPackageOnAnyBuild = NO;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = "";
+				iOSOpenDevDevice = 192.168.178.41;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
@@ -301,16 +329,22 @@
 		374F11E11C21C6320070747D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_IDENTITY = "iPhone Developer: lukas.javageek@gmail.com (Y4APWPX72C)";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "AppSwitcher/AppSwitcher-Prefix.pch";
 				INSTALL_PATH = /Library/MobileSubstrate/DynamicLibraries;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/iOSOpenDev/lib,
+					"$(DEVELOPER_DIR)/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/IOKit.framework/Versions/A",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/**";
 				iOSOpenDevBuildPackageOnAnyBuild = NO;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = "";
+				iOSOpenDevDevice = 192.168.178.41;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
@@ -337,6 +371,7 @@
 				374F11E11C21C6320070747D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
