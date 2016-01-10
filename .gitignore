@@ -1,0 +1,5 @@
+AppSwitcher/AppSwitcher
+AppSwitcher/Package/Library/MobileSubstrate/DynamicLibraries/AppSwitcher.dylib
+LatestBuild
+Packages/
+AppSwitcher/AppSwitcher.mm

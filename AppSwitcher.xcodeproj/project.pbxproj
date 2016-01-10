@@ -13,6 +13,7 @@
 		37D222761C21E56E004D8F68 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222751C21E56E004D8F68 /* UIKit.framework */; };
 		37D222781C22302C004D8F68 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222771C22302C004D8F68 /* CoreGraphics.framework */; };
 		80A3F4801C416DF5001D4F51 /* IOKit.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 80A3F47F1C416DF5001D4F51 /* IOKit.tbd */; };
+		80A3F4A81C41D411001D4F51 /* IOKit in Frameworks */ = {isa = PBXBuildFile; fileRef = 80A3F4A71C41D411001D4F51 /* IOKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,12 +26,12 @@
 		374F11D61C21C6320070747D /* AppSwitcher.xm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = AppSwitcher.xm; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		374F11D71C21C6320070747D /* AppSwitcher.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = AppSwitcher.mm; sourceTree = "<group>"; };
 		374F11DC1C21C6320070747D /* AppSwitcher.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = AppSwitcher.plist; path = Package/Library/MobileSubstrate/DynamicLibraries/AppSwitcher.plist; sourceTree = "<group>"; };
-		3778B0CE1C359C5800B0EC1D /* IOKit */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = IOKit; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit; sourceTree = DEVELOPER_DIR; };
 		37D222731C21C7E1004D8F68 /* libsubstrate.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsubstrate.dylib; path = ../../../../opt/iOSOpenDev/lib/libsubstrate.dylib; sourceTree = "<group>"; };
 		37D222751C21E56E004D8F68 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		37D222771C22302C004D8F68 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		80A3F47E1C416B90001D4F51 /* IOKit */ = {isa = PBXFileReference; lastKnownFileType = folder; path = IOKit; sourceTree = "<group>"; };
 		80A3F47F1C416DF5001D4F51 /* IOKit.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = IOKit.tbd; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit.tbd; sourceTree = DEVELOPER_DIR; };
+		80A3F4A71C41D411001D4F51 /* IOKit */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = IOKit; path = Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -38,6 +39,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				80A3F4A81C41D411001D4F51 /* IOKit in Frameworks */,
 				80A3F4801C416DF5001D4F51 /* IOKit.tbd in Frameworks */,
 				37D222781C22302C004D8F68 /* CoreGraphics.framework in Frameworks */,
 				37D222761C21E56E004D8F68 /* UIKit.framework in Frameworks */,
@@ -69,8 +71,8 @@
 		374F11CB1C21C6320070747D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				80A3F4A71C41D411001D4F51 /* IOKit */,
 				80A3F47F1C416DF5001D4F51 /* IOKit.tbd */,
-				3778B0CE1C359C5800B0EC1D /* IOKit */,
 				37D222771C22302C004D8F68 /* CoreGraphics.framework */,
 				37D222751C21E56E004D8F68 /* UIKit.framework */,
 				37D222731C21C7E1004D8F68 /* libsubstrate.dylib */,
@@ -163,7 +165,7 @@
 				374F11C41C21C6320070747D /* Sources */,
 				374F11C51C21C6320070747D /* Frameworks */,
 				374F11C61C21C6320070747D /* Headers */,
-				374F11C71C21C6320070747D /* ShellScript */,
+				374F11C71C21C6320070747D /* Run Script */,
 			);
 			buildRules = (
 			);
@@ -218,13 +220,14 @@
 			shellPath = /bin/sh;
 			shellScript = "/opt/iOSOpenDev/bin/iosod --xcbp-logos";
 		};
-		374F11C71C21C6320070747D /* ShellScript */ = {
+		374F11C71C21C6320070747D /* Run Script */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputPaths = (
 			);
+			name = "Run Script";
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
