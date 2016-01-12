@@ -1,4 +1,5 @@
 
+
 // Logos by Dustin Howett
 // See http://iphonedevwiki.net/index.php/Logos
 
@@ -18,7 +19,8 @@
 #define CORNER_RADIUS_OVERLAY 10
 #define OVERLAY_SIZE 125
 
-#define CMD_KEY 0xe7
+#define CMD_KEY 0xe3
+#define CMD_KEY_2 0xe7
 #define TAB_KEY 0x2b
 #define T_KEY   0x17
     
@@ -32,8 +34,8 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
         int down = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown);
        	if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown"];
        	else if (usage == T_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TKeyDown"];
-        else if (usage == CMD_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown"];
-        else if (usage == CMD_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp"];
+        else if ((usage == CMD_KEY && down) || (usage == CMD_KEY && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown"];
+        else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp"];
         NSLog(@"usage: %i     down: %i", usage, down);
     }
 }
@@ -429,7 +431,6 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
                           	  action:@selector(handleCmdQ:)];
 	[arr addObject:cmdQ];
 
-	//UIKeyCommand *cmdEsc = [UIKeyCommand keyCommandWithInput:@"w"
 	UIKeyCommand *cmdEsc = [UIKeyCommand keyCommandWithInput:UIKeyInputEscape
                    			  modifierFlags:UIKeyModifierCommand
                           	  action:@selector(handleCmdEsc:)];
@@ -445,7 +446,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 	    IOHIDEventSystemClientScheduleWithRunLoop(ioHIDEventSystem, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
 	    IOHIDEventSystemClientRegisterEventCallback(ioHIDEventSystem, (IOHIDEventSystemClientEventCallback)handle_event, NULL, NULL);
 	    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tabKeyDown) name:@"TabKeyDown" object:nil];
-	    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tKeyDown) name:@"TKeyDown" object:nil];
+	    //[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tKeyDown) name:@"TKeyDown" object:nil];
 	    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyDown) name:@"CmdKeyDown" object:nil];
 	    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyUp) name:@"CmdKeyUp" object:nil];
 	    [self setHidSetup:[NSNull null]];
