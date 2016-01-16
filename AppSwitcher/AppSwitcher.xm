@@ -79,7 +79,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 			if (appsFiltered.count) {
 				
 				CGRect contentFrame = CGRectMake(0, 0, ls ? [UIScreen mainScreen].bounds.size.height : [UIScreen mainScreen].bounds.size.width,
-														   ls ? [UIScreen mainScreen].bounds.size.width : [UIScreen mainScreen].bounds.size.height);
+													   ls ? [UIScreen mainScreen].bounds.size.width : [UIScreen mainScreen].bounds.size.height);
 	
 				UIWindow *window = [[UIWindow alloc] initWithFrame:contentFrame];
 				window.windowLevel = UIWindowLevelAlert;
@@ -130,7 +130,8 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 	    		[self setAppLabels:labels];
 				[self setImageViews:iviews];
-				if (labels.count > 1) [self setSelectedIcon:[NSNumber numberWithInt:1]];
+				%c(SpringBoard);
+				if (labels.count > 1 && [(SpringBoard *)[%c(SpringBoard) sharedApplication] _accessibilityFrontMostApplication]) [self setSelectedIcon:[NSNumber numberWithInt:1]];
 				else [self setSelectedIcon:[NSNumber numberWithInt:0]];
 				if (labels.count) ((UILabel *)labels[((NSNumber *)[self selectedIcon]).intValue]).alpha = 1;
 
@@ -143,7 +144,14 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 	    		[switcherView insertSubview:scrollView atIndex:2];
 
-				if (ls) switcherView.transform = CGAffineTransformMakeRotation(DegreesToRadians(90));
+	    		NSLog(@"iface: %i", [[UIApplication sharedApplication] statusBarOrientation]);
+				if (ls) switcherView.transform = [[UIApplication sharedApplication] statusBarOrientation] == UIInterfaceOrientationLandscapeLeft ? 
+													CGAffineTransformMakeRotation(DegreesToRadians(270)) :
+													CGAffineTransformMakeRotation(DegreesToRadians(90));
+				else if ([[UIApplication sharedApplication] statusBarOrientation] == UIInterfaceOrientationPortraitUpsideDown) {
+					switcherView.transform = CGAffineTransformMakeRotation(DegreesToRadians(180));
+					NSLog(@"UPSIDE DOWN");
+				}
 				switcherView.center = CGPointMake(CGRectGetMidX(window.bounds), CGRectGetMidY(window.bounds));
 
 				[window addSubview:switcherView];
@@ -156,7 +164,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 			}
 		}
 	} 
-	else {
+	else if (((NSArray *)[self apps]).count > 1) {
 
 		[UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
 			
@@ -325,6 +333,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 		[self dismissAppSwitcher];
 		[self setSwitcherShown:nil];
 	}
+
 }
 
 %new
@@ -337,7 +346,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 	
 		if (!((NSNumber *)[self selectedIcon]).intValue && ((NSArray *)[self switcherItems]).count == 1) {
 			[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
-				((UIView *)[self switcherView]).transform = CGAffineTransformMakeScale(0.001, 0.001);
+				((UIView *)[self switcherView]).transform = CGAffineTransformConcat(((UIView *)[self switcherView]).transform, CGAffineTransformMakeScale(0.001, 0.001));
 			} completion:^(BOOL completed){
 				[self dismissAppSwitcher];		
 				[self setSwitcherShown:nil];
