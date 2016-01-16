@@ -147,6 +147,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 				switcherView.center = CGPointMake(CGRectGetMidX(window.bounds), CGRectGetMidY(window.bounds));
 
 				[window addSubview:switcherView];
+				[self setSwitcherView:switcherView];
 				[self setSwitcherWindow:window];
 				[window makeKeyAndVisible];
 				
@@ -196,6 +197,16 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 %new
 - (void)setSwitcherShown:(id)value {
 	objc_setAssociatedObject(self, @selector(switcherShown), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (UIView *)switcherView {
+	return objc_getAssociatedObject(self, @selector(switcherView));
+}
+
+%new
+- (void)setSwitcherView:(UIView *)value {
+	objc_setAssociatedObject(self, @selector(switcherView), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 %new
@@ -323,8 +334,17 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 		SBDisplayItem *di = ((NSArray *)[self switcherItems])[((NSNumber *)[self selectedIcon]).intValue];
 		[[%c(SBAppSwitcherModel) sharedInstance] remove:di];
 		[[%c(SBApplicationController) sharedInstance] applicationService:nil suspendApplicationWithBundleIdentifier:[((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) bundleIdentifier]];
-		
-		/*
+	
+		if (!((NSNumber *)[self selectedIcon]).intValue && ((NSArray *)[self switcherItems]).count == 1) {
+			[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
+				((UIView *)[self switcherView]).transform = CGAffineTransformMakeScale(0.001, 0.001);
+			} completion:^(BOOL completed){
+				[self dismissAppSwitcher];		
+				[self setSwitcherShown:nil];
+			}];
+			return;
+		}
+
 		NSMutableArray *mSwitcherItems = [NSMutableArray arrayWithArray:(NSArray *)[self switcherItems]];
 		[mSwitcherItems removeObjectAtIndex:((NSNumber *)[self selectedIcon]).intValue];
 		[self setSwitcherItems:mSwitcherItems];
@@ -333,35 +353,66 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 		[mApps removeObjectAtIndex:((NSNumber *)[self selectedIcon]).intValue];
 		[self setApps:mApps];
 
+		NSMutableArray *mLabels = [NSMutableArray arrayWithArray:(NSArray *)[self appLabels]];
+		[(UIView *)[mLabels objectAtIndex:((NSNumber *)[self selectedIcon]).intValue] removeFromSuperview];
+		[mLabels removeObjectAtIndex:((NSNumber *)[self selectedIcon]).intValue];
+		((UIView *)[mLabels objectAtIndex:(((NSNumber *)[self selectedIcon]).intValue >= mLabels.count) ? mLabels.count - 1 : ((NSNumber *)[self selectedIcon]).intValue]).alpha = 1;
+		[self setAppLabels:mLabels];
+	
+
 		[((NSArray *)[((UIScrollView *)[self scrollView]) subviews]) removeObjectAtIndex:((NSNumber *)[self selectedIcon]).intValue];
 		NSMutableArray *mImageViews = [NSMutableArray arrayWithArray:(NSArray *)[self imageViews]];
+		UIImageView *killedAppIV = [mImageViews objectAtIndex:((NSNumber *)[self selectedIcon]).intValue];
 		[mImageViews removeObjectAtIndex:((NSNumber *)[self selectedIcon]).intValue];
 		[self setImageViews:mImageViews];
 
+		[self setSelectedIcon:[NSNumber numberWithInt:((NSNumber *)[self selectedIcon]).intValue - ((((NSNumber *)[self selectedIcon]).intValue >= mLabels.count) ? 1 : 0)]];
+
 		BOOL ls = UIInterfaceOrientationIsLandscape([[UIApplication sharedApplication] statusBarOrientation]);
-		CGFloat h = SWITCHER_HEIGHT;
+
+		NSLog(@"eineineineineinienienis");
+
+		CGFloat h = SWITCHER_HEIGHT;	
 		CGFloat w = ([((NSArray *)[self apps]) count] < (ls ? MAX_ICONS_LS : MAX_ICONS_H)) ? ([((NSArray *)[self apps]) count] * ICON_SIZE + ([((NSArray *)[self apps]) count] + 1) * APP_GAP)
 																								 : ((ls ? MAX_ICONS_LS : MAX_ICONS_H) * ICON_SIZE + ((ls ? MAX_ICONS_LS : MAX_ICONS_H) + 1) * APP_GAP);
-		CGRect newSwitcherFrame = CGRectMake(0, 0, w, h);
+		CGRect newSwitcherFrame = CGRectMake(0, 0, ls ? h : w, ls ? w : h);
 	    
-		// scrollview.frame = newSwitcherframe
 	    CGSize newScrollViewContentSize = CGSizeMake(APP_GAP * (((NSArray *)[self apps]).count + 1) + ICON_SIZE * ((NSArray *)[self apps]).count, SWITCHER_HEIGHT);
 		
-		if (ls) ((UIView *)[((NSArray *)[((UIWindow *)[self switcherWindow]) subviews]) objectAtIndex:0]).transform = CGAffineTransformMakeRotation(DegreesToRadians(90));
-		[UIView animateWithDuration:0.4 delay:0 options:0 animations:^{
-			((UIView *)[((NSArray *)[((UIWindow *)[self switcherWindow]) subviews]) objectAtIndex:0]).frame = newSwitcherFrame;
+		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
+			// switcher view frame adjustment 
+			((UIView *)[self switcherView]).frame = newSwitcherFrame;
+			// scroll view content size
 			((UIScrollView *)[self scrollView]).contentSize = newScrollViewContentSize;
+			// animate killed app out
+			if (((NSNumber *)[self selectedIcon]).intValue) killedAppIV.frame = CGRectMake(killedAppIV.frame.origin.x - ICON_SIZE, 
+										   												   killedAppIV.frame.origin.y, 
+										   												   killedAppIV.frame.size.width, 
+										   												   killedAppIV.frame.size.height);
+			killedAppIV.transform = CGAffineTransformMakeScale(0.001, 0.001);
+			killedAppIV.alpha = 0;
+			// adjust image view frames
 			for (int i = 0; i < ((NSArray *)[self imageViews]).count; i++) {
 				UIImageView *iv = (UIImageView *)[(NSArray *)[self imageViews] objectAtIndex:i];
-			    iv.frame = CGRectMake(APP_GAP * (i + 1) + ICON_SIZE * i, (SWITCHER_HEIGHT / 2) - (ICON_SIZE / 2), ICON_SIZE, ICON_SIZE);
+			    iv.frame = CGRectMake(APP_GAP * (i + 1) + ICON_SIZE * i, 
+			    					  (SWITCHER_HEIGHT / 2) - (ICON_SIZE / 2), 
+			    					  ICON_SIZE, 
+			    					  ICON_SIZE);
+				UILabel *l = (UILabel *)[(NSArray *)[self appLabels] objectAtIndex:i];
+				l.center = iv.center;
+				l.frame = CGRectMake(l.frame.origin.x, 
+									 l.frame.origin.y + ICON_SIZE / 2 + 10, 
+									 l.frame.size.width, 
+									 l.frame.size.height);
 			}
-			((UIView *)[((NSArray *)[((UIWindow *)[self switcherWindow]) subviews]) objectAtIndex:0]).center = CGPointMake(CGRectGetMidX(((UIWindow *)[self switcherWindow]).bounds), 
-																											   			   CGRectGetMidY(((UIWindow *)[self switcherWindow]).bounds));
+			// set switcher view center
+			((UIView *)[self switcherView]).center = CGPointMake(CGRectGetMidX(((UIWindow *)[self switcherWindow]).bounds), 
+																 CGRectGetMidY(((UIWindow *)[self switcherWindow]).bounds));
+			// set overlay view center
 			((UIView *)[self overlayView]).center = ((UIImageView *)[self imageViews][(((NSNumber *)[self selectedIcon]).intValue)]).center;
-		} completion:nil];
-		*/
-		[self dismissAppSwitcher];
-		[self handleCmdTab:nil];
+		} completion:^(BOOL completed){
+			[killedAppIV removeFromSuperview];
+		}];
 	}
 }
 
@@ -438,11 +489,6 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
                    			  modifierFlags:UIKeyModifierCommand 
                           	  action:@selector(handleCmdQ:)];
 	[arr addObject:cmdQ];
-
-	/*UIKeyCommand *cmdEsc = [UIKeyCommand keyCommandWithInput:UIKeyInputEscape
-                   			  modifierFlags:UIKeyModifierCommand
-                          	  action:@selector(handleCmdEsc:)];
-	[arr addObject:cmdEsc];*/
 
 	UIKeyCommand *cmdShiftH = [UIKeyCommand keyCommandWithInput:@"h"
                    			  modifierFlags:UIKeyModifierCommand | UIKeyModifierShift
