@@ -23,6 +23,7 @@
 #define CMD_KEY_2 0xe7
 #define TAB_KEY 0x2b
 #define T_KEY   0x17
+#define ESC_KEY 0x29
     
 void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {}
 
@@ -34,8 +35,9 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
         int down = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown);
        	if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown"];
        	else if (usage == T_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TKeyDown"];
-        else if ((usage == CMD_KEY && down) || (usage == CMD_KEY && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown"];
-        else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp"];
+        else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown"];
+        else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY_2 && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp"];
+        else if (usage == ESC_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown"];
         NSLog(@"usage: %i     down: %i", usage, down);
     }
 }
@@ -128,13 +130,14 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 	    		[self setAppLabels:labels];
 				[self setImageViews:iviews];
-				[self setSelectedIcon:[NSNumber numberWithInt:0]];
-				if (labels.count) ((UILabel *)labels[0]).alpha = 1;
+				if (labels.count > 1) [self setSelectedIcon:[NSNumber numberWithInt:1]];
+				else [self setSelectedIcon:[NSNumber numberWithInt:0]];
+				if (labels.count) ((UILabel *)labels[((NSNumber *)[self selectedIcon]).intValue]).alpha = 1;
 
 	    		UIView *overlayView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, OVERLAY_SIZE, OVERLAY_SIZE)];
 	    		overlayView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.12];
 	    		overlayView.layer.cornerRadius = CORNER_RADIUS_OVERLAY;
-	    		overlayView.center = ((UIView *)[iviews firstObject]).center;	
+	    		overlayView.center = ((UIView *)[iviews objectAtIndex:((NSNumber *)[self selectedIcon]).intValue]).center;	
 	    		[switcherView insertSubview:overlayView atIndex:1];
 	    		[self setOverlayView:overlayView];
 
@@ -390,6 +393,11 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 }
 
 %new
+- (void)escKeyDown {
+	if ([self cmdDown]) [self handleCmdEsc:nil];
+}
+
+%new
 - (void)tabKeyDown {
 	[self handleKeyStatus:1];
 }
@@ -431,10 +439,10 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
                           	  action:@selector(handleCmdQ:)];
 	[arr addObject:cmdQ];
 
-	UIKeyCommand *cmdEsc = [UIKeyCommand keyCommandWithInput:UIKeyInputEscape
+	/*UIKeyCommand *cmdEsc = [UIKeyCommand keyCommandWithInput:UIKeyInputEscape
                    			  modifierFlags:UIKeyModifierCommand
                           	  action:@selector(handleCmdEsc:)];
-	[arr addObject:cmdEsc];
+	[arr addObject:cmdEsc];*/
 
 	UIKeyCommand *cmdShiftH = [UIKeyCommand keyCommandWithInput:@"h"
                    			  modifierFlags:UIKeyModifierCommand | UIKeyModifierShift
@@ -449,6 +457,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 	    //[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tKeyDown) name:@"TKeyDown" object:nil];
 	    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyDown) name:@"CmdKeyDown" object:nil];
 	    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyUp) name:@"CmdKeyUp" object:nil];
+	   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(escKeyDown) name:@"EscKeyDown" object:nil];
 	    [self setHidSetup:[NSNull null]];
 	}
 
