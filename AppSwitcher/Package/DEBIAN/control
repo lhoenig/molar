@@ -1,17 +1,17 @@
-Package: forbes.no1.AppSwitcher
+Package: de.hoenig.AppSwitcher
 Name: AppSwitcher
 Version: 1.0-1
-Description: 
+Description: Bluetooth cmd-tab switching for iphone
 Section: System
-Depends: firmware (>= 5.0), mobilesubstrate
+Depends: firmware (>= 7.0), mobilesubstrate
 Conflicts: 
 Replaces: 
 Priority: optional
 Architecture: iphoneos-arm
-Author: Daniel Marass
+Author: Lukas Hönig
 dev: 
 Homepage: 
 Depiction: 
-Maintainer: 
+Maintainer: lukashoenig@icloud.com
 Icon: 
 

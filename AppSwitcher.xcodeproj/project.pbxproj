@@ -12,14 +12,22 @@
 		37D222741C21C7E1004D8F68 /* libsubstrate.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222731C21C7E1004D8F68 /* libsubstrate.dylib */; };
 		37D222761C21E56E004D8F68 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222751C21E56E004D8F68 /* UIKit.framework */; };
 		37D222781C22302C004D8F68 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222771C22302C004D8F68 /* CoreGraphics.framework */; };
+		800BA79F1CA03A3E00FEE37C /* GraphicsServices.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 800BA79E1CA03A3E00FEE37C /* GraphicsServices.tbd */; };
+		800BA7E71CA0517100FEE37C /* libapplist.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 800BA7E61CA0517100FEE37C /* libapplist.dylib */; };
 		80A3F4801C416DF5001D4F51 /* IOKit.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 80A3F47F1C416DF5001D4F51 /* IOKit.tbd */; };
 		80A3F4A81C41D411001D4F51 /* IOKit in Frameworks */ = {isa = PBXBuildFile; fileRef = 80A3F4A71C41D411001D4F51 /* IOKit */; };
+		80BF230D1CA13E6700A0D210 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 374F11CC1C21C6320070747D /* Foundation.framework */; };
+		80BF230E1CA13E6700A0D210 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222751C21E56E004D8F68 /* UIKit.framework */; };
+		80BF230F1CA13E6700A0D210 /* Preferences.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80BF22AB1CA076F500A0D210 /* Preferences.framework */; };
+		80BF23191CA13E6700A0D210 /* SwitcherSettingsController.h in Headers */ = {isa = PBXBuildFile; fileRef = 80BF23181CA13E6700A0D210 /* SwitcherSettingsController.h */; };
+		80BF231B1CA13E6700A0D210 /* SwitcherSettingsController.m in Sources */ = {isa = PBXBuildFile; fileRef = 80BF231A1CA13E6700A0D210 /* SwitcherSettingsController.m */; };
+		80BF23311CA13EA800A0D210 /* libapplist.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 800BA7E61CA0517100FEE37C /* libapplist.dylib */; };
+		80BF23341CA13F4400A0D210 /* NSObject.h in Headers */ = {isa = PBXBuildFile; fileRef = 80BF23321CA13F4400A0D210 /* NSObject.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		374F11C91C21C6320070747D /* AppSwitcher.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = AppSwitcher.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		374F11CC1C21C6320070747D /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		374F11D11C21C6320070747D /* control.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = control.txt; path = Package/DEBIAN/control.txt; sourceTree = "<group>"; };
 		374F11D21C21C6320070747D /* control */ = {isa = PBXFileReference; lastKnownFileType = text; name = control; path = Package/DEBIAN/control; sourceTree = "<group>"; };
 		374F11D41C21C6320070747D /* PackageVersion.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PackageVersion.plist; sourceTree = "<group>"; };
 		374F11D51C21C6320070747D /* AppSwitcher-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AppSwitcher-Prefix.pch"; sourceTree = "<group>"; };
@@ -29,9 +37,29 @@
 		37D222731C21C7E1004D8F68 /* libsubstrate.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsubstrate.dylib; path = ../../../../opt/iOSOpenDev/lib/libsubstrate.dylib; sourceTree = "<group>"; };
 		37D222751C21E56E004D8F68 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		37D222771C22302C004D8F68 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		800BA79D1C9ECBAB00FEE37C /* PreferenceLoader */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PreferenceLoader; path = Package/Library/PreferenceLoader; sourceTree = "<group>"; };
+		800BA79E1CA03A3E00FEE37C /* GraphicsServices.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = GraphicsServices.tbd; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/PrivateFrameworks/GraphicsServices.framework/GraphicsServices.tbd; sourceTree = DEVELOPER_DIR; };
+		800BA7E61CA0517100FEE37C /* libapplist.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libapplist.dylib; path = ../../../../opt/theos/lib/libapplist.dylib; sourceTree = "<group>"; };
 		80A3F47E1C416B90001D4F51 /* IOKit */ = {isa = PBXFileReference; lastKnownFileType = folder; path = IOKit; sourceTree = "<group>"; };
 		80A3F47F1C416DF5001D4F51 /* IOKit.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = IOKit.tbd; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit.tbd; sourceTree = DEVELOPER_DIR; };
 		80A3F4A71C41D411001D4F51 /* IOKit */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = IOKit; path = Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit; sourceTree = DEVELOPER_DIR; };
+		80BF22AB1CA076F500A0D210 /* Preferences.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Preferences.framework; path = Library/Frameworks/Preferences.framework; sourceTree = DEVELOPER_DIR; };
+		80BF230C1CA13E6700A0D210 /* SwitcherSettings.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwitcherSettings.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		80BF23131CA13E6700A0D210 /* control.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = control.txt; path = Package/DEBIAN/control.txt; sourceTree = "<group>"; };
+		80BF23141CA13E6700A0D210 /* control */ = {isa = PBXFileReference; lastKnownFileType = text; name = control; path = Package/DEBIAN/control; sourceTree = "<group>"; };
+		80BF23161CA13E6700A0D210 /* PackageVersion.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PackageVersion.plist; sourceTree = "<group>"; };
+		80BF23171CA13E6700A0D210 /* SwitcherSettings-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "SwitcherSettings-Info.plist"; sourceTree = "<group>"; };
+		80BF23181CA13E6700A0D210 /* SwitcherSettingsController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SwitcherSettingsController.h; sourceTree = "<group>"; };
+		80BF231A1CA13E6700A0D210 /* SwitcherSettingsController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SwitcherSettingsController.m; sourceTree = "<group>"; };
+		80BF231F1CA13E6700A0D210 /* SwitcherSettings.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = SwitcherSettings.plist; path = Package/Library/PreferenceLoader/Preferences/SwitcherSettings.plist; sourceTree = "<group>"; };
+		80BF23221CA13E6700A0D210 /* SwitcherSettings.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = SwitcherSettings.plist; path = Package/Library/PreferenceBundles/SwitcherSettings.bundle/SwitcherSettings.plist; sourceTree = "<group>"; };
+		80BF23231CA13E6700A0D210 /* SwitcherSettingsIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = SwitcherSettingsIcon.png; path = Package/Library/PreferenceBundles/SwitcherSettings.bundle/SwitcherSettingsIcon.png; sourceTree = "<group>"; };
+		80BF23241CA13E6700A0D210 /* SwitcherSettingsIcon@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "SwitcherSettingsIcon@2x.png"; path = "Package/Library/PreferenceBundles/SwitcherSettings.bundle/SwitcherSettingsIcon@2x.png"; sourceTree = "<group>"; };
+		80BF23291CA13E6700A0D210 /* de.hoenig.SwitcherSettings.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = de.hoenig.SwitcherSettings.plist; path = Package/var/mobile/Library/Preferences/de.hoenig.SwitcherSettings.plist; sourceTree = "<group>"; };
+		80BF232A1CA13E6700A0D210 /* SwitcherSettings-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "SwitcherSettings-Prefix.pch"; sourceTree = "<group>"; };
+		80BF23321CA13F4400A0D210 /* NSObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NSObject.h; sourceTree = "<group>"; };
+		80BF23331CA13F4400A0D210 /* Preferences */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Preferences; sourceTree = "<group>"; };
+		80BF23351CA1893500A0D210 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -39,12 +67,25 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				800BA7E71CA0517100FEE37C /* libapplist.dylib in Frameworks */,
+				800BA79F1CA03A3E00FEE37C /* GraphicsServices.tbd in Frameworks */,
 				80A3F4A81C41D411001D4F51 /* IOKit in Frameworks */,
 				80A3F4801C416DF5001D4F51 /* IOKit.tbd in Frameworks */,
 				37D222781C22302C004D8F68 /* CoreGraphics.framework in Frameworks */,
 				37D222761C21E56E004D8F68 /* UIKit.framework in Frameworks */,
 				37D222741C21C7E1004D8F68 /* libsubstrate.dylib in Frameworks */,
 				374F11CD1C21C6320070747D /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		80BF23081CA13E6700A0D210 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				80BF23311CA13EA800A0D210 /* libapplist.dylib in Frameworks */,
+				80BF230D1CA13E6700A0D210 /* Foundation.framework in Frameworks */,
+				80BF230F1CA13E6700A0D210 /* Preferences.framework in Frameworks */,
+				80BF230E1CA13E6700A0D210 /* UIKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -55,6 +96,7 @@
 			isa = PBXGroup;
 			children = (
 				374F11CE1C21C6320070747D /* AppSwitcher */,
+				80BF23101CA13E6700A0D210 /* SwitcherSettings */,
 				374F11CB1C21C6320070747D /* Frameworks */,
 				374F11CA1C21C6320070747D /* Products */,
 			);
@@ -64,6 +106,7 @@
 			isa = PBXGroup;
 			children = (
 				374F11C91C21C6320070747D /* AppSwitcher.dylib */,
+				80BF230C1CA13E6700A0D210 /* SwitcherSettings.bundle */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -71,12 +114,16 @@
 		374F11CB1C21C6320070747D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				80BF23351CA1893500A0D210 /* CoreFoundation.framework */,
+				800BA7E61CA0517100FEE37C /* libapplist.dylib */,
+				800BA79E1CA03A3E00FEE37C /* GraphicsServices.tbd */,
 				80A3F4A71C41D411001D4F51 /* IOKit */,
 				80A3F47F1C416DF5001D4F51 /* IOKit.tbd */,
 				37D222771C22302C004D8F68 /* CoreGraphics.framework */,
 				37D222751C21E56E004D8F68 /* UIKit.framework */,
 				37D222731C21C7E1004D8F68 /* libsubstrate.dylib */,
 				374F11CC1C21C6320070747D /* Foundation.framework */,
+				80BF22AB1CA076F500A0D210 /* Preferences.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -105,7 +152,6 @@
 		374F11D01C21C6320070747D /* DEBIAN */ = {
 			isa = PBXGroup;
 			children = (
-				374F11D11C21C6320070747D /* control.txt */,
 				374F11D21C21C6320070747D /* control */,
 			);
 			name = DEBIAN;
@@ -123,6 +169,7 @@
 		374F11D91C21C6320070747D /* Library */ = {
 			isa = PBXGroup;
 			children = (
+				800BA79D1C9ECBAB00FEE37C /* PreferenceLoader */,
 				374F11DA1C21C6320070747D /* MobileSubstrate */,
 			);
 			name = Library;
@@ -144,6 +191,123 @@
 			name = DynamicLibraries;
 			sourceTree = "<group>";
 		};
+		80BF23101CA13E6700A0D210 /* SwitcherSettings */ = {
+			isa = PBXGroup;
+			children = (
+				80BF23321CA13F4400A0D210 /* NSObject.h */,
+				80BF23331CA13F4400A0D210 /* Preferences */,
+				80BF23181CA13E6700A0D210 /* SwitcherSettingsController.h */,
+				80BF231A1CA13E6700A0D210 /* SwitcherSettingsController.m */,
+				80BF23111CA13E6700A0D210 /* Package */,
+				80BF23151CA13E6700A0D210 /* Supporting Files */,
+			);
+			path = SwitcherSettings;
+			sourceTree = "<group>";
+		};
+		80BF23111CA13E6700A0D210 /* Package */ = {
+			isa = PBXGroup;
+			children = (
+				80BF23121CA13E6700A0D210 /* DEBIAN */,
+				80BF231C1CA13E6700A0D210 /* Library */,
+				80BF23251CA13E6700A0D210 /* var */,
+			);
+			name = Package;
+			sourceTree = "<group>";
+		};
+		80BF23121CA13E6700A0D210 /* DEBIAN */ = {
+			isa = PBXGroup;
+			children = (
+				80BF23131CA13E6700A0D210 /* control.txt */,
+				80BF23141CA13E6700A0D210 /* control */,
+			);
+			name = DEBIAN;
+			sourceTree = "<group>";
+		};
+		80BF23151CA13E6700A0D210 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				80BF23161CA13E6700A0D210 /* PackageVersion.plist */,
+				80BF23171CA13E6700A0D210 /* SwitcherSettings-Info.plist */,
+				80BF232A1CA13E6700A0D210 /* SwitcherSettings-Prefix.pch */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		80BF231C1CA13E6700A0D210 /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				80BF231D1CA13E6700A0D210 /* PreferenceLoader */,
+				80BF23201CA13E6700A0D210 /* PreferenceBundles */,
+			);
+			name = Library;
+			sourceTree = "<group>";
+		};
+		80BF231D1CA13E6700A0D210 /* PreferenceLoader */ = {
+			isa = PBXGroup;
+			children = (
+				80BF231E1CA13E6700A0D210 /* Preferences */,
+			);
+			name = PreferenceLoader;
+			sourceTree = "<group>";
+		};
+		80BF231E1CA13E6700A0D210 /* Preferences */ = {
+			isa = PBXGroup;
+			children = (
+				80BF231F1CA13E6700A0D210 /* SwitcherSettings.plist */,
+			);
+			name = Preferences;
+			sourceTree = "<group>";
+		};
+		80BF23201CA13E6700A0D210 /* PreferenceBundles */ = {
+			isa = PBXGroup;
+			children = (
+				80BF23211CA13E6700A0D210 /* ___PACKAGENAME___.bundle */,
+			);
+			name = PreferenceBundles;
+			sourceTree = "<group>";
+		};
+		80BF23211CA13E6700A0D210 /* ___PACKAGENAME___.bundle */ = {
+			isa = PBXGroup;
+			children = (
+				80BF23221CA13E6700A0D210 /* SwitcherSettings.plist */,
+				80BF23231CA13E6700A0D210 /* SwitcherSettingsIcon.png */,
+				80BF23241CA13E6700A0D210 /* SwitcherSettingsIcon@2x.png */,
+			);
+			name = "___PACKAGENAME___.bundle";
+			sourceTree = "<group>";
+		};
+		80BF23251CA13E6700A0D210 /* var */ = {
+			isa = PBXGroup;
+			children = (
+				80BF23261CA13E6700A0D210 /* mobile */,
+			);
+			name = var;
+			sourceTree = "<group>";
+		};
+		80BF23261CA13E6700A0D210 /* mobile */ = {
+			isa = PBXGroup;
+			children = (
+				80BF23271CA13E6700A0D210 /* Library */,
+			);
+			name = mobile;
+			sourceTree = "<group>";
+		};
+		80BF23271CA13E6700A0D210 /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				80BF23281CA13E6700A0D210 /* Preferences */,
+			);
+			name = Library;
+			sourceTree = "<group>";
+		};
+		80BF23281CA13E6700A0D210 /* Preferences */ = {
+			isa = PBXGroup;
+			children = (
+				80BF23291CA13E6700A0D210 /* de.hoenig.SwitcherSettings.plist */,
+			);
+			name = Preferences;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -151,6 +315,15 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		80BF23091CA13E6700A0D210 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				80BF23341CA13F4400A0D210 /* NSObject.h in Headers */,
+				80BF23191CA13E6700A0D210 /* SwitcherSettingsController.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -176,6 +349,24 @@
 			productReference = 374F11C91C21C6320070747D /* AppSwitcher.dylib */;
 			productType = "com.apple.product-type.library.dynamic";
 		};
+		80BF230B1CA13E6700A0D210 /* SwitcherSettings */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 80BF232B1CA13E6700A0D210 /* Build configuration list for PBXNativeTarget "SwitcherSettings" */;
+			buildPhases = (
+				80BF23071CA13E6700A0D210 /* Sources */,
+				80BF23081CA13E6700A0D210 /* Frameworks */,
+				80BF23091CA13E6700A0D210 /* Headers */,
+				80BF230A1CA13E6700A0D210 /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SwitcherSettings;
+			productName = SwitcherSettings;
+			productReference = 80BF230C1CA13E6700A0D210 /* SwitcherSettings.bundle */;
+			productType = "com.apple.product-type.bundle";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -186,6 +377,10 @@
 				TargetAttributes = {
 					374F11C81C21C6320070747D = {
 						CreatedOnToolsVersion = 6.4;
+					};
+					80BF230B1CA13E6700A0D210 = {
+						CreatedOnToolsVersion = 7.2.1;
+						DevelopmentTeam = 6874T3739X;
 					};
 				};
 			};
@@ -202,6 +397,7 @@
 			projectRoot = "";
 			targets = (
 				374F11C81C21C6320070747D /* AppSwitcher */,
+				80BF230B1CA13E6700A0D210 /* SwitcherSettings */,
 			);
 		};
 /* End PBXProject section */
@@ -234,6 +430,19 @@
 			shellPath = /bin/sh;
 			shellScript = "/opt/iOSOpenDev/bin/iosod --xcbp";
 		};
+		80BF230A1CA13E6700A0D210 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/opt/iOSOpenDev/bin/iosod --xcbp";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -242,6 +451,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				374F11D81C21C6320070747D /* AppSwitcher.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		80BF23071CA13E6700A0D210 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				80BF231B1CA13E6700A0D210 /* SwitcherSettingsController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -306,22 +523,24 @@
 		374F11E01C21C6320070747D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "iPhone Developer: lukas.javageek@gmail.com (Y4APWPX72C)";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "AppSwitcher/AppSwitcher-Prefix.pch";
 				INSTALL_PATH = /Library/MobileSubstrate/DynamicLibraries;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.4;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/opt/iOSOpenDev/lib,
 					"$(DEVELOPER_DIR)/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/IOKit.framework/Versions/A",
+					/opt/theos/lib,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/**";
 				iOSOpenDevBuildPackageOnAnyBuild = NO;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = 192.168.178.41;
+				iOSOpenDevDevice = 172.20.10.1;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
@@ -332,22 +551,80 @@
 		374F11E11C21C6320070747D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "iPhone Developer: lukas.javageek@gmail.com (Y4APWPX72C)";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "AppSwitcher/AppSwitcher-Prefix.pch";
 				INSTALL_PATH = /Library/MobileSubstrate/DynamicLibraries;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.4;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/opt/iOSOpenDev/lib,
 					"$(DEVELOPER_DIR)/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/IOKit.framework/Versions/A",
+					/opt/theos/lib,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/**";
 				iOSOpenDevBuildPackageOnAnyBuild = NO;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = 192.168.178.41;
+				iOSOpenDevDevice = 172.20.10.1;
+				iOSOpenDevInstallOnAnyBuild = NO;
+				iOSOpenDevInstallOnProfiling = YES;
+				iOSOpenDevRespringOnInstall = YES;
+				iOSOpenDevUsePackageVersionPList = YES;
+			};
+			name = Release;
+		};
+		80BF232C1CA13E6700A0D210 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_IDENTITY = "";
+				ENABLE_BITCODE = NO;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "SwitcherSettings/SwitcherSettings-Prefix.pch";
+				INFOPLIST_FILE = "SwitcherSettings/SwitcherSettings-Info.plist";
+				INSTALL_PATH = /Library/PreferenceBundles;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.2;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/theos/lib,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = "/opt/theos/include/** $(SRCROOT)/**";
+				WRAPPER_EXTENSION = bundle;
+				iOSOpenDevBuildPackageOnAnyBuild = NO;
+				iOSOpenDevCopyOnBuild = NO;
+				iOSOpenDevDevice = 172.20.10.1;
+				iOSOpenDevInstallOnAnyBuild = NO;
+				iOSOpenDevInstallOnProfiling = YES;
+				iOSOpenDevRespringOnInstall = YES;
+				iOSOpenDevUsePackageVersionPList = YES;
+			};
+			name = Debug;
+		};
+		80BF232D1CA13E6700A0D210 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_IDENTITY = "";
+				ENABLE_BITCODE = NO;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "SwitcherSettings/SwitcherSettings-Prefix.pch";
+				INFOPLIST_FILE = "SwitcherSettings/SwitcherSettings-Info.plist";
+				INSTALL_PATH = /Library/PreferenceBundles;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.2;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/theos/lib,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				USER_HEADER_SEARCH_PATHS = "/opt/theos/include/** $(SRCROOT)/**";
+				WRAPPER_EXTENSION = bundle;
+				iOSOpenDevBuildPackageOnAnyBuild = NO;
+				iOSOpenDevCopyOnBuild = NO;
+				iOSOpenDevDevice = 172.20.10.1;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
@@ -375,6 +652,14 @@
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
+		};
+		80BF232B1CA13E6700A0D210 /* Build configuration list for PBXNativeTarget "SwitcherSettings" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				80BF232C1CA13E6700A0D210 /* Debug */,
+				80BF232D1CA13E6700A0D210 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
 		};
 /* End XCConfigurationList section */
 	};

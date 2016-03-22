@@ -1,5 +1,4 @@
 
-
 // Logos by Dustin Howett
 // See http://iphonedevwiki.net/index.php/Logos
 
@@ -7,10 +6,10 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <IOKit/hid/IOHIDEventSystem.h>
 #import <IOKit/hid/IOHIDEventSystemClient.h>
+//#import <dlfcn.h>
+//#import <GraphicsServices/GraphicsServices.h>
 
 #define DegreesToRadians(x) ((x) * M_PI / 180.0)
-#define MAX_ICONS_H 3
-#define MAX_ICONS_LS 6
 #define SWITCHER_HEIGHT 140
 #define APP_GAP 32
 #define SCREEN_BORDER_GAP 10
@@ -19,13 +18,19 @@
 #define CORNER_RADIUS_OVERLAY 10
 #define OVERLAY_SIZE 125
 
-#define CMD_KEY 0xe3
+#define CMD_KEY   0xe3
 #define CMD_KEY_2 0xe7
-#define TAB_KEY 0x2b
-#define T_KEY   0x17
-#define ESC_KEY 0x29
-    
+#define TAB_KEY   0x2b
+#define T_KEY     0x17
+#define ESC_KEY   0x29
+#define RIGHT_KEY 0x4f
+#define LEFT_KEY  0x50
+
+//#define SBSERVPATH  "/System/Library/PrivateFrameworks/SpringBoardServices.framework/SpringBoardServices"
+
 void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {}
+BOOL darkMode, hideLabels, enabled, switcherOpenedInLandscape;
+NSString *launcherApp1, *launcherApp2, *launcherApp3, *launcherApp4, *launcherApp5, *launcherApp6, *launcherApp7, *launcherApp8, *launcherApp9, *launcherApp0;
 
 %hookf(void, handle_event, void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {
     //NSLog(@"handle_event : %d", IOHIDEventGetType(event));
@@ -38,18 +43,80 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
         else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown"];
         else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY_2 && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp"];
         else if (usage == ESC_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown"];
-        NSLog(@"usage: %i     down: %i", usage, down);
+        else if (usage == RIGHT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyDown"];
+        else if (usage == LEFT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"LeftKeyDown"];
+        //NSLog(@"usage: %i     down: %i", usage, down);
     }
+}
+
+static void loadPrefs() {
+	CFPreferencesAppSynchronize(CFSTR("de.hoenig.AppSwitcher"));
+	
+	CFPropertyListRef cf_enabled = CFPreferencesCopyAppValue(CFSTR("enabled"), CFSTR("de.hoenig.AppSwitcher"));
+	CFPropertyListRef cf_darkMode = CFPreferencesCopyAppValue(CFSTR("darkMode"), CFSTR("de.hoenig.AppSwitcher"));
+	CFPropertyListRef cf_hideLabels = CFPreferencesCopyAppValue(CFSTR("hideLabels"), CFSTR("de.hoenig.AppSwitcher"));
+	
+	launcherApp1 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp1"), CFSTR("de.hoenig.AppSwitcher"));
+	launcherApp2 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp2"), CFSTR("de.hoenig.AppSwitcher"));
+	launcherApp3 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp3"), CFSTR("de.hoenig.AppSwitcher"));
+	launcherApp4 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp4"), CFSTR("de.hoenig.AppSwitcher"));
+	launcherApp5 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp5"), CFSTR("de.hoenig.AppSwitcher"));
+	launcherApp6 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp6"), CFSTR("de.hoenig.AppSwitcher"));
+	launcherApp7 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp7"), CFSTR("de.hoenig.AppSwitcher"));
+	launcherApp8 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp8"), CFSTR("de.hoenig.AppSwitcher"));
+	launcherApp9 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp9"), CFSTR("de.hoenig.AppSwitcher"));
+	launcherApp0 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp0"), CFSTR("de.hoenig.AppSwitcher"));
+
+	enabled = (cf_enabled == kCFBooleanTrue);
+	darkMode = (cf_darkMode == kCFBooleanTrue);
+	hideLabels = (cf_hideLabels == kCFBooleanTrue);
+
+	//NSLog(@"Launcher App 1: %@", launcherApp1);
+}
+ 
+%ctor {
+    loadPrefs();
+    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), 
+    								NULL, 
+    								(CFNotificationCallback)loadPrefs, 
+    								CFSTR("de.hoenig.AppSwitcher-preferencesChanged"),
+    								NULL, 
+    								CFNotificationSuspensionBehaviorCoalesce);
 }
 
 %hook UIApplication
 
 %new
+- (NSUInteger)maxIconsLS {
+	CGRect bounds = [[UIScreen mainScreen] bounds];
+	if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 6;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return 5;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 568)) || CGSizeEqualToSize(bounds.size, CGSizeMake(568, 320))) return 4;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 480)) || CGSizeEqualToSize(bounds.size, CGSizeMake(480, 320))) return 4;
+	else return 4;
+}
+
+%new
+- (NSUInteger)maxIconsH {
+	CGRect bounds = [[UIScreen mainScreen] bounds];
+	if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 3;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return 3;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 568)) || CGSizeEqualToSize(bounds.size, CGSizeMake(568, 320))) return 2;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 480)) || CGSizeEqualToSize(bounds.size, CGSizeMake(480, 320))) return 2;
+	else return 2;
+}
+
+%new
 - (void)handleCmdTab:(UIKeyCommand *)keyCommand {	
 
-	BOOL ls = UIInterfaceOrientationIsLandscape([[UIApplication sharedApplication] statusBarOrientation]);
+	%c(SpringBoard);
+	BOOL ls = UIInterfaceOrientationIsLandscape((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation]);
+	//NSLog(@"statusBarOrientation: %i", [[SpringBoard sharedApplication] activeInterfaceOrientation]);
 
-	if (![self switcherShown]) {
+    CGRect bounds = [[UIScreen mainScreen] bounds];
+    //NSLog(@"Bounds: %@", NSStringFromCGRect(bounds));
+
+	if (![self switcherShown] && enabled) {
 
 		NSArray *apps = (NSArray *)[(SBApplicationController *)[%c(SBApplicationController) sharedInstance] runningApplications];
 		
@@ -81,17 +148,22 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 				CGRect contentFrame = CGRectMake(0, 0, ls ? [UIScreen mainScreen].bounds.size.height : [UIScreen mainScreen].bounds.size.width,
 													   ls ? [UIScreen mainScreen].bounds.size.width : [UIScreen mainScreen].bounds.size.height);
 	
-				UIWindow *window = [[UIWindow alloc] initWithFrame:contentFrame];
+				//UIWindow *window = [[UIWindow alloc] initWithFrame:contentFrame];
+				UIWindow *window = [[UIWindow alloc] initWithFrame:((NSUInteger)[self maxIconsLS] == 6) ? contentFrame : bounds];
 				window.windowLevel = UIWindowLevelAlert;
 				
+				/*UIView *colorView = [[UIView alloc] initWithFrame:bounds];
+				colorView.backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.3];
+				[window addSubview:colorView];*/
+				
 				CGFloat h = SWITCHER_HEIGHT;
-				CGFloat w = ([((NSArray *)[self apps]) count] < (ls ? MAX_ICONS_LS : MAX_ICONS_H)) ? ([((NSArray *)[self apps]) count] * ICON_SIZE + ([((NSArray *)[self apps]) count] + 1) * APP_GAP)
-																								 : ((ls ? MAX_ICONS_LS : MAX_ICONS_H) * ICON_SIZE + ((ls ? MAX_ICONS_LS : MAX_ICONS_H) + 1) * APP_GAP);
+				CGFloat w = ([((NSArray *)[self apps]) count] < (ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsH])) ? ([((NSArray *)[self apps]) count] * ICON_SIZE + ([((NSArray *)[self apps]) count] + 1) * APP_GAP)
+																								 : ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsH]) * ICON_SIZE + ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsH]) + 1) * APP_GAP);
 	 			UIView *switcherView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, h)];
 	 			switcherView.backgroundColor = [UIColor clearColor];
 	 			switcherView.layer.cornerRadius = CORNER_RADIUS;
 
-	 			UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
+	 			UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:darkMode ? UIBlurEffectStyleDark : UIBlurEffectStyleLight];
 	    		UIVisualEffectView *blurEffectView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
 	    		blurEffectView.frame = switcherView.bounds;
 	    		blurEffectView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -130,13 +202,12 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 	    		[self setAppLabels:labels];
 				[self setImageViews:iviews];
-				%c(SpringBoard);
 				if (labels.count > 1 && [(SpringBoard *)[%c(SpringBoard) sharedApplication] _accessibilityFrontMostApplication]) [self setSelectedIcon:[NSNumber numberWithInt:1]];
 				else [self setSelectedIcon:[NSNumber numberWithInt:0]];
-				if (labels.count) ((UILabel *)labels[((NSNumber *)[self selectedIcon]).intValue]).alpha = 1;
+				if (labels.count && !hideLabels) ((UILabel *)labels[((NSNumber *)[self selectedIcon]).intValue]).alpha = 1;
 
 	    		UIView *overlayView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, OVERLAY_SIZE, OVERLAY_SIZE)];
-	    		overlayView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.12];
+	    		overlayView.backgroundColor = darkMode ? [[UIColor whiteColor] colorWithAlphaComponent:0.15] : [[UIColor blackColor] colorWithAlphaComponent:0.12];
 	    		overlayView.layer.cornerRadius = CORNER_RADIUS_OVERLAY;
 	    		overlayView.center = ((UIView *)[iviews objectAtIndex:((NSNumber *)[self selectedIcon]).intValue]).center;	
 	    		[switcherView insertSubview:overlayView atIndex:1];
@@ -144,22 +215,22 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 	    		[switcherView insertSubview:scrollView atIndex:2];
 
-	    		NSLog(@"iface: %i", [[UIApplication sharedApplication] statusBarOrientation]);
-				if (ls) switcherView.transform = [[UIApplication sharedApplication] statusBarOrientation] == UIInterfaceOrientationLandscapeLeft ? 
+				if (ls) switcherView.transform = (UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation] == UIInterfaceOrientationLandscapeLeft ? 
 													CGAffineTransformMakeRotation(DegreesToRadians(270)) :
 													CGAffineTransformMakeRotation(DegreesToRadians(90));
-				else if ([[UIApplication sharedApplication] statusBarOrientation] == UIInterfaceOrientationPortraitUpsideDown) {
+				else if ((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation] == UIInterfaceOrientationPortraitUpsideDown) {
 					switcherView.transform = CGAffineTransformMakeRotation(DegreesToRadians(180));
-					NSLog(@"UPSIDE DOWN");
 				}
-				switcherView.center = CGPointMake(CGRectGetMidX(window.bounds), CGRectGetMidY(window.bounds));
-
+				switcherView.center = (NSUInteger)[self maxIconsLS] == 6 ? CGPointMake(CGRectGetMidX(window.bounds), CGRectGetMidY(window.bounds)) :
+																		   CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds));
+																		   
 				[window addSubview:switcherView];
 				[self setSwitcherView:switcherView];
 				[self setSwitcherWindow:window];
 				[window makeKeyAndVisible];
 				
 				[self setSwitcherShown:[NSNull null]];
+				switcherOpenedInLandscape = ls; 
 				[[NSNotificationCenter defaultCenter] postNotificationName:@"SwitcherDidAppearNotification"];
 			}
 		}
@@ -168,24 +239,54 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 		[UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
 			
-			UIImageView *nextImageView = (UIImageView *)[self imageViews][(((NSNumber *)[self selectedIcon]).intValue + 1) % ((NSArray *)[self imageViews]).count];
 			int nextImageViewIndex = (((NSNumber *)[self selectedIcon]).intValue + 1) % ((NSArray *)[self imageViews]).count;
-			NSLog(@"Next imageview: %i selectedIcon: %i", nextImageViewIndex, ((NSNumber *)[self selectedIcon]).intValue);
 
-			NSLog(@"From: %@", NSStringFromCGPoint(((UIView *)[self overlayView]).center));
-			NSLog(@"To:   %@", NSStringFromCGPoint(nextImageView.center));			
+			UIImageView *nextImageView = (UIImageView *)[self imageViews][nextImageViewIndex];
 
 			CGRect rectForScrollView = CGRectMake(nextImageView.frame.origin.x - APP_GAP, 0, 2 * APP_GAP + ICON_SIZE, SWITCHER_HEIGHT);
 
 			[(UIScrollView *)[self scrollView] scrollRectToVisible:rectForScrollView animated:NO];
 			
-			if (nextImageViewIndex <= (ls ? MAX_ICONS_LS : MAX_ICONS_H) - 1) {
-				((UIView *)[self overlayView]).center = nextImageView.center;
+			((UIView *)[self overlayView]).center = CGPointMake(nextImageView.center.x - ((UIScrollView *)[self scrollView]).contentOffset.x,
+																nextImageView.center.y - ((UIScrollView *)[self scrollView]).contentOffset.y);
+
+			if (!hideLabels) {
+				((UILabel *)[self appLabels][((NSNumber *)[self selectedIcon]).intValue]).alpha = 0;
+				((UILabel *)[self appLabels][nextImageViewIndex]).alpha = 1;
 			}
-			((UILabel *)[self appLabels][((NSNumber *)[self selectedIcon]).intValue]).alpha = 0;
-			((UILabel *)[self appLabels][nextImageViewIndex]).alpha = 1;
+		
+			[self setSelectedIcon:[NSNumber numberWithInt:nextImageViewIndex]];
+		} completion:nil];
+	}
+}
+
+%new
+- (void)handleCmdLeft {
+
+	if (((NSArray *)[self apps]).count > 1) {
+
+		BOOL ls = UIInterfaceOrientationIsLandscape((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation]);
+
+		[UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
 			
-			[self setSelectedIcon:[NSNumber numberWithInt:(((NSNumber *)[self selectedIcon]).intValue + 1) % ((NSArray *)[self imageViews]).count]];
+			int nextImageViewIndex = (((NSNumber *)[self selectedIcon]).intValue - 1) < 0 ? (((NSArray *)[self imageViews]).count - 1) :
+									 ((((NSNumber *)[self selectedIcon]).intValue - 1) % ((NSArray *)[self imageViews]).count);
+			
+			UIImageView *nextImageView = (UIImageView *)[self imageViews][nextImageViewIndex];
+
+			CGRect rectForScrollView = CGRectMake(nextImageView.frame.origin.x - APP_GAP, 0, 2 * APP_GAP + ICON_SIZE, SWITCHER_HEIGHT);
+
+			[(UIScrollView *)[self scrollView] scrollRectToVisible:rectForScrollView animated:NO];
+			
+			((UIView *)[self overlayView]).center = CGPointMake(nextImageView.center.x - ((UIScrollView *)[self scrollView]).contentOffset.x,
+																nextImageView.center.y - ((UIScrollView *)[self scrollView]).contentOffset.y);
+
+			if (!hideLabels) {
+				((UILabel *)[self appLabels][((NSNumber *)[self selectedIcon]).intValue]).alpha = 0;
+				((UILabel *)[self appLabels][nextImageViewIndex]).alpha = 1;
+			}
+	
+			[self setSelectedIcon:[NSNumber numberWithInt:nextImageViewIndex]];
 		} completion:nil];
 	}
 }
@@ -339,6 +440,10 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 %new
 - (void)handleCmdQ:(UIKeyCommand *)keyCommand {
 	if ([self switcherShown] && [((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) pid] > 0) {
+		
+		//BOOL ls = UIInterfaceOrientationIsLandscape((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation]);
+		BOOL ls = switcherOpenedInLandscape;
+
 		%c(SBDisplayItem);
 		SBDisplayItem *di = ((NSArray *)[self switcherItems])[((NSNumber *)[self selectedIcon]).intValue];
 		[[%c(SBAppSwitcherModel) sharedInstance] remove:di];
@@ -377,13 +482,9 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 		[self setSelectedIcon:[NSNumber numberWithInt:((NSNumber *)[self selectedIcon]).intValue - ((((NSNumber *)[self selectedIcon]).intValue >= mLabels.count) ? 1 : 0)]];
 
-		BOOL ls = UIInterfaceOrientationIsLandscape([[UIApplication sharedApplication] statusBarOrientation]);
-
-		NSLog(@"eineineineineinienienis");
-
 		CGFloat h = SWITCHER_HEIGHT;	
-		CGFloat w = ([((NSArray *)[self apps]) count] < (ls ? MAX_ICONS_LS : MAX_ICONS_H)) ? ([((NSArray *)[self apps]) count] * ICON_SIZE + ([((NSArray *)[self apps]) count] + 1) * APP_GAP)
-																								 : ((ls ? MAX_ICONS_LS : MAX_ICONS_H) * ICON_SIZE + ((ls ? MAX_ICONS_LS : MAX_ICONS_H) + 1) * APP_GAP);
+		CGFloat w = ([((NSArray *)[self apps]) count] < (ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsH])) ? ([((NSArray *)[self apps]) count] * ICON_SIZE + ([((NSArray *)[self apps]) count] + 1) * APP_GAP)
+																								 : ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsH]) * ICON_SIZE + ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsH]) + 1) * APP_GAP);
 		CGRect newSwitcherFrame = CGRectMake(0, 0, ls ? h : w, ls ? w : h);
 	    
 	    CGSize newScrollViewContentSize = CGSizeMake(APP_GAP * (((NSArray *)[self apps]).count + 1) + ICON_SIZE * ((NSArray *)[self apps]).count, SWITCHER_HEIGHT);
@@ -418,7 +519,8 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 			((UIView *)[self switcherView]).center = CGPointMake(CGRectGetMidX(((UIWindow *)[self switcherWindow]).bounds), 
 																 CGRectGetMidY(((UIWindow *)[self switcherWindow]).bounds));
 			// set overlay view center
-			((UIView *)[self overlayView]).center = ((UIImageView *)[self imageViews][(((NSNumber *)[self selectedIcon]).intValue)]).center;
+			((UIView *)[self overlayView]).center = CGPointMake(((UIImageView *)[self imageViews][(((NSNumber *)[self selectedIcon]).intValue)]).center.x - ((UIScrollView *)[self scrollView]).contentOffset.x,
+																((UIImageView *)[self imageViews][(((NSNumber *)[self selectedIcon]).intValue)]).center.y - ((UIScrollView *)[self scrollView]).contentOffset.y);
 		} completion:^(BOOL completed){
 			[killedAppIV removeFromSuperview];
 		}];
@@ -426,8 +528,113 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 }
 
 %new
-- (void)handleShiftH:(UIKeyCommand *)keyCommand {
+- (void)handleCmdShiftH:(UIKeyCommand *)keyCommand {
 	[[%c(SBUIController) sharedInstance] clickedMenuButton];
+}
+
+%new
+- (void)handleCmdShiftP:(UIKeyCommand *)keyCommand {
+	[[%c(SBUserAgent) sharedUserAgent] lockAndDimDevice];
+}
+
+%new
+- (void)handleCmd1:(UIKeyCommand *)keyCommand {
+	NSLog(@"Launching app %@", launcherApp1);
+	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
+		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
+		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
+		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp1]];
+	}
+}
+
+%new
+- (void)handleCmd2:(UIKeyCommand *)keyCommand {
+	NSLog(@"Launching app %@", launcherApp2);
+	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
+		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
+		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
+		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp2]];
+	}
+}
+
+%new
+- (void)handleCmd3:(UIKeyCommand *)keyCommand {
+	NSLog(@"Launching app %@", launcherApp3);
+	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
+		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
+		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
+		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp3]];
+	}
+}
+
+%new
+- (void)handleCmd4:(UIKeyCommand *)keyCommand {
+	NSLog(@"Launching app %@", launcherApp4);
+	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
+		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
+		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
+		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp4]];
+	}
+}
+
+%new
+- (void)handleCmd5:(UIKeyCommand *)keyCommand {
+	NSLog(@"Launching app %@", launcherApp5);
+	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
+		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
+		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
+		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp5]];
+	}
+}
+
+%new
+- (void)handleCmd6:(UIKeyCommand *)keyCommand {
+	NSLog(@"Launching app %@", launcherApp6);
+	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
+		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
+		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
+		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp6]];
+	}
+}
+
+%new
+- (void)handleCmd7:(UIKeyCommand *)keyCommand {
+	NSLog(@"Launching app %@", launcherApp7);
+	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
+		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
+		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
+		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp7]];
+	}
+}
+
+%new
+- (void)handleCmd8:(UIKeyCommand *)keyCommand {
+	NSLog(@"Launching app %@", launcherApp8);
+	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
+		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
+		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
+		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp8]];
+	}
+}
+
+%new
+- (void)handleCmd9:(UIKeyCommand *)keyCommand {
+	NSLog(@"Launching app %@", launcherApp9);
+	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
+		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
+		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
+		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp9]];
+	}
+}
+
+%new
+- (void)handleCmd0:(UIKeyCommand *)keyCommand {
+	NSLog(@"Launching app %@", launcherApp0);
+	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
+		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
+		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
+		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp0]];
+	}
 }
 
 %new
@@ -450,6 +657,16 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
     //return image
     return image;	 
+}
+
+%new
+- (void)rightKeyDown {
+	if ([self switcherShown] && [self cmdDown]) [self handleCmdTab:nil];
+}
+
+%new
+- (void)leftKeyDown {
+	if ([self switcherShown] && [self cmdDown]) [self handleCmdLeft];
 }
 
 %new
@@ -504,15 +721,72 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
                           	  action:@selector(handleCmdShiftH:)];
 	[arr addObject:cmdShiftH];
 
+	UIKeyCommand *cmdShiftP = [UIKeyCommand keyCommandWithInput:@"p"
+                   			  modifierFlags:UIKeyModifierCommand | UIKeyModifierShift
+                          	  action:@selector(handleCmdShiftP:)];
+	[arr addObject:cmdShiftP];
+
+	UIKeyCommand *cmd1 = [UIKeyCommand keyCommandWithInput:@"1"
+                   			  modifierFlags:UIKeyModifierCommand
+                          	  action:@selector(handleCmd1:)];
+	[arr addObject:cmd1];
+
+	UIKeyCommand *cmd2 = [UIKeyCommand keyCommandWithInput:@"2"
+                   			  modifierFlags:UIKeyModifierCommand
+                          	  action:@selector(handleCmd2:)];
+	[arr addObject:cmd2];
+
+	UIKeyCommand *cmd3 = [UIKeyCommand keyCommandWithInput:@"3"
+                   			  modifierFlags:UIKeyModifierCommand
+                          	  action:@selector(handleCmd3:)];
+	[arr addObject:cmd3];
+
+	UIKeyCommand *cmd4 = [UIKeyCommand keyCommandWithInput:@"4"
+                   			  modifierFlags:UIKeyModifierCommand
+                          	  action:@selector(handleCmd4:)];
+	[arr addObject:cmd4];
+
+	UIKeyCommand *cmd5 = [UIKeyCommand keyCommandWithInput:@"5"
+                   			  modifierFlags:UIKeyModifierCommand
+                          	  action:@selector(handleCmd5:)];
+	[arr addObject:cmd5];
+
+	UIKeyCommand *cmd6 = [UIKeyCommand keyCommandWithInput:@"6"
+                   			  modifierFlags:UIKeyModifierCommand
+                          	  action:@selector(handleCmd6:)];
+	[arr addObject:cmd6];
+
+	UIKeyCommand *cmd7 = [UIKeyCommand keyCommandWithInput:@"7"
+                   			  modifierFlags:UIKeyModifierCommand
+                          	  action:@selector(handleCmd7:)];
+	[arr addObject:cmd7];
+
+	UIKeyCommand *cmd8 = [UIKeyCommand keyCommandWithInput:@"8"
+                   			  modifierFlags:UIKeyModifierCommand
+                          	  action:@selector(handleCmd8:)];
+	[arr addObject:cmd8];
+
+	UIKeyCommand *cmd9 = [UIKeyCommand keyCommandWithInput:@"9"
+                   			  modifierFlags:UIKeyModifierCommand
+                          	  action:@selector(handleCmd9:)];
+	[arr addObject:cmd9];
+
+	UIKeyCommand *cmd0 = [UIKeyCommand keyCommandWithInput:@"0"
+                   			  modifierFlags:UIKeyModifierCommand
+                          	  action:@selector(handleCmd0:)];
+	[arr addObject:cmd0];
+
 	if (![self hidSetup]) {
 		IOHIDEventSystemClientRef ioHIDEventSystem = IOHIDEventSystemClientCreate(kCFAllocatorDefault);
 	    IOHIDEventSystemClientScheduleWithRunLoop(ioHIDEventSystem, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
 	    IOHIDEventSystemClientRegisterEventCallback(ioHIDEventSystem, (IOHIDEventSystemClientEventCallback)handle_event, NULL, NULL);
 	    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tabKeyDown) name:@"TabKeyDown" object:nil];
-	    //[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tKeyDown) name:@"TKeyDown" object:nil];
+	    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tKeyDown) name:@"TKeyDown" object:nil];
 	    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyDown) name:@"CmdKeyDown" object:nil];
 	    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyUp) name:@"CmdKeyUp" object:nil];
 	   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(escKeyDown) name:@"EscKeyDown" object:nil];
+	   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rightKeyDown) name:@"RightKeyDown" object:nil];
+	   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(leftKeyDown) name:@"LeftKeyDown" object:nil];
 	    [self setHidSetup:[NSNull null]];
 	}
 
