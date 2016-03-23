@@ -23,6 +23,18 @@
 		80BF231B1CA13E6700A0D210 /* SwitcherSettingsController.m in Sources */ = {isa = PBXBuildFile; fileRef = 80BF231A1CA13E6700A0D210 /* SwitcherSettingsController.m */; };
 		80BF23311CA13EA800A0D210 /* libapplist.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 800BA7E61CA0517100FEE37C /* libapplist.dylib */; };
 		80BF23341CA13F4400A0D210 /* NSObject.h in Headers */ = {isa = PBXBuildFile; fileRef = 80BF23321CA13F4400A0D210 /* NSObject.h */; };
+		80BF23381CA2A48E00A0D210 /* libactivator.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 80BF23371CA2A48E00A0D210 /* libactivator.dylib */; };
+		80BF23411CA2A4C400A0D210 /* LAActivator.h in Headers */ = {isa = PBXBuildFile; fileRef = 80BF23391CA2A4C400A0D210 /* LAActivator.h */; };
+		80BF23421CA2A4C400A0D210 /* LAActivatorVersion.h in Headers */ = {isa = PBXBuildFile; fileRef = 80BF233A1CA2A4C400A0D210 /* LAActivatorVersion.h */; };
+		80BF23431CA2A4C400A0D210 /* LAEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = 80BF233B1CA2A4C400A0D210 /* LAEvent.h */; };
+		80BF23441CA2A4C400A0D210 /* LAEventDataSource.h in Headers */ = {isa = PBXBuildFile; fileRef = 80BF233C1CA2A4C400A0D210 /* LAEventDataSource.h */; };
+		80BF23451CA2A4C400A0D210 /* LAListener.h in Headers */ = {isa = PBXBuildFile; fileRef = 80BF233D1CA2A4C400A0D210 /* LAListener.h */; };
+		80BF23461CA2A4C400A0D210 /* LASettingsViewController.h in Headers */ = {isa = PBXBuildFile; fileRef = 80BF233E1CA2A4C400A0D210 /* LASettingsViewController.h */; };
+		80BF23471CA2A4C400A0D210 /* libactivator.h in Headers */ = {isa = PBXBuildFile; fileRef = 80BF233F1CA2A4C400A0D210 /* libactivator.h */; };
+		80BF23481CA2A4C400A0D210 /* UIImageView+Activator.h in Headers */ = {isa = PBXBuildFile; fileRef = 80BF23401CA2A4C400A0D210 /* UIImageView+Activator.h */; };
+		80BF234A1CA2AC5200A0D210 /* IOKit.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 80A3F47F1C416DF5001D4F51 /* IOKit.tbd */; };
+		80BF234D1CA2C27500A0D210 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80BF234C1CA2C27500A0D210 /* QuartzCore.framework */; };
+		80BF234E1CA313AB00A0D210 /* libactivator.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 80BF23371CA2A48E00A0D210 /* libactivator.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -60,6 +72,16 @@
 		80BF23321CA13F4400A0D210 /* NSObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NSObject.h; sourceTree = "<group>"; };
 		80BF23331CA13F4400A0D210 /* Preferences */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Preferences; sourceTree = "<group>"; };
 		80BF23351CA1893500A0D210 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+		80BF23371CA2A48E00A0D210 /* libactivator.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libactivator.dylib; path = ../../libactivator.dylib; sourceTree = "<group>"; };
+		80BF23391CA2A4C400A0D210 /* LAActivator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LAActivator.h; sourceTree = "<group>"; };
+		80BF233A1CA2A4C400A0D210 /* LAActivatorVersion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LAActivatorVersion.h; sourceTree = "<group>"; };
+		80BF233B1CA2A4C400A0D210 /* LAEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LAEvent.h; sourceTree = "<group>"; };
+		80BF233C1CA2A4C400A0D210 /* LAEventDataSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LAEventDataSource.h; sourceTree = "<group>"; };
+		80BF233D1CA2A4C400A0D210 /* LAListener.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LAListener.h; sourceTree = "<group>"; };
+		80BF233E1CA2A4C400A0D210 /* LASettingsViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LASettingsViewController.h; sourceTree = "<group>"; };
+		80BF233F1CA2A4C400A0D210 /* libactivator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = libactivator.h; sourceTree = "<group>"; };
+		80BF23401CA2A4C400A0D210 /* UIImageView+Activator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "UIImageView+Activator.h"; sourceTree = "<group>"; };
+		80BF234C1CA2C27500A0D210 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,6 +96,7 @@
 				37D222781C22302C004D8F68 /* CoreGraphics.framework in Frameworks */,
 				37D222761C21E56E004D8F68 /* UIKit.framework in Frameworks */,
 				37D222741C21C7E1004D8F68 /* libsubstrate.dylib in Frameworks */,
+				80BF234E1CA313AB00A0D210 /* libactivator.dylib in Frameworks */,
 				374F11CD1C21C6320070747D /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -82,6 +105,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				80BF234D1CA2C27500A0D210 /* QuartzCore.framework in Frameworks */,
+				80BF234A1CA2AC5200A0D210 /* IOKit.tbd in Frameworks */,
+				80BF23381CA2A48E00A0D210 /* libactivator.dylib in Frameworks */,
 				80BF23311CA13EA800A0D210 /* libapplist.dylib in Frameworks */,
 				80BF230D1CA13E6700A0D210 /* Foundation.framework in Frameworks */,
 				80BF230F1CA13E6700A0D210 /* Preferences.framework in Frameworks */,
@@ -114,14 +140,16 @@
 		374F11CB1C21C6320070747D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				80BF23351CA1893500A0D210 /* CoreFoundation.framework */,
+				80BF234C1CA2C27500A0D210 /* QuartzCore.framework */,
+				80BF23371CA2A48E00A0D210 /* libactivator.dylib */,
 				800BA7E61CA0517100FEE37C /* libapplist.dylib */,
+				37D222731C21C7E1004D8F68 /* libsubstrate.dylib */,
+				80BF23351CA1893500A0D210 /* CoreFoundation.framework */,
 				800BA79E1CA03A3E00FEE37C /* GraphicsServices.tbd */,
 				80A3F4A71C41D411001D4F51 /* IOKit */,
 				80A3F47F1C416DF5001D4F51 /* IOKit.tbd */,
 				37D222771C22302C004D8F68 /* CoreGraphics.framework */,
 				37D222751C21E56E004D8F68 /* UIKit.framework */,
-				37D222731C21C7E1004D8F68 /* libsubstrate.dylib */,
 				374F11CC1C21C6320070747D /* Foundation.framework */,
 				80BF22AB1CA076F500A0D210 /* Preferences.framework */,
 			);
@@ -194,6 +222,14 @@
 		80BF23101CA13E6700A0D210 /* SwitcherSettings */ = {
 			isa = PBXGroup;
 			children = (
+				80BF23391CA2A4C400A0D210 /* LAActivator.h */,
+				80BF233A1CA2A4C400A0D210 /* LAActivatorVersion.h */,
+				80BF233B1CA2A4C400A0D210 /* LAEvent.h */,
+				80BF233C1CA2A4C400A0D210 /* LAEventDataSource.h */,
+				80BF233D1CA2A4C400A0D210 /* LAListener.h */,
+				80BF233E1CA2A4C400A0D210 /* LASettingsViewController.h */,
+				80BF233F1CA2A4C400A0D210 /* libactivator.h */,
+				80BF23401CA2A4C400A0D210 /* UIImageView+Activator.h */,
 				80BF23321CA13F4400A0D210 /* NSObject.h */,
 				80BF23331CA13F4400A0D210 /* Preferences */,
 				80BF23181CA13E6700A0D210 /* SwitcherSettingsController.h */,
@@ -323,7 +359,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				80BF23341CA13F4400A0D210 /* NSObject.h in Headers */,
+				80BF23481CA2A4C400A0D210 /* UIImageView+Activator.h in Headers */,
+				80BF23441CA2A4C400A0D210 /* LAEventDataSource.h in Headers */,
+				80BF23431CA2A4C400A0D210 /* LAEvent.h in Headers */,
 				80BF23191CA13E6700A0D210 /* SwitcherSettingsController.h in Headers */,
+				80BF23451CA2A4C400A0D210 /* LAListener.h in Headers */,
+				80BF23471CA2A4C400A0D210 /* libactivator.h in Headers */,
+				80BF23461CA2A4C400A0D210 /* LASettingsViewController.h in Headers */,
+				80BF23421CA2A4C400A0D210 /* LAActivatorVersion.h in Headers */,
+				80BF23411CA2A4C400A0D210 /* LAActivator.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -660,6 +704,7 @@
 				80BF232D1CA13E6700A0D210 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

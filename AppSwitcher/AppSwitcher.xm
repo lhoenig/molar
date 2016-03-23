@@ -6,8 +6,7 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <IOKit/hid/IOHIDEventSystem.h>
 #import <IOKit/hid/IOHIDEventSystemClient.h>
-//#import <dlfcn.h>
-//#import <GraphicsServices/GraphicsServices.h>
+#import <libactivator.h>
 
 #define DegreesToRadians(x) ((x) * M_PI / 180.0)
 #define SWITCHER_HEIGHT 140
@@ -31,6 +30,8 @@
 void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {}
 BOOL darkMode, hideLabels, enabled, switcherOpenedInLandscape;
 NSString *launcherApp1, *launcherApp2, *launcherApp3, *launcherApp4, *launcherApp5, *launcherApp6, *launcherApp7, *launcherApp8, *launcherApp9, *launcherApp0;
+NSTimer *discoverabilityTimer;
+NSArray *customShortcuts;
 
 %hookf(void, handle_event, void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {
     //NSLog(@"handle_event : %d", IOHIDEventGetType(event));
@@ -38,13 +39,13 @@ NSString *launcherApp1, *launcherApp2, *launcherApp3, *launcherApp4, *launcherAp
         int usagePage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsagePage);
         int usage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage);
         int down = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown);
-       	if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown"];
-       	else if (usage == T_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TKeyDown"];
-        else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown"];
-        else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY_2 && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp"];
-        else if (usage == ESC_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown"];
-        else if (usage == RIGHT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyDown"];
-        else if (usage == LEFT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"LeftKeyDown"];
+       	if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
+       	else if (usage == T_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TKeyDown" object:nil];
+        else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown" object:nil];
+        else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY_2 && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp" object:nil];
+        else if (usage == ESC_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil];
+        else if (usage == RIGHT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyDown" object:nil];
+        else if (usage == LEFT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"LeftKeyDown" object:nil];
         //NSLog(@"usage: %i     down: %i", usage, down);
     }
 }
@@ -71,10 +72,11 @@ static void loadPrefs() {
 	darkMode = (cf_darkMode == kCFBooleanTrue);
 	hideLabels = (cf_hideLabels == kCFBooleanTrue);
 
-	//NSLog(@"Launcher App 1: %@", launcherApp1);
+	customShortcuts = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcuts"), CFSTR("de.hoenig.AppSwitcher")));
 }
  
 %ctor {
+	discoverabilityTimer = nil;
     loadPrefs();
     CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), 
     								NULL, 
@@ -108,6 +110,8 @@ static void loadPrefs() {
 
 %new
 - (void)handleCmdTab:(UIKeyCommand *)keyCommand {	
+
+	//[discoverabilityTimer invalidate];
 
 	%c(SpringBoard);
 	BOOL ls = UIInterfaceOrientationIsLandscape((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation]);
@@ -638,6 +642,18 @@ static void loadPrefs() {
 }
 
 %new
+- (void)handleCustomShortcut:(UIKeyCommand *)keyCommand {
+	for (NSDictionary *sc in customShortcuts) {
+		if ([keyCommand.input isEqualToString:[sc objectForKey:@"input"]] && 
+			keyCommand.modifierFlags == ((NSNumber *)[self modifierFlagsForShortcut:sc]).intValue) {
+			NSLog(@"GOT THE SHORTCUT!");
+			LAEvent *event = [LAEvent eventWithName:[sc objectForKey:@"eventName"] mode:[LASharedActivator currentEventMode]];
+        	[LASharedActivator sendEventToListener:event];
+		}
+	}
+}
+
+%new
 - (UIImage *)image:(UIImage*)originalImage scaledToSize:(CGSize)size {
     //avoid redundant drawing
     if (CGSizeEqualToSize(originalImage.size, size))
@@ -686,12 +702,18 @@ static void loadPrefs() {
 
 %new
 - (void)cmdKeyDown {
+	/*discoverabilityTimer = [NSTimer scheduledTimerWithTimeInterval:1 
+															target:self 
+														  selector:@selector(showDiscoverability) 
+													      userInfo:nil 
+														   repeats:NO];*/
 	[self setCmdDown:[NSNull null]];
 	[self handleKeyStatus:0];
 }
 
 %new
 - (void)cmdKeyUp {
+	if (discoverabilityTimer) [discoverabilityTimer invalidate];
 	[self setCmdDown:nil];
 	[self handleKeyStatus:0];
 }
@@ -706,10 +728,28 @@ static void loadPrefs() {
 	}
 }
 
+%new
+- (void)showDiscoverability {
+	discoverabilityTimer = nil;
+	NSLog(@"Discoverability!");
+}
+
+%new
+- (NSNumber *)modifierFlagsForShortcut:(NSDictionary *)sc {
+	int mFlags = 0;
+	if (((NSNumber *)[sc objectForKey:@"cmd"]).boolValue) mFlags |= UIKeyModifierCommand;
+	if (((NSNumber *)[sc objectForKey:@"ctrl"]).boolValue) mFlags |= UIKeyModifierControl;
+	if (((NSNumber *)[sc objectForKey:@"alt"]).boolValue) mFlags |= UIKeyModifierAlternate;
+	if (((NSNumber *)[sc objectForKey:@"shift"]).boolValue) mFlags |= UIKeyModifierShift;
+	return @(mFlags);
+}
+
 - (NSArray *)keyCommands {
 
 	NSArray *orig_cmds = %orig;
 	NSMutableArray *arr = [NSMutableArray arrayWithArray:orig_cmds];
+
+	//NSLog(@"ORIGINAL KEY COMMANDS: ---------- %i ------------\n%@", orig_cmds.count, orig_cmds.description);
 
 	UIKeyCommand *cmdQ = [UIKeyCommand keyCommandWithInput:@"q"
                    			  modifierFlags:UIKeyModifierCommand 
@@ -776,6 +816,15 @@ static void loadPrefs() {
                           	  action:@selector(handleCmd0:)];
 	[arr addObject:cmd0];
 
+	CFPreferencesAppSynchronize(CFSTR("de.hoenig.AppSwitcher"));
+	customShortcuts = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcuts"), CFSTR("de.hoenig.AppSwitcher")));
+	for (NSDictionary *shortcut in customShortcuts) {
+		UIKeyCommand *customCommand = [UIKeyCommand keyCommandWithInput:[shortcut objectForKey:@"input"]
+														  modifierFlags:((NSNumber *)[self modifierFlagsForShortcut:shortcut]).intValue
+																 action:@selector(handleCustomShortcut:)];
+		[arr addObject:customCommand];
+	}
+
 	if (![self hidSetup]) {
 		IOHIDEventSystemClientRef ioHIDEventSystem = IOHIDEventSystemClientCreate(kCFAllocatorDefault);
 	    IOHIDEventSystemClientScheduleWithRunLoop(ioHIDEventSystem, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
@@ -794,3 +843,15 @@ static void loadPrefs() {
 }
 
 %end
+
+/*
+%hook UIViewController
+
+- (NSArray *)keyCommands {
+	NSArray *cmds = %orig();
+	NSLog(@"KEY COMMANDS: %i\n%@", cmds.count, cmds.description);
+	return cmds;
+}
+
+%end
+*/
