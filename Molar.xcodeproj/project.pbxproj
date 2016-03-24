@@ -48,7 +48,7 @@
 		807B4F8A1CA332F00009CFE1 /* IOKit */ = {isa = PBXFileReference; lastKnownFileType = folder; path = IOKit; sourceTree = "<group>"; };
 		80A3F47F1C416DF5001D4F51 /* IOKit.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = IOKit.tbd; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit.tbd; sourceTree = DEVELOPER_DIR; };
 		80A3F4A71C41D411001D4F51 /* IOKit */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = IOKit; path = Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit; sourceTree = DEVELOPER_DIR; };
-		80B172C51CA33B4300F60552 /* Molar.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Molar.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
+		80B172C51CA33B4300F60552 /* MolarSettings.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MolarSettings.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		80B172CD1CA33B4300F60552 /* control */ = {isa = PBXFileReference; lastKnownFileType = text; name = control; path = Package/DEBIAN/control; sourceTree = "<group>"; };
 		80B172CF1CA33B4300F60552 /* PackageVersion.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PackageVersion.plist; sourceTree = "<group>"; };
 		80B172D31CA33B4300F60552 /* MolarSettings.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = MolarSettings.plist; path = Package/Library/PreferenceLoader/Preferences/MolarSettings.plist; sourceTree = "<group>"; };
@@ -112,7 +112,7 @@
 			isa = PBXGroup;
 			children = (
 				807B4F711CA332A90009CFE1 /* Molar.dylib */,
-				80B172C51CA33B4300F60552 /* Molar.bundle */,
+				80B172C51CA33B4300F60552 /* MolarSettings.bundle */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -387,7 +387,7 @@
 			);
 			name = MolarSettings;
 			productName = MolarSettings;
-			productReference = 80B172C51CA33B4300F60552 /* Molar.bundle */;
+			productReference = 80B172C51CA33B4300F60552 /* MolarSettings.bundle */;
 			productType = "com.apple.product-type.bundle";
 		};
 /* End PBXNativeTarget section */
