@@ -1,0 +1,17 @@
+Package: de.hoenig.molar
+Name: Molar
+Version: 1.0-1
+Description:
+Section: System
+Depends: firmware (>= 7.0), mobilesubstrate, libactivator, applist
+Conflicts: 
+Replaces: 
+Priority: optional
+Architecture: iphoneos-arm
+Author: Lukas Hönig <lukashoenig@icloud.com>
+dev: 
+Homepage: 
+Depiction: 
+Maintainer: 
+Icon: 
+

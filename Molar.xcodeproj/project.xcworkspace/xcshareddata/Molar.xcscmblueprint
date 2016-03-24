@@ -1,0 +1,30 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "C5A4F795FECEA4579971E4E19F26C55A26298D8A",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "E2811579280C8FC45DBD8A3EB086096BA7A2E580" : 0,
+    "C5A4F795FECEA4579971E4E19F26C55A26298D8A" : 0
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "B0CC9E8C-3A27-4746-B02B-1A5B828FE2A7",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "E2811579280C8FC45DBD8A3EB086096BA7A2E580" : "..\/..\/..\/opt\/theos",
+    "C5A4F795FECEA4579971E4E19F26C55A26298D8A" : "AppSwitcher%202\/"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "Molar",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "Molar.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "gitlab.tubit.tu-berlin.de:rub1k\/AppSwitcher.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "C5A4F795FECEA4579971E4E19F26C55A26298D8A"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "git:\/\/github.com\/uroboro\/theos.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "E2811579280C8FC45DBD8A3EB086096BA7A2E580"
+    }
+  ]
+}
