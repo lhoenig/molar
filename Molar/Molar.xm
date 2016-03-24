@@ -71,6 +71,8 @@ static void loadPrefs() {
 	hideLabels = (cf_hideLabels == kCFBooleanTrue);
 
 	customShortcuts = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcuts"), CFSTR("de.hoenig.molar")));
+
+	[[NSNotificationCenter defaultCenter] postNotificationName:@"ReloadShortcutsNotification" object:nil];
 }
  
 %ctor {
@@ -541,7 +543,6 @@ static void loadPrefs() {
 
 %new
 - (void)handleCmd1:(UIKeyCommand *)keyCommand {
-	NSLog(@"Launching app %@", launcherApp1);
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -551,7 +552,6 @@ static void loadPrefs() {
 
 %new
 - (void)handleCmd2:(UIKeyCommand *)keyCommand {
-	NSLog(@"Launching app %@", launcherApp2);
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -561,7 +561,6 @@ static void loadPrefs() {
 
 %new
 - (void)handleCmd3:(UIKeyCommand *)keyCommand {
-	NSLog(@"Launching app %@", launcherApp3);
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -571,7 +570,6 @@ static void loadPrefs() {
 
 %new
 - (void)handleCmd4:(UIKeyCommand *)keyCommand {
-	NSLog(@"Launching app %@", launcherApp4);
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -581,7 +579,6 @@ static void loadPrefs() {
 
 %new
 - (void)handleCmd5:(UIKeyCommand *)keyCommand {
-	NSLog(@"Launching app %@", launcherApp5);
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -591,7 +588,6 @@ static void loadPrefs() {
 
 %new
 - (void)handleCmd6:(UIKeyCommand *)keyCommand {
-	NSLog(@"Launching app %@", launcherApp6);
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -601,7 +597,6 @@ static void loadPrefs() {
 
 %new
 - (void)handleCmd7:(UIKeyCommand *)keyCommand {
-	NSLog(@"Launching app %@", launcherApp7);
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -611,7 +606,6 @@ static void loadPrefs() {
 
 %new
 - (void)handleCmd8:(UIKeyCommand *)keyCommand {
-	NSLog(@"Launching app %@", launcherApp8);
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -621,7 +615,6 @@ static void loadPrefs() {
 
 %new
 - (void)handleCmd9:(UIKeyCommand *)keyCommand {
-	NSLog(@"Launching app %@", launcherApp9);
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -631,7 +624,6 @@ static void loadPrefs() {
 
 %new
 - (void)handleCmd0:(UIKeyCommand *)keyCommand {
-	NSLog(@"Launching app %@", launcherApp0);
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -644,7 +636,7 @@ static void loadPrefs() {
 	for (NSDictionary *sc in customShortcuts) {
 		if ([keyCommand.input isEqualToString:[sc objectForKey:@"input"]] && 
 			keyCommand.modifierFlags == ((NSNumber *)[self modifierFlagsForShortcut:sc]).intValue) {
-			NSLog(@"GOT THE SHORTCUT!");
+			//NSLog(@"GOT THE SHORTCUT!");
 			LAEvent *event = [LAEvent eventWithName:[sc objectForKey:@"eventName"] mode:[LASharedActivator currentEventMode]];
         	[LASharedActivator sendEventToListener:event];
 		}
@@ -729,7 +721,7 @@ static void loadPrefs() {
 %new
 - (void)showDiscoverability {
 	discoverabilityTimer = nil;
-	NSLog(@"Discoverability!");
+	//NSLog(@"Discoverability!");
 }
 
 %new
@@ -742,85 +734,96 @@ static void loadPrefs() {
 	return @(mFlags);
 }
 
+%new
+- (void)reloadShortcuts {
+	[self _updateSerializableKeyCommandsForResponder:((UIWindow *)[UIWindow keyWindow]).rootViewController];
+}
+
 - (NSArray *)keyCommands {
 
 	NSArray *orig_cmds = %orig;
 	NSMutableArray *arr = [NSMutableArray arrayWithArray:orig_cmds];
 
-	//NSLog(@"ORIGINAL KEY COMMANDS: ---------- %i ------------\n%@", orig_cmds.count, orig_cmds.description);
+	if (enabled) {
+		//NSLog(@"ORIGINAL KEY COMMANDS: ---------- %i ------------\n%@", orig_cmds.count, orig_cmds.description);
 
-	UIKeyCommand *cmdQ = [UIKeyCommand keyCommandWithInput:@"q"
-                   			  modifierFlags:UIKeyModifierCommand 
-                          	  action:@selector(handleCmdQ:)];
-	[arr addObject:cmdQ];
+		UIKeyCommand *cmdQ = [UIKeyCommand keyCommandWithInput:@"q"
+	                   			  modifierFlags:UIKeyModifierCommand 
+	                          	  action:@selector(handleCmdQ:)];
+		[arr addObject:cmdQ];
 
-	UIKeyCommand *cmdShiftH = [UIKeyCommand keyCommandWithInput:@"h"
-                   			  modifierFlags:UIKeyModifierCommand | UIKeyModifierShift
-                          	  action:@selector(handleCmdShiftH:)];
-	[arr addObject:cmdShiftH];
+		UIKeyCommand *cmdShiftH = [UIKeyCommand keyCommandWithInput:@"h"
+	                   			  modifierFlags:UIKeyModifierCommand | UIKeyModifierShift
+	                          	  action:@selector(handleCmdShiftH:)];
+		[arr addObject:cmdShiftH];
 
-	UIKeyCommand *cmdShiftP = [UIKeyCommand keyCommandWithInput:@"p"
-                   			  modifierFlags:UIKeyModifierCommand | UIKeyModifierShift
-                          	  action:@selector(handleCmdShiftP:)];
-	[arr addObject:cmdShiftP];
+		UIKeyCommand *cmdShiftP = [UIKeyCommand keyCommandWithInput:@"p"
+	                   			  modifierFlags:UIKeyModifierCommand | UIKeyModifierShift
+	                          	  action:@selector(handleCmdShiftP:)];
+		[arr addObject:cmdShiftP];
 
-	UIKeyCommand *cmd1 = [UIKeyCommand keyCommandWithInput:@"1"
-                   			  modifierFlags:UIKeyModifierCommand
-                          	  action:@selector(handleCmd1:)];
-	[arr addObject:cmd1];
+		UIKeyCommand *cmd1 = [UIKeyCommand keyCommandWithInput:@"1"
+	                   			  modifierFlags:UIKeyModifierCommand
+	                          	  action:@selector(handleCmd1:)];
+		[arr addObject:cmd1];
 
-	UIKeyCommand *cmd2 = [UIKeyCommand keyCommandWithInput:@"2"
-                   			  modifierFlags:UIKeyModifierCommand
-                          	  action:@selector(handleCmd2:)];
-	[arr addObject:cmd2];
+		UIKeyCommand *cmd2 = [UIKeyCommand keyCommandWithInput:@"2"
+	                   			  modifierFlags:UIKeyModifierCommand
+	                          	  action:@selector(handleCmd2:)];
+		[arr addObject:cmd2];
 
-	UIKeyCommand *cmd3 = [UIKeyCommand keyCommandWithInput:@"3"
-                   			  modifierFlags:UIKeyModifierCommand
-                          	  action:@selector(handleCmd3:)];
-	[arr addObject:cmd3];
+		UIKeyCommand *cmd3 = [UIKeyCommand keyCommandWithInput:@"3"
+	                   			  modifierFlags:UIKeyModifierCommand
+	                          	  action:@selector(handleCmd3:)];
+		[arr addObject:cmd3];
 
-	UIKeyCommand *cmd4 = [UIKeyCommand keyCommandWithInput:@"4"
-                   			  modifierFlags:UIKeyModifierCommand
-                          	  action:@selector(handleCmd4:)];
-	[arr addObject:cmd4];
+		UIKeyCommand *cmd4 = [UIKeyCommand keyCommandWithInput:@"4"
+	                   			  modifierFlags:UIKeyModifierCommand
+	                          	  action:@selector(handleCmd4:)];
+		[arr addObject:cmd4];
 
-	UIKeyCommand *cmd5 = [UIKeyCommand keyCommandWithInput:@"5"
-                   			  modifierFlags:UIKeyModifierCommand
-                          	  action:@selector(handleCmd5:)];
-	[arr addObject:cmd5];
+		UIKeyCommand *cmd5 = [UIKeyCommand keyCommandWithInput:@"5"
+	                   			  modifierFlags:UIKeyModifierCommand
+	                          	  action:@selector(handleCmd5:)];
+		[arr addObject:cmd5];
 
-	UIKeyCommand *cmd6 = [UIKeyCommand keyCommandWithInput:@"6"
-                   			  modifierFlags:UIKeyModifierCommand
-                          	  action:@selector(handleCmd6:)];
-	[arr addObject:cmd6];
+		UIKeyCommand *cmd6 = [UIKeyCommand keyCommandWithInput:@"6"
+	                   			  modifierFlags:UIKeyModifierCommand
+	                          	  action:@selector(handleCmd6:)];
+		[arr addObject:cmd6];
 
-	UIKeyCommand *cmd7 = [UIKeyCommand keyCommandWithInput:@"7"
-                   			  modifierFlags:UIKeyModifierCommand
-                          	  action:@selector(handleCmd7:)];
-	[arr addObject:cmd7];
+		UIKeyCommand *cmd7 = [UIKeyCommand keyCommandWithInput:@"7"
+	                   			  modifierFlags:UIKeyModifierCommand
+	                          	  action:@selector(handleCmd7:)];
+		[arr addObject:cmd7];
 
-	UIKeyCommand *cmd8 = [UIKeyCommand keyCommandWithInput:@"8"
-                   			  modifierFlags:UIKeyModifierCommand
-                          	  action:@selector(handleCmd8:)];
-	[arr addObject:cmd8];
+		UIKeyCommand *cmd8 = [UIKeyCommand keyCommandWithInput:@"8"
+	                   			  modifierFlags:UIKeyModifierCommand
+	                          	  action:@selector(handleCmd8:)];
+		[arr addObject:cmd8];
 
-	UIKeyCommand *cmd9 = [UIKeyCommand keyCommandWithInput:@"9"
-                   			  modifierFlags:UIKeyModifierCommand
-                          	  action:@selector(handleCmd9:)];
-	[arr addObject:cmd9];
+		UIKeyCommand *cmd9 = [UIKeyCommand keyCommandWithInput:@"9"
+	                   			  modifierFlags:UIKeyModifierCommand
+	                          	  action:@selector(handleCmd9:)];
+		[arr addObject:cmd9];
 
-	UIKeyCommand *cmd0 = [UIKeyCommand keyCommandWithInput:@"0"
-                   			  modifierFlags:UIKeyModifierCommand
-                          	  action:@selector(handleCmd0:)];
-	[arr addObject:cmd0];
+		UIKeyCommand *cmd0 = [UIKeyCommand keyCommandWithInput:@"0"
+	                   			  modifierFlags:UIKeyModifierCommand
+	                          	  action:@selector(handleCmd0:)];
+		[arr addObject:cmd0];
 
-	CFPreferencesAppSynchronize(CFSTR("de.hoenig.molar"));
-	customShortcuts = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcuts"), CFSTR("de.hoenig.molar")));
-	for (NSDictionary *shortcut in customShortcuts) {
-		UIKeyCommand *customCommand = [UIKeyCommand keyCommandWithInput:[shortcut objectForKey:@"input"]
-														  modifierFlags:((NSNumber *)[self modifierFlagsForShortcut:shortcut]).intValue
-																 action:@selector(handleCustomShortcut:)];
-		[arr addObject:customCommand];
+		CFPreferencesAppSynchronize(CFSTR("de.hoenig.molar"));
+		customShortcuts = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcuts"), CFSTR("de.hoenig.molar")));
+		for (NSDictionary *shortcut in customShortcuts) {
+			NSString *input = [shortcut objectForKey:@"input"];
+			if ([input isEqualToString:@"⏎"]) input = @"\n";
+			else if ([input isEqualToString:@"⇥"]) input = @"\t";
+			else if ([input isEqualToString:@"⌫"]) input = @"\b";
+			else if ([input isEqualToString:@"␣"]) input = @" ";
+			UIKeyCommand *customCommand = [UIKeyCommand keyCommandWithInput:input
+															  modifierFlags:((NSNumber *)[self modifierFlagsForShortcut:shortcut]).intValue
+																	 action:@selector(handleCustomShortcut:)];
+			[arr addObject:customCommand];
 	}
 
 	if (![self hidSetup]) {
@@ -834,7 +837,10 @@ static void loadPrefs() {
 	   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(escKeyDown) name:@"EscKeyDown" object:nil];
 	   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rightKeyDown) name:@"RightKeyDown" object:nil];
 	   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(leftKeyDown) name:@"LeftKeyDown" object:nil];
+	    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadShortcuts) name:@"ReloadShortcutsNotification" object:nil];
 	    [self setHidSetup:[NSNull null]];
+	}
+
 	}
 
 	return [NSArray arrayWithArray:arr];

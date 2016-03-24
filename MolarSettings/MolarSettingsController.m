@@ -234,7 +234,6 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
     if (!shortcuts) shortcuts = [NSMutableArray new];
     
     NSString *shortcutKey = [@"shortcut-" stringByAppendingFormat:@"%@", [[NSUUID UUID] UUIDString]];
-    NSLog(@"New shortcut: %@", shortcutKey);
     NSString *eventName = [kBundleID stringByAppendingFormat:@".%@", shortcutKey];
     
     NSDictionary *shortcut = @{@"cmd": @(cmdSet),
@@ -251,15 +250,17 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
     CFStringRef notificationName = (CFStringRef)kNotificationName;
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), notificationName, NULL, NULL, YES);
     
-    //[[NSNotificationCenter defaultCenter] postNotificationName:@"de.hoenig.molar-preferencesChanged-nc" object:nil];
-    
     [self.navigationController popViewControllerAnimated:YES];
 }
 
 + (NSArray *)characters {
-    return @[@"", @"", @"", @"", @"A", @"B", @"C", @"D", @"E", @"F", @"G", @"H", @"I", @"J", @"K", @"L", @"M", @"N", @"O", @"P", @"Q", @"R",
+    /*return @[@"", @"", @"", @"", @"A", @"B", @"C", @"D", @"E", @"F", @"G", @"H", @"I", @"J", @"K", @"L", @"M", @"N", @"O", @"P", @"Q", @"R",
              @"S", @"T", @"U", @"V", @"W", @"X", @"Y", @"Z", @"1", @"2", @"3", @"4", @"5", @"6", @"7", @"8", @"9", @"0", @"⏎", @"", @"⌫", @"⇥",
-             @"", @"ß", @"´", @"", @"+", @"#", @"", @"", @"", @"<", @",", @".", @"-"];
+             @"", @"ß", @"´", @"", @"+", @"#", @"", @"", @"", @"<", @",", @".", @"-"];*/
+    
+    return @[@"", @"", @"", @"", @"A", @"B", @"C", @"D", @"E", @"F", @"G", @"H", @"I", @"J", @"K", @"L", @"M", @"N", @"O", @"P", @"Q", @"R",
+             @"S", @"T", @"U", @"V", @"W", @"X", @"Y", @"Z", @"1", @"2", @"3", @"4", @"5", @"6", @"7", @"8", @"9", @"0", @"", @"", @"", @"",
+             @"␣", @"ß", @"´", @"", @"+", @"#", @"", @"", @"", @"<", @",", @".", @"-"];
 }
 
 - (void)updateModifierText {
@@ -339,8 +340,10 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 - (id)initWithStyle:(UITableViewStyle)style {
     if ((self = [super initWithStyle:style])) {
         self.tableView.delegate = self;
+        
         CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
         shortcuts = [NSMutableArray arrayWithArray:(NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue((CFStringRef)kShortcutsKey, (CFStringRef)kBundleID))];
+        
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadTable) name:@"de.hoenig.molar-preferencesChanged-nc" object:nil];
     }
     return self;
@@ -359,9 +362,9 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 - (NSString *)labelTextForShortcut:(NSDictionary *)shortcut {
     NSMutableString *labelText = [NSMutableString new];
-    if (((NSNumber *)[shortcut objectForKey:@"cmd"]).boolValue) [labelText appendString:@"⌘"];
     if (((NSNumber *)[shortcut objectForKey:@"ctrl"]).boolValue) [labelText appendString:@"⌃"];
     if (((NSNumber *)[shortcut objectForKey:@"alt"]).boolValue) [labelText appendString:@"⌥"];
+    if (((NSNumber *)[shortcut objectForKey:@"cmd"]).boolValue) [labelText appendString:@"⌘"];
     if (((NSNumber *)[shortcut objectForKey:@"shift"]).boolValue) [labelText appendString:@"⇧"];
     [labelText appendString:[shortcut objectForKey:@"input"]];
     return labelText;
@@ -383,9 +386,10 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
         cell.textLabel.text = @"Create new shortcut";
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     } else {
-        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"ShortcutCell"];
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:@"ShortcutCell"];
         cell.textLabel.text = [self labelTextForShortcut:[shortcuts objectAtIndex:indexPath.row]];
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        cell.detailTextLabel.text = [[LAActivator sharedInstance] localizedTitleForListenerName:[[LAActivator sharedInstance] assignedListenerNameForEvent:[LAEvent eventWithName:[[shortcuts objectAtIndex:indexPath.row] objectForKey:@"eventName"]]]];
     }
     return cell;
 }
@@ -473,17 +477,11 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
     }
 }
 
-- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    if (section == 3) return @"Changes sometimes require a respring to take effect.";
-    else return nil;
-}
-
 static void sendReloadNotification() {
     [[NSNotificationCenter defaultCenter] postNotificationName:@"de.hoenig.molar-preferencesChanged-nc" object:nil];
 }
 
 - (void)reloadTable {
-    NSLog(@"Reloading table");
     CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
     [self reload];
     [self reloadSpecifiers];

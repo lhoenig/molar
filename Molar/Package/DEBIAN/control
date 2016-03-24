@@ -2,7 +2,7 @@ Package: de.hoenig.molar
 Name: Molar
 Version: 1.0-1
 Description:
-Section: System
+Section: Tweaks
 Depends: firmware (>= 7.0), mobilesubstrate, libactivator, applist
 Conflicts: 
 Replaces: 
@@ -13,5 +13,5 @@ dev:
 Homepage: 
 Depiction: 
 Maintainer: 
-Icon: 
+Icon: file:///Library/PreferenceBundles/Molar.bundle/Icon.png
 
