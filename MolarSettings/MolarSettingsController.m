@@ -345,6 +345,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
         shortcuts = [NSMutableArray arrayWithArray:(NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue((CFStringRef)kShortcutsKey, (CFStringRef)kBundleID))];
         
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadTable) name:@"de.hoenig.molar-preferencesChanged-nc" object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadTable) name:@"libactivator.assignments.changed" object:nil];
     }
     return self;
 }
