@@ -18,18 +18,19 @@
 #define CORNER_RADIUS_OVERLAY 10
 #define OVERLAY_SIZE 125
 
-#define CMD_KEY   0xe3
-#define CMD_KEY_2 0xe7
-#define TAB_KEY   0x2b
-#define T_KEY     0x17
-#define ESC_KEY   0x29
-#define RIGHT_KEY 0x4f
-#define LEFT_KEY  0x50
-#define UP_KEY    0x52
-#define DOWN_KEY  0x51
-#define ENTER_KEY 0x28
-#define SHIFT_KEY 0xe5
-#define E_KEY     0x8
+#define CMD_KEY     0xe3
+#define CMD_KEY_2   0xe7
+#define TAB_KEY     0x2b
+#define T_KEY       0x17
+#define ESC_KEY     0x29
+#define RIGHT_KEY   0x4f
+#define LEFT_KEY    0x50
+#define UP_KEY      0x52
+#define DOWN_KEY    0x51
+#define ENTER_KEY   0x28
+#define SHIFT_KEY   0xe5
+#define SHIFT_KEY_2 0xe1
+//#define E_KEY     0x8
 
 #define MAGNIFY_FACTOR 2.0
 #define SLIDER_LEVELS 20
@@ -57,19 +58,19 @@ NSThread *flashViewThread;
         int usage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage);
         int down = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown);
        	if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
-       	else if (usage == T_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TKeyDown" object:nil];
+       	//else if (usage == T_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TKeyDown" object:nil];
         else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown" object:nil];
         else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY_2 && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp" object:nil];
         else if (usage == ESC_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil];
-        else if (usage == E_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil];
+        //else if (usage == E_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil];
         else if (usage == RIGHT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyDown" object:nil];
         else if (usage == LEFT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"LeftKeyDown" object:nil];
         else if (usage == UP_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"UpKeyDown" object:nil];
         else if (usage == DOWN_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"DownKeyDown" object:nil];
         else if (usage == ENTER_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EnterKeyDown" object:nil];
-        else if (usage == SHIFT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyDown" object:nil];
-        else if (usage == SHIFT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyUp" object:nil];
-        NSLog(@"usage: %i     down: %i", usage, down);
+        else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyDown" object:nil];
+        else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyUp" object:nil];
+        //NSLog(@"usage: %i     down: %i", usage, down);
     }
 }
 
@@ -555,7 +556,6 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 		[self dismissAppSwitcher];
 		[self setSwitcherShown:nil];
 	}
-
 }
 
 %new
@@ -795,6 +795,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)escKeyDown {
 	if ([self cmdDown]) [self handleCmdEsc:nil];
+	else [self escUI];
 }
 
 %new
@@ -992,7 +993,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 		    
 		    // app switcher
 		    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tabKeyDown) name:@"TabKeyDown" object:nil];
-		    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tKeyDown) name:@"TKeyDown" object:nil];
+		    //[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tKeyDown) name:@"TKeyDown" object:nil];
 		    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyDown) name:@"CmdKeyDown" object:nil];
 		    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyUp) name:@"CmdKeyUp" object:nil];
 		   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(escKeyDown) name:@"EscKeyDown" object:nil];
@@ -1009,7 +1010,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rightKey) name:@"RightKeyDown" object:nil];
 	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(upKey) name:@"UpKeyDown" object:nil];
 	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(downKey) name:@"DownKeyDown" object:nil];
-		   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(escUI) name:@"EscKeyDown" object:nil];
+		   	//[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(escUI) name:@"EscKeyDown" object:nil];
 
 	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(resetViews) name:@"ViewDidAppearNotification" object:nil];
 	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBAppDidBecomeForeground" object:nil];
@@ -1277,7 +1278,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	NSLog(@"New subviews:\n%@", ((NSArray *)[self views]).description);*/
 
 	if ([self isActive]) {
-		NSLog(@"Activating %@", ((UIView *)[self selectedView]).description);
+		//NSLog(@"Activating %@", ((UIView *)[self selectedView]).description);
 		//NSLog(@"Subviews: %@", ((UIView *)[self selectedView]).subviews.description);
 		if ([[self selectedView] isKindOfClass:[UITextField class]] || 
 			[[self selectedView] isKindOfClass:[UITextView class]]) {
@@ -1383,28 +1384,28 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
 	UIView *firstResponder = [keyWindow performSelector:@selector(firstResponder)];
 	if ([firstResponder isKindOfClass:[UITextField class]] || [firstResponder isKindOfClass:[UITextView class]]) {
-		NSLog(@"RESIGNING TEXT FIELD");
+		//NSLog(@"RESIGNING TEXT FIELD");
 		[firstResponder resignFirstResponder];
 	} else {
 		UIViewController *vc = [self topViewControllerWithRootViewController:[UIApplication sharedApplication].keyWindow.rootViewController];
 		if ([vc isKindOfClass:[UINavigationController class]]) {
-			NSLog(@"TOP NAVIGATION CONTROLLER!");
+			//NSLog(@"TOP NAVIGATION CONTROLLER!");
 			if ([self cmdDown] && ![self switcherShown]) {
 				[vc popToRootViewControllerAnimated:YES];
 			} else {
 				[vc popViewControllerAnimated:YES];
 			}
 		} else {
-			NSLog(@"TOP VC: %@", NSStringFromClass([vc class]));
+			//NSLog(@"TOP VC: %@", NSStringFromClass([vc class]));
 		}
 	}
 }
 
 %new
 - (void)tabDown {
-	if ([self shiftDown]) {
+	if ([self shiftDown] && ![self cmdDown] && ![self switcherShown]) {
 		[self highlightView:0];
-	} else {
+	} else if (![self cmdDown] && ![self switcherShown]) {
 		[self highlightView:1];
 	}
 }
@@ -1471,7 +1472,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 					} else scrollViewMode = NO;
 				}
 
-				NSLog(@"View %i: %@", selectedViewIndex, ((UIView *)[self selectedView]).description);
+				//NSLog(@"View %i: %@", selectedViewIndex, ((UIView *)[self selectedView]).description);
 
 				UIView *flashView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 
 																			 ((UIView *)[self selectedView]).frame.size.width,
@@ -1643,7 +1644,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 - (void)viewDidAppear:(BOOL)animated {
 	%orig();
- 	NSLog(@"DID APPEAR: %@", NSStringFromClass([self class]));
+ 	//NSLog(@"DID APPEAR: %@", NSStringFromClass([self class]));
  	if (![NSStringFromClass([self class]) isEqualToString:@"UICompatibilityInputViewController"] &&
  		![NSStringFromClass([self class]) isEqualToString:@"UIInputWindowController"]) {
  		[[NSNotificationCenter defaultCenter] postNotificationName:@"ViewDidAppearNotification" object:nil];
