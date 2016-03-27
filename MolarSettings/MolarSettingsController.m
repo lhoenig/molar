@@ -238,7 +238,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
     
     NSDictionary *shortcut = @{@"cmd": @(cmdSet),
                                @"ctrl": @(ctrlSet),
-                               @"alt": @(altSet),
+                                @"alt": @(altSet),
                                @"shift": @(shiftSet),
                                @"input": inputChar,
                                @"eventName": eventName};

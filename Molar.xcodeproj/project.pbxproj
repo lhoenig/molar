@@ -11,11 +11,11 @@
 		807B4F831CA332A90009CFE1 /* Molar.mm in Sources */ = {isa = PBXBuildFile; fileRef = 807B4F821CA332A90009CFE1 /* Molar.mm */; };
 		807B4F8B1CA3348B0009CFE1 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222771C22302C004D8F68 /* CoreGraphics.framework */; };
 		807B4F8C1CA334930009CFE1 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222751C21E56E004D8F68 /* UIKit.framework */; };
-		807B4F8D1CA3349E0009CFE1 /* IOKit in Frameworks */ = {isa = PBXBuildFile; fileRef = 80A3F4A71C41D411001D4F51 /* IOKit */; };
 		807B4F8E1CA3349E0009CFE1 /* IOKit.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 80A3F47F1C416DF5001D4F51 /* IOKit.tbd */; };
 		807B4F8F1CA334A80009CFE1 /* libactivator.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 80BF23371CA2A48E00A0D210 /* libactivator.dylib */; };
 		807B4F901CA334AB0009CFE1 /* libapplist.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 800BA7E61CA0517100FEE37C /* libapplist.dylib */; };
 		807B4F911CA334AE0009CFE1 /* libsubstrate.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222731C21C7E1004D8F68 /* libsubstrate.dylib */; };
+		80AF44BF1CA81B2400612805 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80BF234C1CA2C27500A0D210 /* QuartzCore.framework */; };
 		80B172C61CA33B4300F60552 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 374F11CC1C21C6320070747D /* Foundation.framework */; };
 		80B172C71CA33B4300F60552 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222751C21E56E004D8F68 /* UIKit.framework */; };
 		80B172C81CA33B4300F60552 /* Preferences.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80BF22AB1CA076F500A0D210 /* Preferences.framework */; };
@@ -33,7 +33,6 @@
 		37D222731C21C7E1004D8F68 /* libsubstrate.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsubstrate.dylib; path = ../../../../opt/iOSOpenDev/lib/libsubstrate.dylib; sourceTree = "<group>"; };
 		37D222751C21E56E004D8F68 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		37D222771C22302C004D8F68 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
-		800BA79E1CA03A3E00FEE37C /* GraphicsServices.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = GraphicsServices.tbd; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/PrivateFrameworks/GraphicsServices.framework/GraphicsServices.tbd; sourceTree = DEVELOPER_DIR; };
 		800BA7E61CA0517100FEE37C /* libapplist.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libapplist.dylib; path = ../../../../opt/theos/lib/libapplist.dylib; sourceTree = "<group>"; };
 		807516341CA33D7100D19C0D /* libactivator */ = {isa = PBXFileReference; lastKnownFileType = folder; path = libactivator; sourceTree = "<group>"; };
 		807516381CA34A5500D19C0D /* PreferenceBundles */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PreferenceBundles; path = Package/Library/PreferenceBundles; sourceTree = "<group>"; };
@@ -47,7 +46,6 @@
 		807B4F861CA332A90009CFE1 /* Molar.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Molar.plist; path = Package/Library/MobileSubstrate/DynamicLibraries/Molar.plist; sourceTree = "<group>"; };
 		807B4F8A1CA332F00009CFE1 /* IOKit */ = {isa = PBXFileReference; lastKnownFileType = folder; path = IOKit; sourceTree = "<group>"; };
 		80A3F47F1C416DF5001D4F51 /* IOKit.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = IOKit.tbd; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit.tbd; sourceTree = DEVELOPER_DIR; };
-		80A3F4A71C41D411001D4F51 /* IOKit */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = IOKit; path = Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit; sourceTree = DEVELOPER_DIR; };
 		80B172C51CA33B4300F60552 /* MolarSettings.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MolarSettings.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		80B172CD1CA33B4300F60552 /* control */ = {isa = PBXFileReference; lastKnownFileType = text; name = control; path = Package/DEBIAN/control; sourceTree = "<group>"; };
 		80B172CF1CA33B4300F60552 /* PackageVersion.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PackageVersion.plist; sourceTree = "<group>"; };
@@ -73,10 +71,10 @@
 				807B4F8F1CA334A80009CFE1 /* libactivator.dylib in Frameworks */,
 				807B4F901CA334AB0009CFE1 /* libapplist.dylib in Frameworks */,
 				807B4F911CA334AE0009CFE1 /* libsubstrate.dylib in Frameworks */,
+				80AF44BF1CA81B2400612805 /* QuartzCore.framework in Frameworks */,
 				807B4F8C1CA334930009CFE1 /* UIKit.framework in Frameworks */,
 				807B4F8B1CA3348B0009CFE1 /* CoreGraphics.framework in Frameworks */,
 				807B4F721CA332A90009CFE1 /* Foundation.framework in Frameworks */,
-				807B4F8D1CA3349E0009CFE1 /* IOKit in Frameworks */,
 				807B4F8E1CA3349E0009CFE1 /* IOKit.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -125,8 +123,6 @@
 				800BA7E61CA0517100FEE37C /* libapplist.dylib */,
 				37D222731C21C7E1004D8F68 /* libsubstrate.dylib */,
 				80BF23351CA1893500A0D210 /* CoreFoundation.framework */,
-				800BA79E1CA03A3E00FEE37C /* GraphicsServices.tbd */,
-				80A3F4A71C41D411001D4F51 /* IOKit */,
 				80A3F47F1C416DF5001D4F51 /* IOKit.tbd */,
 				37D222771C22302C004D8F68 /* CoreGraphics.framework */,
 				37D222751C21E56E004D8F68 /* UIKit.framework */,
@@ -572,6 +568,8 @@
 					"$(inherited)",
 					/opt/theos/lib,
 					/opt/iOSOpenDev/lib,
+					"$(PROJECT_DIR)",
+					"$(PROJECT_DIR)/Molar",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Molar/**";
@@ -599,6 +597,8 @@
 					"$(inherited)",
 					/opt/theos/lib,
 					/opt/iOSOpenDev/lib,
+					"$(PROJECT_DIR)",
+					"$(PROJECT_DIR)/Molar",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Molar/**";
@@ -632,7 +632,7 @@
 				WRAPPER_EXTENSION = bundle;
 				iOSOpenDevBuildPackageOnAnyBuild = NO;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = 172.20.10.1;
+				iOSOpenDevDevice = 0.0.0.0;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
@@ -660,7 +660,7 @@
 				WRAPPER_EXTENSION = bundle;
 				iOSOpenDevBuildPackageOnAnyBuild = NO;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = 172.20.10.1;
+				iOSOpenDevDevice = 0.0.0.0;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
