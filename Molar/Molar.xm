@@ -21,7 +21,7 @@
 #define CMD_KEY     0xe3
 #define CMD_KEY_2   0xe7
 #define TAB_KEY     0x2b
-#define T_KEY       0x17
+//#define T_KEY       0x17
 #define ESC_KEY     0x29
 #define RIGHT_KEY   0x4f
 #define LEFT_KEY    0x50
@@ -30,17 +30,19 @@
 #define ENTER_KEY   0x28
 #define SHIFT_KEY   0xe5
 #define SHIFT_KEY_2 0xe1
-//#define E_KEY     0x8
+//#define E_KEY       0x8
 
 #define MAGNIFY_FACTOR 2.0
 #define SLIDER_LEVELS 20
 #define FLASH_VIEW_CORNER_RADIUS 4.0
 #define FLASH_VIEW_ANIM_DURATION 1.5
+#define KEY_REPEAT_DELAY 0.5
+#define KEY_REPEAT_RATE 0.1
 
 void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {}
-BOOL darkMode, hideLabels, enabled, switcherOpenedInLandscape, sliderMode, tableViewMode, scrollViewMode, collectionViewMode;
+BOOL darkMode, hideLabels, enabled, switcherOpenedInLandscape, sliderMode, tableViewMode, scrollViewMode, collectionViewMode, tabIsDown, waitingForKeyRepeat;
 NSString *launcherApp1, *launcherApp2, *launcherApp3, *launcherApp4, *launcherApp5, *launcherApp6, *launcherApp7, *launcherApp8, *launcherApp9, *launcherApp0;
-NSTimer *discoverabilityTimer;
+NSTimer *discoverabilityTimer, *waitForKeyRepeatTimer, *keyRepeatTimer;
 NSArray *customShortcuts;
 UITableView *selectedTableView;
 UITableViewCell *selectedCell;
@@ -58,15 +60,20 @@ NSThread *flashViewThread;
         int usage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage);
         int down = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown);
        	if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
+       	else if (usage == TAB_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyUp" object:nil];
        	//else if (usage == T_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TKeyDown" object:nil];
         else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown" object:nil];
         else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY_2 && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp" object:nil];
         else if (usage == ESC_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil];
         //else if (usage == E_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil];
         else if (usage == RIGHT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyDown" object:nil];
+        else if (usage == RIGHT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyUp" object:nil];
         else if (usage == LEFT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"LeftKeyDown" object:nil];
+        else if (usage == LEFT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"LeftKeyUp" object:nil];
         else if (usage == UP_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"UpKeyDown" object:nil];
+        else if (usage == UP_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"UpKeyUp" object:nil];
         else if (usage == DOWN_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"DownKeyDown" object:nil];
+        else if (usage == DOWN_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"DownKeyUp" object:nil];
         else if (usage == ENTER_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EnterKeyDown" object:nil];
         else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyDown" object:nil];
         else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyUp" object:nil];
@@ -108,6 +115,8 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
  
 %ctor {
 	discoverabilityTimer = nil;
+	waitForKeyRepeatTimer = nil;
+	keyRepeatTimer = nil;
     loadPrefs();
     CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), 
     								NULL, 
@@ -1003,15 +1012,21 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 		    
 		    // UI control
 		 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tabDown) name:@"TabKeyDown" object:nil];
+		 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tabUp) name:@"TabKeyUp" object:nil];
 		 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(shiftKeyDown) name:@"ShiftKeyDown" object:nil];
 		 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(shiftKeyUp) name:@"ShiftKeyUp" object:nil];
 	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(enterKey) name:@"EnterKeyDown" object:nil];
 	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(leftKey) name:@"LeftKeyDown" object:nil];
+	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(leftUp) name:@"LeftKeyUp" object:nil];
 	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rightKey) name:@"RightKeyDown" object:nil];
+	 	 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rightUp) name:@"RightKeyUp" object:nil];
 	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(upKey) name:@"UpKeyDown" object:nil];
+	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(upKeyUp) name:@"UpKeyUp" object:nil];
 	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(downKey) name:@"DownKeyDown" object:nil];
+	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(downKeyUp) name:@"DownKeyUp" object:nil];
 		   	//[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(escUI) name:@"EscKeyDown" object:nil];
 
+		   	// app updates
 	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(resetViews) name:@"ViewDidAppearNotification" object:nil];
 	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBAppDidBecomeForeground" object:nil];
 	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBApplicationStateDidChange" object:nil];
@@ -1046,229 +1061,321 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new 
 - (void)leftKey {
-	if (sliderMode) {
-		UISlider *slider = (UISlider *)[self selectedView];
-		float dec = (slider.maximumValue - slider.minimumValue) / SLIDER_LEVELS;
-		[slider setValue:slider.value-dec animated:YES];
-		[slider sendActionsForControlEvents:UIControlEventValueChanged];	
-	}
-	else if (scrollViewMode) {
-		if (fView) {
-			[fView removeFromSuperview];
-			fView = nil;
+	if (![self switcherShown] && [self isActive]) {
+		if (sliderMode) {
+			UISlider *slider = (UISlider *)[self selectedView];
+			float dec = (slider.maximumValue - slider.minimumValue) / SLIDER_LEVELS;
+			[slider setValue:slider.value-dec animated:YES];
+			[slider sendActionsForControlEvents:UIControlEventValueChanged];
+			if (!keyRepeatTimer) {
+				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																		  target:self 
+																		selector:@selector(keyRepeat:) 
+																		userInfo:@{@"key": @"left"} 
+																		 repeats:NO];
+				waitingForKeyRepeat = YES;
+			} else waitingForKeyRepeat = NO;
 		}
-		UIScrollView *scrollView = (UIScrollView *)[self selectedView];
-		CGPoint newOffset;
-		if ([self cmdDown]) {
-			newOffset = CGPointMake(0,
-									scrollView.contentOffset.y);
-		} else {
-			newOffset = CGPointMake(scrollView.contentOffset.x - ((scrollView.frame.size.width) / 3),
-									scrollView.contentOffset.y);
-			if (newOffset.x <  0) newOffset.x = 0;
-		} 
-		[scrollView setContentOffset:newOffset animated:YES];
+		else if (scrollViewMode) {
+			if (fView) {
+				[fView removeFromSuperview];
+				fView = nil;
+			}
+			UIScrollView *scrollView = (UIScrollView *)[self selectedView];
+			CGPoint newOffset;
+			if ([self cmdDown]) {
+				newOffset = CGPointMake(0,
+										scrollView.contentOffset.y);
+			} else {
+				newOffset = CGPointMake(scrollView.contentOffset.x - ((scrollView.frame.size.width) / 3),
+										scrollView.contentOffset.y);
+				if (newOffset.x <  0) newOffset.x = 0;
+			} 
+			if (!keyRepeatTimer) {
+				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																		  target:self 
+																		selector:@selector(keyRepeat:) 
+																		userInfo:@{@"key": @"left"} 
+																		 repeats:NO];
+				waitingForKeyRepeat = YES;
+			} else waitingForKeyRepeat = NO;
+			[scrollView setContentOffset:newOffset animated:YES];
+		}
 	}
+}
+
+%new
+- (void)leftUp {
+	if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
+	else [keyRepeatTimer invalidate];
+	keyRepeatTimer = nil;
+	waitingForKeyRepeat = NO;
 }
 
 %new
 - (void)rightKey {
-	if (sliderMode) {
-		UISlider *slider = (UISlider *)[self selectedView];
-		float inc = (slider.maximumValue - slider.minimumValue) / SLIDER_LEVELS;
-		[slider setValue:slider.value+inc animated:YES];
-		[slider sendActionsForControlEvents:UIControlEventValueChanged];
-	}
-	else if (scrollViewMode) {
-		if (fView) {
-			[fView removeFromSuperview];
-			fView = nil;
+	if (![self switcherShown] && [self isActive]) {
+		if (sliderMode) {
+			UISlider *slider = (UISlider *)[self selectedView];
+			float inc = (slider.maximumValue - slider.minimumValue) / SLIDER_LEVELS;
+			[slider setValue:slider.value+inc animated:YES];
+			[slider sendActionsForControlEvents:UIControlEventValueChanged];
+			if (!keyRepeatTimer) {
+				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																		  target:self 
+																		selector:@selector(keyRepeat:) 
+																		userInfo:@{@"key": @"right"} 
+																		 repeats:NO];
+				waitingForKeyRepeat = YES;
+			} else waitingForKeyRepeat = NO;
 		}
-		UIScrollView *scrollView = (UIScrollView *)[self selectedView];
-		CGPoint newOffset;
-		if ([self cmdDown]) {
-			newOffset = CGPointMake(scrollView.contentSize.width - scrollView.frame.size.width,
-									scrollView.contentOffset.y);
-		} else {
-			newOffset = CGPointMake(scrollView.contentOffset.x + ((scrollView.frame.size.width) / 3),
-									scrollView.contentOffset.y);
-			if (newOffset.x > (scrollView.contentSize.width - scrollView.frame.size.width)) 
-				newOffset.x = scrollView.contentSize.width - scrollView.frame.size.width;
+		else if (scrollViewMode) {
+			if (fView) {
+				[fView removeFromSuperview];
+				fView = nil;
+			}
+			UIScrollView *scrollView = (UIScrollView *)[self selectedView];
+			CGPoint newOffset;
+			if ([self cmdDown]) {
+				newOffset = CGPointMake(scrollView.contentSize.width - scrollView.frame.size.width,
+										scrollView.contentOffset.y);
+			} else {
+				newOffset = CGPointMake(scrollView.contentOffset.x + ((scrollView.frame.size.width) / 3),
+										scrollView.contentOffset.y);
+				if (newOffset.x > (scrollView.contentSize.width - scrollView.frame.size.width)) 
+					newOffset.x = scrollView.contentSize.width - scrollView.frame.size.width;
+			}
+			if (!keyRepeatTimer) {
+				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																		  target:self 
+																		selector:@selector(keyRepeat:) 
+																		userInfo:@{@"key": @"right"} 
+																		 repeats:NO];
+				waitingForKeyRepeat = YES;
+			} else waitingForKeyRepeat = NO;
+			[scrollView setContentOffset:newOffset animated:YES];
 		}
-		[scrollView setContentOffset:newOffset animated:YES];
 	}
+}
+
+%new
+- (void)rightUp {
+	if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
+	else [keyRepeatTimer invalidate];
+	keyRepeatTimer = nil;
+	waitingForKeyRepeat = NO;
 }
 
 %new
 - (void)downKey {
-	if (tableViewMode) {
-		if ([self cmdDown]) {
-			selectedSection = [selectedTableView numberOfSections] - 1;
-			selectedRow = [selectedTableView numberOfRowsInSection:selectedSection] - 1;
-			UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-			selectedCell = cell;
-		} else if ([selectedTableView numberOfRowsInSection:selectedSection] > selectedRow + 1) {
-			if (selectedCell) {
-				selectedCell.selected = NO;
+	if ([self isActive]) {
+		if (tableViewMode) {
+			if ([self cmdDown]) {
+				selectedSection = [selectedTableView numberOfSections] - 1;
+				selectedRow = [selectedTableView numberOfRowsInSection:selectedSection] - 1;
+				UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+				selectedCell = cell;
+			} else if ([selectedTableView numberOfRowsInSection:selectedSection] > selectedRow + 1) {
+				if (selectedCell) {
+					selectedCell.selected = NO;
+				}
+				selectedRow++;
+				UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+				cell.selected = YES;
+				selectedCell = cell;
+			} else if ([selectedTableView numberOfSections] > selectedSection + 1) {
+				if (selectedCell) {
+					selectedCell.selected = NO;
+				}
+				selectedRow = 0;
+				selectedSection++;
+				UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+				cell.selected = YES;
+				selectedCell = cell;
 			}
-			selectedRow++;
-			UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-			cell.selected = YES;
-			selectedCell = cell;
-		} else if ([selectedTableView numberOfSections] > selectedSection + 1) {
-			if (selectedCell) {
-				selectedCell.selected = NO;
-			}
-			selectedRow = 0;
-			selectedSection++;
-			UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-			cell.selected = YES;
-			selectedCell = cell;
+			CGAffineTransform backupTransform = selectedCell.transform;
+			[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
+				[selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES];		
+				selectedCell.transform = CGAffineTransformConcat(selectedCell.transform, 
+				CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
+			} completion:nil];
+			[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
+				selectedCell.transform = backupTransform;
+			} completion:^(BOOL completed){
+				selectedCell.selected = YES;
+			}];
 		}
-		CGAffineTransform backupTransform = selectedCell.transform;
-		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
-			[selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES];		
-			selectedCell.transform = CGAffineTransformConcat(selectedCell.transform, 
-			CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
-		} completion:nil];
-		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
-			selectedCell.transform = backupTransform;
-		} completion:^(BOOL completed){
-			selectedCell.selected = YES;
-		}];
-	}
-	else if (collectionViewMode) {
-		if ([selectedCollectionView numberOfItemsInSection:selectedSection] > selectedRow + 1) {
-			if (selectedItem) {
-				selectedItem.selected = NO;
+		else if (collectionViewMode) {
+			if ([selectedCollectionView numberOfItemsInSection:selectedSection] > selectedRow + 1) {
+				if (selectedItem) {
+					selectedItem.selected = NO;
+				}
+				selectedRow++;
+				UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+				cell.selected = YES;
+				selectedItem = cell;
+			} else if ([selectedCollectionView numberOfSections] > selectedSection + 1) {
+				if (selectedItem) {
+					selectedItem.selected = NO;
+				}
+				selectedRow = 0;
+				selectedSection++;
+				UICollectionViewCell *cell = [selectedTableView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+				cell.selected = YES;
+				selectedItem = cell;
 			}
-			selectedRow++;
-			UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
-			cell.selected = YES;
-			selectedItem = cell;
-		} else if ([selectedCollectionView numberOfSections] > selectedSection + 1) {
-			if (selectedItem) {
-				selectedItem.selected = NO;
+			CGAffineTransform backupTransform = selectedItem.transform;
+			[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
+				[selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES];		
+				selectedItem.transform = CGAffineTransformConcat(selectedItem.transform, 
+				CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
+			} completion:nil];
+			[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
+				selectedItem.transform = backupTransform;
+			} completion:nil];
+		}
+		else if (scrollViewMode) {
+			if (fView) {
+				[fView removeFromSuperview];
+				fView = nil;
 			}
-			selectedRow = 0;
-			selectedSection++;
-			UICollectionViewCell *cell = [selectedTableView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
-			cell.selected = YES;
-			selectedItem = cell;
+			UIScrollView *scrollView = (UIScrollView *)[self selectedView];
+			CGPoint newOffset;
+			if ([self cmdDown]) {
+				newOffset = CGPointMake(scrollView.contentOffset.x,
+										scrollView.contentSize.height - scrollView.frame.size.height);
+			} else {
+				newOffset = CGPointMake(scrollView.contentOffset.x,
+										scrollView.contentOffset.y + (scrollView.frame.size.height / 3));
+				if (newOffset.y > (scrollView.contentSize.height - scrollView.frame.size.height)) 
+					newOffset.y = scrollView.contentSize.height - scrollView.frame.size.height;
+			} 
+			[scrollView setContentOffset:newOffset animated:YES];
 		}
-		CGAffineTransform backupTransform = selectedItem.transform;
-		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
-			[selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES];		
-			selectedItem.transform = CGAffineTransformConcat(selectedItem.transform, 
-			CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
-		} completion:nil];
-		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
-			selectedItem.transform = backupTransform;
-		} completion:nil];
-	}
-	else if (scrollViewMode) {
-		if (fView) {
-			[fView removeFromSuperview];
-			fView = nil;
+		if (tableViewMode || collectionViewMode || scrollViewMode) {
+			if (!keyRepeatTimer) {
+				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																		  target:self 
+																		selector:@selector(keyRepeat:) 
+																		userInfo:@{@"key": @"down"} 
+																		 repeats:NO];
+				waitingForKeyRepeat = YES;
+			} else waitingForKeyRepeat = NO;
 		}
-		UIScrollView *scrollView = (UIScrollView *)[self selectedView];
-		CGPoint newOffset;
-		if ([self cmdDown]) {
-			newOffset = CGPointMake(scrollView.contentOffset.x,
-									scrollView.contentSize.height - scrollView.frame.size.height);
-		} else {
-			newOffset = CGPointMake(scrollView.contentOffset.x,
-									scrollView.contentOffset.y + (scrollView.frame.size.height / 3));
-			if (newOffset.y > (scrollView.contentSize.height - scrollView.frame.size.height)) 
-				newOffset.y = scrollView.contentSize.height - scrollView.frame.size.height;
-		} 
-		[scrollView setContentOffset:newOffset animated:YES];
 	}
 }
 
 %new
+- (void)downKeyUp {
+	if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
+	else [keyRepeatTimer invalidate];
+	keyRepeatTimer = nil;
+	waitingForKeyRepeat = NO;
+}
+
+%new
 - (void)upKey {
-	if (tableViewMode) {
-		if ([self cmdDown]) {
-			selectedRow = selectedSection = 0;
-			UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-			cell.selected = YES;
-			selectedCell = cell;
-		} else if ((selectedRow - 1) >= 0) {
-			if (selectedCell) {
-				selectedCell.selected = NO;
+	if ([self isActive]) {
+		if (tableViewMode) {
+			if ([self cmdDown]) {
+				selectedRow = selectedSection = 0;
+				UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+				cell.selected = YES;
+				selectedCell = cell;
+			} else if ((selectedRow - 1) >= 0) {
+				if (selectedCell) {
+					selectedCell.selected = NO;
+				}
+				selectedRow--;
+				UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+				cell.selected = YES;
+				selectedCell = cell;
+			} else if (selectedSection > 0) {
+				if (selectedCell) {
+					selectedCell.selected = NO;
+				}
+				selectedSection--;
+				selectedRow = [selectedTableView numberOfRowsInSection:selectedSection] - 1;
+				UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+				cell.selected = YES;
+				selectedCell = cell;
 			}
-			selectedRow--;
-			UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-			cell.selected = YES;
-			selectedCell = cell;
-		} else if (selectedSection > 0) {
-			if (selectedCell) {
-				selectedCell.selected = NO;
-			}
-			selectedSection--;
-			selectedRow = [selectedTableView numberOfRowsInSection:selectedSection] - 1;
-			UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-			cell.selected = YES;
-			selectedCell = cell;
+			CGAffineTransform backupTransform = selectedCell.transform;
+			[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
+				[selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES];		
+				selectedCell.transform = CGAffineTransformConcat(selectedCell.transform, 
+																 CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
+			} completion:nil];
+			[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
+				selectedCell.transform = backupTransform;
+			} completion:^(BOOL completed){
+				selectedCell.selected = YES;
+			}];
 		}
-		CGAffineTransform backupTransform = selectedCell.transform;
-		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
-			[selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES];		
-			selectedCell.transform = CGAffineTransformConcat(selectedCell.transform, 
-															 CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
-		} completion:nil];
-		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
-			selectedCell.transform = backupTransform;
-		} completion:^(BOOL completed){
-			selectedCell.selected = YES;
-		}];
-	}
-	else if (collectionViewMode) {
-		if ((selectedRow - 1) >= 0) {
-			if (selectedItem) {
-				selectedItem.selected = NO;
+		else if (collectionViewMode) {
+			if ((selectedRow - 1) >= 0) {
+				if (selectedItem) {
+					selectedItem.selected = NO;
+				}
+				selectedRow--;
+				UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+				cell.selected = YES;
+				selectedItem = cell;
+			} else if (selectedSection > 0) {
+				if (selectedItem) {
+					selectedItem.selected = NO;
+				}
+				selectedSection--;
+				selectedRow = [selectedCollectionView numberOfItemsInSection:selectedSection] - 1;
+				UICollectionViewCell *cell = [selectedTableView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+				cell.selected = YES;
+				selectedItem = cell;
 			}
-			selectedRow--;
-			UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
-			cell.selected = YES;
-			selectedItem = cell;
-		} else if (selectedSection > 0) {
-			if (selectedItem) {
-				selectedItem.selected = NO;
+			CGAffineTransform backupTransform = selectedItem.transform;
+			[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
+				[selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES];		
+				selectedItem.transform = CGAffineTransformConcat(selectedItem.transform, 
+				CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
+			} completion:nil];
+			[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
+				selectedItem.transform = backupTransform;
+			} completion:nil];
+		}
+		else if (scrollViewMode) {
+			if (fView) {
+				[fView removeFromSuperview];
+				fView = nil;
 			}
-			selectedSection--;
-			selectedRow = [selectedCollectionView numberOfItemsInSection:selectedSection] - 1;
-			UICollectionViewCell *cell = [selectedTableView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
-			cell.selected = YES;
-			selectedItem = cell;
+			UIScrollView *scrollView = (UIScrollView *)[self selectedView];
+			CGPoint newOffset;
+			if ([self cmdDown]) {
+				newOffset = CGPointMake(scrollView.contentOffset.x, 0);
+			} else {
+				newOffset = CGPointMake(scrollView.contentOffset.x,
+										scrollView.contentOffset.y - (scrollView.frame.size.height / 3));
+				if (newOffset.y < 0) newOffset.y = 0;
+			} 
+			[scrollView setContentOffset:newOffset animated:YES];
 		}
-		CGAffineTransform backupTransform = selectedItem.transform;
-		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
-			[selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES];		
-			selectedItem.transform = CGAffineTransformConcat(selectedItem.transform, 
-			CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
-		} completion:nil];
-		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
-			selectedItem.transform = backupTransform;
-		} completion:nil];
+		if (tableViewMode || collectionViewMode || scrollViewMode) {
+			if (!keyRepeatTimer) {
+				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																		  target:self 
+																		selector:@selector(keyRepeat:) 
+																		userInfo:@{@"key": @"up"} 
+																		 repeats:NO];
+				waitingForKeyRepeat = YES;
+			} else waitingForKeyRepeat = NO;
+		}		
 	}
-	else if (scrollViewMode) {
-		if (fView) {
-			[fView removeFromSuperview];
-			fView = nil;
-		}
-		UIScrollView *scrollView = (UIScrollView *)[self selectedView];
-		CGPoint newOffset;
-		if ([self cmdDown]) {
-			newOffset = CGPointMake(scrollView.contentOffset.x, 0);
-		} else {
-			newOffset = CGPointMake(scrollView.contentOffset.x,
-									scrollView.contentOffset.y - (scrollView.frame.size.height / 3));
-			if (newOffset.y < 0) newOffset.y = 0;
-		} 
-		[scrollView setContentOffset:newOffset animated:YES];
-	}
+}
+
+%new
+- (void)upKeyUp {
+	if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
+	else [keyRepeatTimer invalidate];
+	keyRepeatTimer = nil;
+	waitingForKeyRepeat = NO;
 }
 
 %new
@@ -1276,73 +1383,84 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	/*[self setViews:((UIView *)[self selectedView]).subviews];
 	selectedViewIndex = -1;
 	NSLog(@"New subviews:\n%@", ((NSArray *)[self views]).description);*/
-
 	if ([self isActive]) {
-		//NSLog(@"Activating %@", ((UIView *)[self selectedView]).description);
-		//NSLog(@"Subviews: %@", ((UIView *)[self selectedView]).subviews.description);
-		if ([[self selectedView] isKindOfClass:[UITextField class]] || 
-			[[self selectedView] isKindOfClass:[UITextView class]]) {
-			[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
-		}
-		if (tableViewMode) {
-				if (selectedTableView.delegate && [selectedTableView.delegate respondsToSelector:@selector(tableView:didSelectRowAtIndexPath:)])
-					[selectedTableView.delegate tableView:selectedTableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-		} else if (collectionViewMode) {
-				if (selectedCollectionView.delegate && [selectedCollectionView.delegate respondsToSelector:@selector(collectionView:didSelectItemAtIndexPath:)])
-					[selectedCollectionView.delegate collectionView:selectedCollectionView didSelectItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
-				// what if delegate doesnt respond
-				//else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
+
+		if ([UIApplication sharedApplication].keyWindow.rootViewController &&
+			[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController &&
+			[[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController isKindOfClass:[UIAlertController class]]) {
+			UIAlertController *ac = (UIAlertController *)[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController;
+			if (ac.preferredStyle == UIAlertControllerStyleAlert) {
+				if (((UIAlertAction *)[ac.actions objectAtIndex:0]).style == UIAlertActionStyleDefault) {
+					[ac dismissViewControllerAnimated:YES completion:nil];
+				}
+			}
 		} else {
-			// text controls
+			//NSLog(@"Activating %@", ((UIView *)[self selectedView]).description);
+			//NSLog(@"Subviews: %@", ((UIView *)[self selectedView]).subviews.description);
 			if ([[self selectedView] isKindOfClass:[UITextField class]] || 
 				[[self selectedView] isKindOfClass:[UITextView class]]) {
-				if ([(UIView *)[self selectedView] isFirstResponder]) {
-					[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
-				} else [[self selectedView] becomeFirstResponder];
+				[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
+			}
+			if (tableViewMode) {
+					if (selectedTableView.delegate && [selectedTableView.delegate respondsToSelector:@selector(tableView:didSelectRowAtIndexPath:)])
+						[selectedTableView.delegate tableView:selectedTableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+			} else if (collectionViewMode) {
+					if (selectedCollectionView.delegate && [selectedCollectionView.delegate respondsToSelector:@selector(collectionView:didSelectItemAtIndexPath:)])
+						[selectedCollectionView.delegate collectionView:selectedCollectionView didSelectItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+					// what if delegate doesnt respond
+					//else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
 			} else {
-				[[self selectedView] becomeFirstResponder];
-				if ([[self selectedView] isKindOfClass:[UIControl class]]) {
-					// switch
-					if ([[self selectedView] isKindOfClass:[UISwitch class]]) {
-						[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
-						((UISwitch *)[self selectedView]).on = !((UISwitch *)[self selectedView]).on;
-					}
-					// slider
-					else if ([[self selectedView] isKindOfClass:[UISlider class]]) {
-						sliderMode = YES;
-						// maybe set to middle value
-					}
-					// stepper
-					else if ([NSStringFromClass(((UIView *)[self selectedView]).class) isEqualToString:@"_UIStepperButton"]) {
-						BOOL plus = ((NSArray *)[self views]).count > selectedViewIndex ? !([NSStringFromClass(((UIView *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex + 1]).class) isEqualToString:@"_UIStepperButton"]) : YES;
-						if (plus) {
-							UIStepper *stepper = (UIStepper *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex - 2];
-							if (stepper.wraps && (stepper.value + stepper.stepValue) > stepper.maximumValue) stepper.value = stepper.minimumValue;
-							else stepper.value += stepper.stepValue;
-							[stepper sendActionsForControlEvents:UIControlEventValueChanged];
-						} else {
-							UIStepper *stepper = (UIStepper *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex - 1];
-							if (stepper.wraps && (stepper.value - stepper.stepValue) < stepper.minimumValue) stepper.value = stepper.maximumValue;
-							else stepper.value -= stepper.stepValue;
-							[stepper sendActionsForControlEvents:UIControlEventValueChanged];	
+				// text controls
+				if ([[self selectedView] isKindOfClass:[UITextField class]] || 
+					[[self selectedView] isKindOfClass:[UITextView class]]) {
+					if ([(UIView *)[self selectedView] isFirstResponder]) {
+						[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
+					} else [[self selectedView] becomeFirstResponder];
+				} else {
+					[[self selectedView] becomeFirstResponder];
+					if ([[self selectedView] isKindOfClass:[UIControl class]]) {
+						// switch
+						if ([[self selectedView] isKindOfClass:[UISwitch class]]) {
+							[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
+							((UISwitch *)[self selectedView]).on = !((UISwitch *)[self selectedView]).on;
 						}
-					}
-					// segmented control
-					else if ([[self selectedView] isKindOfClass:[UISegmentedControl class]]) {
-						if (!((UISegmentedControl *)[self selectedView]).momentary) {
-							((UISegmentedControl *)[self selectedView]).selectedSegmentIndex = (((UISegmentedControl *)[self selectedView]).selectedSegmentIndex + 1) % 
-																								((UISegmentedControl *)[self selectedView]).numberOfSegments;
+						// slider
+						else if ([[self selectedView] isKindOfClass:[UISlider class]]) {
+							sliderMode = YES;
+							// maybe set to middle value
+						}
+						// stepper
+						else if ([NSStringFromClass(((UIView *)[self selectedView]).class) isEqualToString:@"_UIStepperButton"]) {
+							BOOL plus = ((NSArray *)[self views]).count > selectedViewIndex ? !([NSStringFromClass(((UIView *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex + 1]).class) isEqualToString:@"_UIStepperButton"]) : YES;
+							if (plus) {
+								UIStepper *stepper = (UIStepper *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex - 2];
+								if (stepper.wraps && (stepper.value + stepper.stepValue) > stepper.maximumValue) stepper.value = stepper.minimumValue;
+								else stepper.value += stepper.stepValue;
+								[stepper sendActionsForControlEvents:UIControlEventValueChanged];
+							} else {
+								UIStepper *stepper = (UIStepper *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex - 1];
+								if (stepper.wraps && (stepper.value - stepper.stepValue) < stepper.minimumValue) stepper.value = stepper.maximumValue;
+								else stepper.value -= stepper.stepValue;
+								[stepper sendActionsForControlEvents:UIControlEventValueChanged];	
+							}
+						}
+						// segmented control
+						else if ([[self selectedView] isKindOfClass:[UISegmentedControl class]]) {
+							if (!((UISegmentedControl *)[self selectedView]).momentary) {
+								((UISegmentedControl *)[self selectedView]).selectedSegmentIndex = (((UISegmentedControl *)[self selectedView]).selectedSegmentIndex + 1) % 
+																									((UISegmentedControl *)[self selectedView]).numberOfSegments;
+								[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
+							}
+						}
+						// page control
+						else if ([[self selectedView] isKindOfClass:[UIPageControl class]]) {
+							UIPageControl *pageControl = (UIPageControl *)[self selectedView];
+							pageControl.currentPage = (pageControl.currentPage + 1) % pageControl.numberOfPages;
 							[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
 						}
+						// other
+						else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
 					}
-					// page control
-					else if ([[self selectedView] isKindOfClass:[UIPageControl class]]) {
-						UIPageControl *pageControl = (UIPageControl *)[self selectedView];
-						pageControl.currentPage = (pageControl.currentPage + 1) % pageControl.numberOfPages;
-						[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
-					}
-					// other
-					else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
 				}
 			}
 		}
@@ -1381,22 +1499,40 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)escUI {
-	UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
-	UIView *firstResponder = [keyWindow performSelector:@selector(firstResponder)];
-	if ([firstResponder isKindOfClass:[UITextField class]] || [firstResponder isKindOfClass:[UITextView class]]) {
-		//NSLog(@"RESIGNING TEXT FIELD");
-		[firstResponder resignFirstResponder];
-	} else {
-		UIViewController *vc = [self topViewControllerWithRootViewController:[UIApplication sharedApplication].keyWindow.rootViewController];
-		if ([vc isKindOfClass:[UINavigationController class]]) {
-			//NSLog(@"TOP NAVIGATION CONTROLLER!");
-			if ([self cmdDown] && ![self switcherShown]) {
-				[vc popToRootViewControllerAnimated:YES];
+	if ([self isActive]) {
+		if ([UIApplication sharedApplication].keyWindow.rootViewController &&
+			[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController &&
+			[[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController isKindOfClass:[UIAlertController class]]) {
+			UIAlertController *ac = (UIAlertController *)[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController;
+			//NSLog(@"ESCAPE ALERT");
+			if (ac.preferredStyle == UIAlertControllerStyleAlert) {
+				if (((UIAlertAction *)[ac.actions objectAtIndex:0]).style == UIAlertActionStyleDefault) {
+					[ac dismissViewControllerAnimated:YES completion:nil];
+				}
 			} else {
-				[vc popViewControllerAnimated:YES];
+				for (UIAlertAction *action in ac.actions) {
+					if (action.style == UIAlertActionStyleCancel) {
+						[ac dismissViewControllerAnimated:YES completion:nil];
+					}
+				}
 			}
 		} else {
-			//NSLog(@"TOP VC: %@", NSStringFromClass([vc class]));
+			UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+			UIView *firstResponder = [keyWindow performSelector:@selector(firstResponder)];
+			if ([firstResponder isKindOfClass:[UITextField class]] || [firstResponder isKindOfClass:[UITextView class]]) {
+				//NSLog(@"RESIGNING TEXT FIELD");
+				[firstResponder resignFirstResponder];
+			} else {
+				UIViewController *vc = [self topViewControllerWithRootViewController:[UIApplication sharedApplication].keyWindow.rootViewController];
+				if ([vc isKindOfClass:[UINavigationController class]]) {
+					//NSLog(@"TOP NAVIGATION CONTROLLER!");
+					if ([self cmdDown] && ![self switcherShown]) {
+						[vc popToRootViewControllerAnimated:YES];
+					} else {
+						[vc popViewControllerAnimated:YES];
+					}
+				} //else NSLog(@"TOP VC: %@", NSStringFromClass([vc class]));
+			}
 		}
 	}
 }
@@ -1405,9 +1541,45 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 - (void)tabDown {
 	if ([self shiftDown] && ![self cmdDown] && ![self switcherShown]) {
 		[self highlightView:0];
+		if (!keyRepeatTimer) {
+			 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																	  target:self 
+																	selector:@selector(keyRepeat:) 
+																	userInfo:@{@"key": @"tab"} 
+																	 repeats:NO];
+			waitingForKeyRepeat = YES;
+		} else waitingForKeyRepeat = NO;
 	} else if (![self cmdDown] && ![self switcherShown]) {
 		[self highlightView:1];
+		if (!keyRepeatTimer) {
+			 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																	  target:self 
+																	selector:@selector(keyRepeat:) 
+																	userInfo:@{@"key": @"tab"} 
+																	 repeats:NO];
+			waitingForKeyRepeat = YES;
+		} else waitingForKeyRepeat = NO;
 	}
+}
+
+%new
+- (void)tabUp {
+	if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
+	else [keyRepeatTimer invalidate];
+	keyRepeatTimer = nil;
+	waitingForKeyRepeat = NO;
+}
+
+%new
+- (void)keyRepeat:(NSNotification *)notification {
+	waitingForKeyRepeat = NO;
+	SEL keySelector;
+	if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"tab"]) keySelector = @selector(tabDown);
+	else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"up"]) keySelector = @selector(upKey);
+	else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"down"]) keySelector = @selector(downKey);
+	else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"left"]) keySelector = @selector(leftKey);
+	else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"right"]) keySelector = @selector(rightKey);
+	keyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_RATE target:self selector:keySelector userInfo:nil repeats:YES];
 }
 
 %new
@@ -1418,7 +1590,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)highlightView:(int)next {
 	if ([self isActive]) {
-		if ([self views]) {
+		if ([self views] && ((NSArray *)[self views]).count) {
 			if (next) {
 				do {
 					selectedViewIndex = (selectedViewIndex + 1) % ((NSArray *)[self views]).count;
@@ -1569,7 +1741,6 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)resetViews {
-	//[self setViews:(NSArray *)[self rootViews]];
 	[self setViews:(NSArray *)[self controlViews]];
  	//NSLog(@"New views:\n%@", ((NSArray *)[self views]).description);
  	selectedViewIndex = -1;

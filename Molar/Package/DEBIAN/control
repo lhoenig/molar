@@ -1,7 +1,7 @@
 Package: de.hoenig.molar
 Name: Molar
 Version: 1.0-1
-Description:
+Description: 
 Section: Tweaks
 Depends: firmware (>= 7.0), mobilesubstrate, libactivator, applist
 Conflicts: 
