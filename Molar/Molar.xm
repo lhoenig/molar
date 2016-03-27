@@ -1528,7 +1528,9 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (NSArray *)rootViews {
 	NSArray *rootViews = ((UIWindow *)[UIWindow keyWindow]).subviews;
-	if ([[rootViews objectAtIndex:0] isMemberOfClass:[%c(UILayoutContainerView) class]] && rootViews.count == 1) {
+	if (rootViews && 
+		rootViews.count && 
+		[[rootViews objectAtIndex:0] isMemberOfClass:[%c(UILayoutContainerView) class]] && rootViews.count == 1) {
 		rootViews = ((UIView *)[rootViews objectAtIndex:0]).subviews;
 	}
 	return rootViews;
