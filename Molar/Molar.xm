@@ -37,12 +37,14 @@
 #define FLASH_VIEW_ANIM_DURATION 1.5
 
 void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {}
-BOOL darkMode, hideLabels, enabled, switcherOpenedInLandscape, sliderMode, tableViewMode, scrollViewMode;
+BOOL darkMode, hideLabels, enabled, switcherOpenedInLandscape, sliderMode, tableViewMode, scrollViewMode, collectionViewMode;
 NSString *launcherApp1, *launcherApp2, *launcherApp3, *launcherApp4, *launcherApp5, *launcherApp6, *launcherApp7, *launcherApp8, *launcherApp9, *launcherApp0;
 NSTimer *discoverabilityTimer;
 NSArray *customShortcuts;
 UITableView *selectedTableView;
 UITableViewCell *selectedCell;
+UICollectionView *selectedCollectionView;
+UICollectionViewCell *selectedItem;
 int selectedRow, selectedSection, selectedViewIndex;
 UIView *fView;
 NSString *activeApp;
@@ -1127,6 +1129,35 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			selectedCell.transform = backupTransform;
 		} completion:nil];
 	}
+	else if (collectionViewMode) {
+		if ([selectedCollectionView numberOfItemsInSection:selectedSection] > selectedRow + 1) {
+			if (selectedItem) {
+				selectedItem.selected = NO;
+			}
+			selectedRow++;
+			UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+			cell.selected = YES;
+			selectedItem = cell;
+		} else if ([selectedCollectionView numberOfSections] > selectedSection + 1) {
+			if (selectedItem) {
+				selectedItem.selected = NO;
+			}
+			selectedRow = 0;
+			selectedSection++;
+			UICollectionViewCell *cell = [selectedTableView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+			cell.selected = YES;
+			selectedItem = cell;
+		}
+		CGAffineTransform backupTransform = selectedItem.transform;
+		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
+			[selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES];		
+			selectedItem.transform = CGAffineTransformConcat(selectedItem.transform, 
+			CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
+		} completion:nil];
+		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
+			selectedItem.transform = backupTransform;
+		} completion:nil];
+	}
 	else if (scrollViewMode) {
 		if (fView) {
 			[fView removeFromSuperview];
@@ -1178,6 +1209,35 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			selectedCell.transform = backupTransform;
 		} completion:nil];
 	}
+	else if (collectionViewMode) {
+		if ((selectedRow - 1) >= 0) {
+			if (selectedItem) {
+				selectedItem.selected = NO;
+			}
+			selectedRow--;
+			UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+			cell.selected = YES;
+			selectedItem = cell;
+		} else if (selectedSection > 0) {
+			if (selectedItem) {
+				selectedItem.selected = NO;
+			}
+			selectedSection--;
+			selectedRow = [selectedCollectionView numberOfItemsInSection:selectedSection] - 1;
+			UICollectionViewCell *cell = [selectedTableView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+			cell.selected = YES;
+			selectedItem = cell;
+		}
+		CGAffineTransform backupTransform = selectedItem.transform;
+		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
+			[selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES];		
+			selectedItem.transform = CGAffineTransformConcat(selectedItem.transform, 
+			CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
+		} completion:nil];
+		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
+			selectedItem.transform = backupTransform;
+		} completion:nil];
+	}
 	else if (scrollViewMode) {
 		if (fView) {
 			[fView removeFromSuperview];
@@ -1210,7 +1270,13 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
 		}
 		if (tableViewMode) {
-				[selectedTableView.delegate tableView:selectedTableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+				if (selectedTableView.delegate && [selectedTableView.delegate respondsToSelector:@selector(tableView:didSelectRowAtIndexPath:)])
+					[selectedTableView.delegate tableView:selectedTableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+		} else if (collectionViewMode) {
+				if (selectedCollectionView.delegate && [selectedCollectionView.delegate respondsToSelector:@selector(collectionView:didSelectItemAtIndexPath:)])
+					[selectedCollectionView.delegate collectionView:selectedCollectionView didSelectItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+				// what if delegate doesnt respond
+				//else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
 		} else {
 			// text controls
 			if ([[self selectedView] isKindOfClass:[UITextField class]] || 
@@ -1227,12 +1293,12 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 						((UISwitch *)[self selectedView]).on = !((UISwitch *)[self selectedView]).on;
 					}
 					// slider
-					if ([[self selectedView] isKindOfClass:[UISlider class]]) {
+					else if ([[self selectedView] isKindOfClass:[UISlider class]]) {
 						sliderMode = YES;
 						// maybe set to middle value
 					}
 					// stepper
-					if ([NSStringFromClass(((UIView *)[self selectedView]).class) isEqualToString:@"_UIStepperButton"]) {
+					else if ([NSStringFromClass(((UIView *)[self selectedView]).class) isEqualToString:@"_UIStepperButton"]) {
 						BOOL plus = ((NSArray *)[self views]).count > selectedViewIndex ? !([NSStringFromClass(((UIView *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex + 1]).class) isEqualToString:@"_UIStepperButton"]) : YES;
 						if (plus) {
 							UIStepper *stepper = (UIStepper *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex - 2];
@@ -1247,13 +1313,18 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 						}
 					}
 					// segmented control
-					if ([[self selectedView] isKindOfClass:[UISegmentedControl class]]) {
+					else if ([[self selectedView] isKindOfClass:[UISegmentedControl class]]) {
 						if (!((UISegmentedControl *)[self selectedView]).momentary) {
 							((UISegmentedControl *)[self selectedView]).selectedSegmentIndex = (((UISegmentedControl *)[self selectedView]).selectedSegmentIndex + 1) % 
 																								((UISegmentedControl *)[self selectedView]).numberOfSegments;
 							[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
 						}
-					
+					}
+					// page control
+					else if ([[self selectedView] isKindOfClass:[UIPageControl class]]) {
+						UIPageControl *pageControl = (UIPageControl *)[self selectedView];
+						pageControl.currentPage = (pageControl.currentPage + 1) % pageControl.numberOfPages;
+						[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
 					}
 					// other
 					else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
@@ -1361,8 +1432,19 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 						selectedCell.selected = YES;
 						selectedTableView = tView;
 					}
+				} else if ([[self selectedView] isKindOfClass:[UICollectionView class]]) {
+					UICollectionView *cView = (UICollectionView *)[self selectedView];
+					if ([cView numberOfSections] && [cView numberOfItemsInSection:0]) {
+						selectedRow = selectedSection = 0;
+						[self setSelectedView:[cView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]]];
+						collectionViewMode = YES;
+						selectedItem = (UICollectionViewCell *)[self selectedView];
+						selectedItem.selected = YES;
+						selectedCollectionView = cView;
+					}
 				} else {
 					tableViewMode = NO;
+					collectionViewMode = NO;
 					if ([[self selectedView] isKindOfClass:[UIScrollView class]]) {
 						scrollViewMode = YES;
 					} else scrollViewMode = NO;
@@ -1400,11 +1482,13 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 					flashView.transform = backupTransform;
 					flashView.backgroundColor = [UIColor clearColor]; //[UIColor colorWithWhite:0.65 alpha:0.5];
 				} completion:^(BOOL completed){
-					if (tableViewMode) [fView removeFromSuperview];
-					HighlightThread *ht = (HighlightThread *)[%c(HighlightThread) new];
-					flashViewThread = (NSThread *)ht;
-					[ht setView:flashView];
-					[ht start];
+					if (tableViewMode || collectionViewMode) [fView removeFromSuperview];
+					else {
+						HighlightThread *ht = (HighlightThread *)[%c(HighlightThread) new];
+						flashViewThread = (NSThread *)ht;
+						[ht setView:flashView];
+						[ht start];
+					}
 				}];
 			}
 		}
@@ -1430,15 +1514,20 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 }
 
 %new
+- (NSArray *)blockedClasses {
+	return @[@"UITableViewIndex"];
+}
+
+%new
 - (NSArray *)filterViews:(NSArray *)views {
 	NSMutableArray *filteredViews = [NSMutableArray new];
 	for (UIView *view in views) {
 		if ([view isKindOfClass:[UIControl class]] || 
 			[view isKindOfClass:[UITextView class]] || 
 			[view isKindOfClass:[UIScrollView class]]) {
-			//if (![NSStringFromClass(view.class) isEqualToString:@"UITableViewIndex"]) {
+			if (![(NSArray *)[self blockedClasses] containsObject:NSStringFromClass(view.class)]) {
 				[filteredViews addObject:view];
-			//}
+			}
 		}
 	}
 	return filteredViews;
