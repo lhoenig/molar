@@ -1101,7 +1101,12 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)downKey {
 	if (tableViewMode) {
-		if ([selectedTableView numberOfRowsInSection:selectedSection] > selectedRow + 1) {
+		if ([self cmdDown]) {
+			selectedSection = [selectedTableView numberOfSections] - 1;
+			selectedRow = [selectedTableView numberOfRowsInSection:selectedSection] - 1;
+			UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+			selectedCell = cell;
+		} else if ([selectedTableView numberOfRowsInSection:selectedSection] > selectedRow + 1) {
 			if (selectedCell) {
 				selectedCell.selected = NO;
 			}
@@ -1127,7 +1132,9 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 		} completion:nil];
 		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
 			selectedCell.transform = backupTransform;
-		} completion:nil];
+		} completion:^(BOOL completed){
+			selectedCell.selected = YES;
+		}];
 	}
 	else if (collectionViewMode) {
 		if ([selectedCollectionView numberOfItemsInSection:selectedSection] > selectedRow + 1) {
@@ -1181,7 +1188,12 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)upKey {
 	if (tableViewMode) {
-		if ((selectedRow - 1) >= 0) {
+		if ([self cmdDown]) {
+			selectedRow = selectedSection = 0;
+			UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+			cell.selected = YES;
+			selectedCell = cell;
+		} else if ((selectedRow - 1) >= 0) {
 			if (selectedCell) {
 				selectedCell.selected = NO;
 			}
@@ -1207,7 +1219,9 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 		} completion:nil];
 		[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
 			selectedCell.transform = backupTransform;
-		} completion:nil];
+		} completion:^(BOOL completed){
+			selectedCell.selected = YES;
+		}];
 	}
 	else if (collectionViewMode) {
 		if ((selectedRow - 1) >= 0) {
@@ -1366,16 +1380,23 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)escUI {
-	UIViewController *vc = [self topViewControllerWithRootViewController:[UIApplication sharedApplication].keyWindow.rootViewController];
-	if ([vc isKindOfClass:[UINavigationController class]]) {
-		NSLog(@"TOP NAVIGATION CONTROLLER!");
-		if ([self cmdDown] && ![self switcherShown]) {
-			[vc popToRootViewControllerAnimated:YES];
-		} else {
-			[vc popViewControllerAnimated:YES];
-		}
+	UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+	UIView *firstResponder = [keyWindow performSelector:@selector(firstResponder)];
+	if ([firstResponder isKindOfClass:[UITextField class]] || [firstResponder isKindOfClass:[UITextView class]]) {
+		NSLog(@"RESIGNING TEXT FIELD");
+		[firstResponder resignFirstResponder];
 	} else {
-		NSLog(@"TOP VC: %@", NSStringFromClass([vc class]));
+		UIViewController *vc = [self topViewControllerWithRootViewController:[UIApplication sharedApplication].keyWindow.rootViewController];
+		if ([vc isKindOfClass:[UINavigationController class]]) {
+			NSLog(@"TOP NAVIGATION CONTROLLER!");
+			if ([self cmdDown] && ![self switcherShown]) {
+				[vc popToRootViewControllerAnimated:YES];
+			} else {
+				[vc popViewControllerAnimated:YES];
+			}
+		} else {
+			NSLog(@"TOP VC: %@", NSStringFromClass([vc class]));
+		}
 	}
 }
 
@@ -1515,7 +1536,8 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (NSArray *)blockedClasses {
-	return @[@"UITableViewIndex"];
+	return @[@"UITableViewIndex",
+			 @"UITableViewWrapperView"];
 }
 
 %new
