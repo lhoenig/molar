@@ -22,11 +22,14 @@
 #define kPrefsFile @"/var/mobile/Library/Preferences/de.hoenig.molar.plist"
 #define kShortcutsKey @"shortcuts"
 
-#define CMD_KEY   0xe3
-#define CMD_KEY_2 0xe7
-#define ALT_KEY   0xe6
-#define CTRL_KEY  0xe4
-#define SHIFT_KEY 0xe5
+#define CMD_KEY     0xe3
+#define CMD_KEY_2   0xe7
+#define ALT_KEY     0xe6
+#define ALT_KEY_2   0xe2
+#define CTRL_KEY    0xe4
+#define CTRL_KEY_2  0xe0
+#define SHIFT_KEY   0xe5
+#define SHIFT_KEY_2 0xe1
 
 @interface AppSelectController : UITableViewController <UITableViewDataSource> {
 @private
@@ -162,12 +165,12 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
         
         if ((usage == CMD_KEY || usage == CMD_KEY_2) && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_CmdKeyDown" object:nil];
         if ((usage == CMD_KEY || usage == CMD_KEY_2) && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_CmdKeyUp" object:nil];
-        else if (usage == CTRL_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_CtrlKeyDown" object:nil];
-        else if (usage == CTRL_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_CtrlKeyUp" object:nil];
-       	else if (usage == ALT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_AltKeyDown" object:nil];
-        else if (usage == ALT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_AltKeyUp" object:nil];
-       	else if (usage == SHIFT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_ShiftKeyDown" object:nil];
-        else if (usage == SHIFT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_ShiftKeyUp" object:nil];
+        else if ((usage == CTRL_KEY || usage == CTRL_KEY_2) && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_CtrlKeyDown" object:nil];
+        else if ((usage == CTRL_KEY || usage == CTRL_KEY_2) && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_CtrlKeyUp" object:nil];
+       	else if ((usage == ALT_KEY || usage == ALT_KEY_2) && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_AltKeyDown" object:nil];
+        else if ((usage == ALT_KEY || usage == ALT_KEY_2) && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_AltKeyUp" object:nil];
+       	else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_ShiftKeyDown" object:nil];
+        else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_ShiftKeyUp" object:nil];
         else if (down && page == 7) [[NSNotificationCenter defaultCenter] postNotificationName:@"SC_KeyDown" object:nil userInfo:@{@"key": @(usage)}];
         //NSLog(@"KEY: %i page %i", usage, page);
     }
