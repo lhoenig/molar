@@ -630,7 +630,7 @@
 				PRODUCT_NAME = MolarSettings;
 				USER_HEADER_SEARCH_PATHS = "/opt/theos/include/** $(SRCROOT)/**";
 				WRAPPER_EXTENSION = bundle;
-				iOSOpenDevBuildPackageOnAnyBuild = NO;
+				iOSOpenDevBuildPackageOnAnyBuild = YES;
 				iOSOpenDevCopyOnBuild = NO;
 				iOSOpenDevDevice = 0.0.0.0;
 				iOSOpenDevInstallOnAnyBuild = NO;
@@ -658,7 +658,7 @@
 				PRODUCT_NAME = MolarSettings;
 				USER_HEADER_SEARCH_PATHS = "/opt/theos/include/** $(SRCROOT)/**";
 				WRAPPER_EXTENSION = bundle;
-				iOSOpenDevBuildPackageOnAnyBuild = NO;
+				iOSOpenDevBuildPackageOnAnyBuild = YES;
 				iOSOpenDevCopyOnBuild = NO;
 				iOSOpenDevDevice = 0.0.0.0;
 				iOSOpenDevInstallOnAnyBuild = NO;
