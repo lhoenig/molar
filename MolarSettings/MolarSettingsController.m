@@ -268,10 +268,10 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 - (void)updateModifierText {
     NSMutableString *mText = [NSMutableString new];
-    if (cmdDown) [mText appendString:@"⌘"];
+    if (shiftDown) [mText appendString:@"⇧"];
     if (ctrlDown) [mText appendString:@"⌃"];
     if (altDown) [mText appendString:@"⌥"];
-    if (shiftDown) [mText appendString:@"⇧"];
+    if (cmdDown) [mText appendString:@"⌘"];
     modifierTextField.text = mText;
 }
 
@@ -453,14 +453,15 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     if (section == 0) return 1;
     else if (section == 1) return 2;
-    else if (section == 2) return 10;
-    else if (section == 3) return 1;
+    else if (section == 2) return 2;
+    else if (section == 3) return 10;
+    else if (section == 4) return 1;
     else return 0;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
-    if (indexPath.section == 2) {
+    if (indexPath.section == 3) {
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         cell.selectionStyle = UITableViewCellSelectionStyleDefault;
         cell.detailTextLabel.text = [[ALApplicationList sharedApplicationList].applications objectForKey:cell.detailTextLabel.text];
@@ -471,11 +472,11 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    if (indexPath.section == 2) {
+    if (indexPath.section == 3) {
         AppSelectController *asc = [[AppSelectController alloc] initWithStyle:UITableViewStyleGrouped];
-        asc.settingsKey = [[[[self specifiersInGroup:2] objectAtIndex:(int)indexPath.row + 1] properties] objectForKey:kPrefs_KeyName_Key];
+        asc.settingsKey = [[[[self specifiersInGroup:3] objectAtIndex:(int)indexPath.row + 1] properties] objectForKey:kPrefs_KeyName_Key];
         [self pushController:asc animate:YES];
-    } else if (indexPath.section == 3 && indexPath.row == 0) {
+    } else if (indexPath.section == 4 && indexPath.row == 0) {
         ShortcutsController *scc = [[ShortcutsController alloc] initWithStyle:UITableViewStyleGrouped];
         [self pushController:scc];
     }

@@ -34,7 +34,43 @@
 			<key>isStaticText</key>
 			<true/>
 			<key>label</key>
-			<string>General</string>
+			<string>Features</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>de.hoenig.molar</string>
+			<key>key</key>
+			<string>appSwitcherEnabled</string>
+			<key>label</key>
+			<string>App Switcher</string>
+			<key>PostNotification</key>
+			<string>de.hoenig.molar-preferencesChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>de.hoenig.molar</string>
+			<key>key</key>
+			<string>appControlEnabled</string>
+			<key>label</key>
+			<string>App Control</string>
+			<key>PostNotification</key>
+			<string>de.hoenig.molar-preferencesChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>isStaticText</key>
+			<true/>
+			<key>label</key>
+			<string>Appearance</string>
 		</dict>
 		<dict>
 			<key>cell</key>
