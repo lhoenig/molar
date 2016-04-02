@@ -33,14 +33,26 @@
 //#define E_KEY       0x8
 #define R_KEY       0x15
 
-#define MAGNIFY_FACTOR 1.3
+#define MAGNIFY_FACTOR 1.2
 #define SLIDER_LEVELS 20
 #define FLASH_VIEW_CORNER_RADIUS 4.0
 #define FLASH_VIEW_ANIM_DURATION 1.5
 #define HIGHLIGHT_DURATION 0.15
 #define KEY_REPEAT_DELAY 0.4
 #define KEY_REPEAT_INTERVAL 0.005
+#define KEY_REPEAT_INTERVAL_SLOW 0.1
 #define KEY_REPEAT_STEP 3
+#define DISCOVERABILITY_DELAY 1.0
+//#define DISCOVERABILITY_MAX_WIDTH_LS 600.0
+//#define DISCOVERABILITY_MAX_WIDTH_PT 300.0
+#define DISCOVERABILITY_GAP 22.0
+#define DISCOVERABILITY_MODIFIER_GAP 28.0
+#define DISCOVERABILITY_INSET 30.0
+#define DISCOVERABILITY_MODIFIER_WIDTH 70.0
+#define DISCOVERABILITY_FONT_SIZE 20.0
+
+#define NEXT_VIEW 1
+#define PREV_VIEW 0
 
 void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {}
 
@@ -56,7 +68,8 @@ BOOL darkMode,
 	 collectionViewMode, 
 	 tabIsDown, 
 	 waitingForKeyRepeat, 
-	 transformFinished;
+	 transformFinished,
+	 discoverabilityShown;
 
 NSString *launcherApp1, 
 		 *launcherApp2, 
@@ -74,6 +87,7 @@ NSTimer *discoverabilityTimer,
 		*keyRepeatTimer;
 
 NSArray *customShortcuts;
+NSMutableArray *allKeyCommands;
 UITableView *selectedTableView;
 UITableViewCell *selectedCell;
 UICollectionView *selectedCollectionView;
@@ -82,6 +96,8 @@ int selectedRow,
 	selectedSection, 
 	selectedViewIndex;
 UIView *fView;
+UIPageControl *pageControl;
+UIScrollView *discoverabilityScrollView;
 NSString *activeApp;
 NSThread *flashViewThread;
 
@@ -248,7 +264,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 }
 
 %new
-- (NSUInteger)maxIconsH {
+- (NSUInteger)maxIconsP {
 	CGRect bounds = [[UIScreen mainScreen] bounds];
 	if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 3;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return 3;
@@ -258,9 +274,50 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 }
 
 %new
+- (NSUInteger)maxCommandsLS {
+	CGRect bounds = [[UIScreen mainScreen] bounds];
+	if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 6;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return 6;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 568)) || CGSizeEqualToSize(bounds.size, CGSizeMake(568, 320))) return 5;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 480)) || CGSizeEqualToSize(bounds.size, CGSizeMake(480, 320))) return 5;
+	else return 5;
+}
+
+%new
+- (NSUInteger)maxCommandsP {
+	CGRect bounds = [[UIScreen mainScreen] bounds];
+	if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 15;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return 13;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 568)) || CGSizeEqualToSize(bounds.size, CGSizeMake(568, 320))) return 10;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 480)) || CGSizeEqualToSize(bounds.size, CGSizeMake(480, 320))) return 7;
+	else return 7;
+}
+
+%new
+- (NSNumber *)maxWidthLS {
+	CGRect bounds = [[UIScreen mainScreen] bounds];
+	if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return @(670.0);
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return @(600.0);
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 568)) || CGSizeEqualToSize(bounds.size, CGSizeMake(568, 320))) return @(500.0);
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 480)) || CGSizeEqualToSize(bounds.size, CGSizeMake(480, 320))) return @(400.0);
+	else return @(0.0);
+}
+
+%new
+- (NSNumber *)maxWidthP {
+	CGRect bounds = [[UIScreen mainScreen] bounds];
+	if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return @(300.0);
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return @(285.0);
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 568)) || CGSizeEqualToSize(bounds.size, CGSizeMake(568, 320))) return @(200.0);
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 480)) || CGSizeEqualToSize(bounds.size, CGSizeMake(480, 320))) return @(200.0);
+	else return @(0.0);
+}
+
+%new
 - (void)handleCmdTab:(UIKeyCommand *)keyCommand {	
 
-	//[discoverabilityTimer invalidate];
+	if (discoverabilityTimer) [discoverabilityTimer invalidate];
+	discoverabilityTimer = nil;
 
 	%c(SpringBoard);
 	BOOL ls = UIInterfaceOrientationIsLandscape((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation]);
@@ -269,7 +326,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
     CGRect bounds = [[UIScreen mainScreen] bounds];
     //NSLog(@"Bounds: %@", NSStringFromCGRect(bounds));
 
-	if (![self switcherShown] && enabled && switcherEnabled) {
+	if (![self switcherShown] && !discoverabilityShown && enabled && switcherEnabled) {
 
 		NSArray *apps = (NSArray *)[(SBApplicationController *)[%c(SBApplicationController) sharedInstance] runningApplications];
 		
@@ -305,8 +362,8 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 				window.windowLevel = UIWindowLevelAlert;
 				
 				CGFloat h = SWITCHER_HEIGHT;
-				CGFloat w = ([((NSArray *)[self apps]) count] < (ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsH])) ? ([((NSArray *)[self apps]) count] * ICON_SIZE + ([((NSArray *)[self apps]) count] + 1) * APP_GAP)
-																								 : ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsH]) * ICON_SIZE + ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsH]) + 1) * APP_GAP);
+				CGFloat w = ([((NSArray *)[self apps]) count] < (ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsP])) ? ([((NSArray *)[self apps]) count] * ICON_SIZE + ([((NSArray *)[self apps]) count] + 1) * APP_GAP)
+																								 : ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsP]) * ICON_SIZE + ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsP]) + 1) * APP_GAP);
 	 			UIView *switcherView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, h)];
 	 			switcherView.backgroundColor = [UIColor clearColor];
 	 			switcherView.layer.cornerRadius = CORNER_RADIUS;
@@ -474,6 +531,16 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)setSwitcherWindow:(UIWindow *)value {
 	objc_setAssociatedObject(self, @selector(switcherWindow), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (UIWindow *)discoverabilityWindow {
+	return objc_getAssociatedObject(self, @selector(discoverabilityWindow));
+}
+
+%new
+- (void)setDiscoverabilityWindow:(UIWindow *)value {
+	objc_setAssociatedObject(self, @selector(discoverabilityWindow), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 %new
@@ -650,8 +717,8 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 		[self setSelectedIcon:[NSNumber numberWithInt:((NSNumber *)[self selectedIcon]).intValue - ((((NSNumber *)[self selectedIcon]).intValue >= mLabels.count) ? 1 : 0)]];
 
 		CGFloat h = SWITCHER_HEIGHT;	
-		CGFloat w = ([((NSArray *)[self apps]) count] < (ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsH])) ? ([((NSArray *)[self apps]) count] * ICON_SIZE + ([((NSArray *)[self apps]) count] + 1) * APP_GAP)
-																								 : ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsH]) * ICON_SIZE + ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsH]) + 1) * APP_GAP);
+		CGFloat w = ([((NSArray *)[self apps]) count] < (ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsP])) ? ([((NSArray *)[self apps]) count] * ICON_SIZE + ([((NSArray *)[self apps]) count] + 1) * APP_GAP)
+																								 : ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsP]) * ICON_SIZE + ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsP]) + 1) * APP_GAP);
 		CGRect newSwitcherFrame = CGRectMake(0, 0, ls ? h : w, ls ? w : h);
 	    
 	    CGSize newScrollViewContentSize = CGSizeMake(APP_GAP * (((NSArray *)[self apps]).count + 1) + ICON_SIZE * ((NSArray *)[self apps]).count, SWITCHER_HEIGHT);
@@ -855,11 +922,11 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)cmdKeyDown {
-	/*discoverabilityTimer = [NSTimer scheduledTimerWithTimeInterval:1 
+	discoverabilityTimer = [NSTimer scheduledTimerWithTimeInterval:DISCOVERABILITY_DELAY 
 															target:self 
 														  selector:@selector(showDiscoverability) 
 													      userInfo:nil 
-														   repeats:NO];*/
+														   repeats:NO];
 	[self setCmdDown:[NSNull null]];
 	[self handleKeyStatus:0];
 }
@@ -867,6 +934,11 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)cmdKeyUp {
 	if (discoverabilityTimer) [discoverabilityTimer invalidate];
+	else if (discoverabilityShown) {
+		[(UIWindow *)[self discoverabilityWindow] setHidden:YES];
+		discoverabilityShown = NO;
+	}
+	discoverabilityTimer = nil;
 	[self setCmdDown:nil];
 	[self handleKeyStatus:0];
 }
@@ -891,18 +963,353 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	}
 }
 
-/*%new
+%new
+- (void)recursivelyFindKeyCommands:(UIViewController *)vc {
+	if ([vc respondsToSelector:@selector(keyCommands)]) {
+		[allKeyCommands addObjectsFromArray:vc.keyCommands];
+	}
+	//NSLog(@"Added %i commands: %@", vc.keyCommands.count, NSStringFromClass(vc.class));
+	// Handling UITabBarController
+	if ([vc isKindOfClass:[UITabBarController class]]) {
+	   	UITabBarController *tabBarController = (UITabBarController *)vc;
+	   	[self recursivelyFindKeyCommands:tabBarController.selectedViewController];
+	}
+	// Handling UINavigationController
+	else if ([vc isKindOfClass:[UINavigationController class]]) {
+	   	UINavigationController *navigationController = (UINavigationController *)vc;
+	   	[self recursivelyFindKeyCommands:navigationController.visibleViewController];
+	}
+	// Handling Modal views
+	else if ([vc respondsToSelector:@selector(presentedViewController)] && vc.presentedViewController) {
+	   	UIViewController *presentedViewController = vc.presentedViewController;
+	   	[self recursivelyFindKeyCommands:presentedViewController];
+	}
+	// Handling UIViewController's added as subviews to some other views.
+	else {
+		if ([vc respondsToSelector:@selector(view)]) {
+		   	for (UIView *view in [vc.view subviews]) {
+		       	id subViewController = [view nextResponder];
+		       	if (subViewController && [subViewController isKindOfClass:[UIResponder class]]) {
+		        	[self recursivelyFindKeyCommands:subViewController];
+		       	}
+		   	}
+		}
+	}
+}
+
+%new
+- (NSString *)modifierString:(UIKeyCommand *)kc {
+	NSMutableString *mStr = [NSMutableString new];
+    if (kc.modifierFlags & UIKeyModifierShift)     [mStr appendString:@"⇧ "];
+    if (kc.modifierFlags & UIKeyModifierControl)   [mStr appendString:@"⌃ "];
+    if (kc.modifierFlags & UIKeyModifierAlternate) [mStr appendString:@"⌥ "];
+    if (kc.modifierFlags & UIKeyModifierCommand)   [mStr appendString:@"⌘ "];
+    if ([kc.input isEqualToString:UIKeyInputLeftArrow])       [mStr appendString:@"← "];
+    else if ([kc.input isEqualToString:UIKeyInputRightArrow]) [mStr appendString:@"→ "];
+    else if ([kc.input isEqualToString:UIKeyInputUpArrow])    [mStr appendString:@"↑ "];
+    else if ([kc.input isEqualToString:UIKeyInputDownArrow])  [mStr appendString:@"↓ "];
+    else if ([kc.input isEqualToString:UIKeyInputEscape])     [mStr appendString:@"␛ "];
+    else [mStr appendString:kc.input.uppercaseString];
+    return mStr;
+}
+
+%new
+- (UIView *)discoverabilityLabelViewWithTitle:(NSString *)title 
+									 shortcut:(NSString *)shortcut 
+									 minWidth:(CGFloat)minWidth 
+									 maxWidth:(CGFloat)maxWidth {
+	
+	CGFloat modifierWidth = DISCOVERABILITY_MODIFIER_WIDTH;
+	NSLog(@"Minw: %f Maxw: %f", minWidth, maxWidth);
+
+	CGSize size = [(title ? title: @"") sizeWithAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE]}];
+	CGSize adjustedSize = CGSizeMake(ceilf(size.width), ceilf(size.height));
+	if (adjustedSize.width > maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP) adjustedSize = CGSizeMake(maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP, adjustedSize.height);
+	else if (adjustedSize.width < minWidth) adjustedSize = CGSizeMake(minWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP, adjustedSize.height);
+
+	UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, adjustedSize.width, adjustedSize.height)];
+	titleLabel.font = [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE];
+	titleLabel.adjustsFontSizeToFitWidth = YES;
+	titleLabel.minimumFontSize = 14.0f;
+	titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+	titleLabel.text = title;
+	//titleLabel.backgroundColor = [UIColor greenColor];
+
+	UILabel *shortcutLabel = [[UILabel alloc] initWithFrame:CGRectMake(adjustedSize.width + DISCOVERABILITY_MODIFIER_GAP, 0, modifierWidth, adjustedSize.height)];
+	shortcutLabel.font = [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE];
+	shortcutLabel.text = shortcut;
+	shortcutLabel.textAlignment = NSTextAlignmentRight;
+	//shortcutLabel.backgroundColor = [UIColor greenColor];
+
+	UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0, 0, adjustedSize.width + DISCOVERABILITY_MODIFIER_GAP + modifierWidth, adjustedSize.height)];
+	[container addSubview:titleLabel];
+	[container addSubview:shortcutLabel];
+	//container.backgroundColor = [UIColor yellowColor];
+	return container;
+}
+
+%new
+- (NSNumber *)minimumWidthForKeyCommands:(NSArray *)cmds maxWidth:(CGFloat)maxWidth {
+	CGFloat modifierWidth = DISCOVERABILITY_MODIFIER_WIDTH;
+	CGFloat max = 0.0;
+	for (UIKeyCommand *kc in cmds) {
+		CGSize size = [(kc.discoverabilityTitle ? kc.discoverabilityTitle: @"") sizeWithAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE]}];
+		CGSize adjustedSize = CGSizeMake(ceilf(size.width), ceilf(size.height));
+		if (adjustedSize.width > maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP) adjustedSize = CGSizeMake(maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP, adjustedSize.height);		
+		if (adjustedSize.width > max ) max = adjustedSize.width;
+	}
+	return @(max + DISCOVERABILITY_MODIFIER_GAP + modifierWidth);
+}
+
+%new
+- (void)pageChanged {
+	CGPoint offset = CGPointMake(pageControl.currentPage * discoverabilityScrollView.frame.size.width, 0);
+	[discoverabilityScrollView setContentOffset:offset animated:YES];
+}
+
+%new
 - (void)showDiscoverability {
 	discoverabilityTimer = nil;
-	//NSLog(@"Discoverability!");
-}*/
+	if (enabled && [self isActive] && ![self switcherShown]) {
+
+		int addedKeyCommands = 13 + customShortcuts.count;
+		allKeyCommands = [NSMutableArray array];
+		[self recursivelyFindKeyCommands:self.keyWindow.rootViewController];
+		NSMutableArray *commands = allKeyCommands;
+		NSMutableArray *selfCommands = [NSMutableArray arrayWithArray:self.keyCommands];
+		[selfCommands removeObjectsInRange:NSMakeRange(self.keyCommands.count - 1 - addedKeyCommands, addedKeyCommands)];
+		for (UIKeyCommand *kc in selfCommands) {
+			if (![commands containsObject:kc]) [commands addObject:kc];
+		}
+		for (int i = 0; i < commands.count; i++) {
+			UIKeyCommand *kc = commands[i];
+			if (!kc.discoverabilityTitle && 
+				kc.modifierFlags == UIKeyModifierCommand && 
+				([kc.input isEqualToString:@"+"] || [kc.input.uppercaseString isEqualToString:@"-"] || [kc.input isEqualToString:@"0"])) {
+				[commands removeObject:kc];
+			}
+		}
+
+		if (commands.count) {
+
+			NSLog(@"Commands:");
+			for (UIKeyCommand *kc in commands) {
+				NSLog(@"\t%@: %@", [self modifierString:kc], kc.discoverabilityTitle);
+				NSLog(@"\"%@\"", kc.input);
+			}
+
+			BOOL ls = UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation);
+
+	    	CGRect bounds = [[UIScreen mainScreen] bounds];
+			CGRect contentFrame = CGRectMake(0, 0, ls ? bounds.size.height : bounds.size.width,
+												   ls ? bounds.size.width  : bounds.size.height);
+
+			CGRect discRect = CGRectInset(((NSUInteger)[self maxIconsLS] == 6) ? contentFrame : bounds, 15.0f, 15.0f);
+
+			UIWindow *window = [[UIWindow alloc] initWithFrame:((NSUInteger)[self maxIconsLS] == 6) ? contentFrame : bounds];
+			window.windowLevel = UIWindowLevelAlert;
+
+			UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:darkMode ? UIBlurEffectStyleDark : UIBlurEffectStyleLight];
+			UIVisualEffectView *blurEffectView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+			blurEffectView.frame = discRect;
+			blurEffectView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+			blurEffectView.layer.cornerRadius = CORNER_RADIUS;
+			blurEffectView.clipsToBounds = YES;
+
+			[self setDiscoverabilityWindow:window];
+
+			if (ls) blurEffectView.transform = (UIInterfaceOrientation)[UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation == UIInterfaceOrientationLandscapeLeft ? 
+												CGAffineTransformMakeRotation(DegreesToRadians(270)) :
+												CGAffineTransformMakeRotation(DegreesToRadians(90));
+			else if ((UIInterfaceOrientation)[UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation == UIInterfaceOrientationPortraitUpsideDown) {
+				blurEffectView.transform = CGAffineTransformMakeRotation(DegreesToRadians(180));
+			}
+
+			CGFloat maxWLS = ((NSNumber *)[self maxWidthLS]).floatValue;
+			CGFloat maxWP  = ((NSNumber *)[self maxWidthP]).floatValue;
+
+			if (ls) {
+				int iconsPerPage = (NSUInteger)[self maxCommandsLS];
+				if (commands.count > iconsPerPage) {
+					int pages = (int)ceil((double)commands.count / (iconsPerPage * 2));
+					int cmdsLeft = commands.count;
+					UILabel *testLabel = [self discoverabilityLabelViewWithTitle:((UIKeyCommand *)commands[0]).discoverabilityTitle
+																		   shortcut:@"Test"
+																		   minWidth:maxWP
+																		   maxWidth:maxWP];
+					/*blurEffectView.frame = CGRectMake(0, 0, 
+													  (testLabel.frame.size.height * iconsPerPage) + 
+													  	(DISCOVERABILITY_GAP * (iconsPerPage - 1)) + 
+													  	(2 * DISCOVERABILITY_INSET),
+													  blurEffectView.frame.size.width);*/
+					blurEffectView.frame = CGRectInset(blurEffectView.frame, DISCOVERABILITY_GAP, 0.0f);
+					discoverabilityScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, 
+																							  blurEffectView.frame.size.height,
+																							  blurEffectView.frame.size.width)];
+					discoverabilityScrollView.contentSize = CGSizeMake(discoverabilityScrollView.frame.size.width * pages, discoverabilityScrollView.frame.size.height);
+					discoverabilityScrollView.pagingEnabled = YES;
+					discoverabilityScrollView.bounces = NO;
+					discoverabilityScrollView.showsHorizontalScrollIndicator = NO;
+					discoverabilityScrollView.userInteractionEnabled = NO;
+					for (int i = 0; i < pages; i++) {
+						UIView *page = [[UIView alloc] initWithFrame:CGRectMake(i * discoverabilityScrollView.frame.size.width, 
+																				0, 
+																				discoverabilityScrollView.frame.size.width, 
+																				discoverabilityScrollView.frame.size.height)];
+						for (int col = 0; col < 2; col++) {
+							for (int l = 0; l < iconsPerPage; l++) {
+								if (!cmdsLeft) break;
+								UIKeyCommand *kc = commands[l + (col ? iconsPerPage : 0) + (i ? (iconsPerPage * i - 1) : 0)];
+								UIView *label = [self discoverabilityLabelViewWithTitle:kc.discoverabilityTitle
+																			   shortcut:[self modifierString:kc]
+																			   minWidth:maxWLS/2 - 25
+																			   maxWidth:maxWLS/2 - 25];
+								label.frame = CGRectMake(!col ? DISCOVERABILITY_INSET : DISCOVERABILITY_INSET + maxWLS/2 + 5,
+														 DISCOVERABILITY_INSET + ((double)l * (DISCOVERABILITY_GAP + label.frame.size.height)),
+														 label.frame.size.width, 
+													 	 label.frame.size.height);
+								[page addSubview:label];
+								cmdsLeft--;
+							}
+						}
+						[discoverabilityScrollView addSubview:page];
+						if (!cmdsLeft) break;
+					}
+					[blurEffectView addSubview:discoverabilityScrollView];
+					pageControl = [[UIPageControl alloc] initWithFrame:CGRectMake(0, 0, blurEffectView.frame.size.width, 15)];
+					pageControl.userInteractionEnabled = NO;
+					pageControl.numberOfPages = pages;
+					pageControl.center = CGPointMake(CGRectGetMidX(blurEffectView.frame), blurEffectView.frame.size.height - 17);
+					[pageControl addTarget:self action:@selector(pageChanged) forControlEvents:UIControlEventValueChanged];
+					[blurEffectView addSubview:pageControl];
+
+				} else {
+					NSMutableArray *labels = [NSMutableArray array];
+					CGFloat maxWidth = 0;
+					CGFloat minWidth = ((NSNumber *)[self minimumWidthForKeyCommands:commands maxWidth:maxWLS]).floatValue;
+					for (UIKeyCommand *kc in commands) {
+						UIView *l = [self discoverabilityLabelViewWithTitle:kc.discoverabilityTitle
+																   shortcut:[self modifierString:kc]
+																   minWidth:minWidth 
+																   maxWidth:maxWLS];
+						[labels addObject:l];
+						if (l.frame.size.width > maxWidth) maxWidth = l.frame.size.width;
+					}
+
+					blurEffectView.frame = CGRectMake(0, 0, 
+													  (((UIView *)labels[0]).frame.size.height * labels.count) + 
+													  	(DISCOVERABILITY_GAP * (labels.count - 1)) + 
+													  	(2 * DISCOVERABILITY_INSET),
+													  maxWidth + (DISCOVERABILITY_INSET * 2));
+					NSUInteger index = 0;
+					for (UIView *label in labels) {
+						label.frame = CGRectMake(DISCOVERABILITY_INSET, 
+												 DISCOVERABILITY_INSET + ((double)index * (DISCOVERABILITY_GAP + label.frame.size.height)), 
+												 label.frame.size.width, 
+												 label.frame.size.height);
+						[blurEffectView addSubview:label];
+						index++;
+					}
+				}
+			} else {
+				int iconsPerPage = (NSUInteger)[self maxCommandsP];
+				if (commands.count > iconsPerPage) {
+					int pages = (int)ceil((double)commands.count / iconsPerPage);
+					int cmdsLeft = commands.count;
+					UILabel *testLabel = [self discoverabilityLabelViewWithTitle:((UIKeyCommand *)commands[0]).discoverabilityTitle
+																		   shortcut:@"Test"
+																		   minWidth:maxWP
+																		   maxWidth:maxWP];
+					blurEffectView.frame = CGRectMake(0, 0, 
+													  blurEffectView.frame.size.width, //minWidth + (DISCOVERABILITY_INSET * 2),
+													  (testLabel.frame.size.height * iconsPerPage) + 
+													  	(DISCOVERABILITY_GAP * (iconsPerPage - 1)) + 
+													  	(2 * DISCOVERABILITY_INSET));
+					discoverabilityScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, 
+																							  blurEffectView.frame.size.width,
+																							  blurEffectView.frame.size.height)];
+					discoverabilityScrollView.contentSize = CGSizeMake(discoverabilityScrollView.frame.size.width * pages, discoverabilityScrollView.frame.size.height);
+					discoverabilityScrollView.pagingEnabled = YES;
+					discoverabilityScrollView.bounces = NO;
+					discoverabilityScrollView.showsHorizontalScrollIndicator = NO;
+					discoverabilityScrollView.userInteractionEnabled = NO;
+					for (int i = 0; i < pages; i++) {
+						UIView *page = [[UIView alloc] initWithFrame:CGRectMake(i * discoverabilityScrollView.frame.size.width, 
+																				0, 
+																				discoverabilityScrollView.frame.size.width, 
+																				discoverabilityScrollView.frame.size.height)];
+						for (int l = 0; l < iconsPerPage; l++) {
+							if (!cmdsLeft) break;
+							UIKeyCommand *kc = commands[l + (i ? (iconsPerPage * i - 1) : 0)];
+							UIView *label = [self discoverabilityLabelViewWithTitle:kc.discoverabilityTitle
+																		   shortcut:[self modifierString:kc]
+																		   minWidth:maxWP
+																		   maxWidth:maxWP];
+							label.frame = CGRectMake(DISCOVERABILITY_INSET,
+													 DISCOVERABILITY_INSET + ((double)l * (DISCOVERABILITY_GAP + label.frame.size.height)),
+													 label.frame.size.width, 
+												 	 label.frame.size.height);
+							[page addSubview:label];
+							cmdsLeft--;
+						}
+						[discoverabilityScrollView addSubview:page];
+						if (!cmdsLeft) break;
+					}
+					[blurEffectView addSubview:discoverabilityScrollView];
+					pageControl = [[UIPageControl alloc] initWithFrame:CGRectMake(0, 0, blurEffectView.frame.size.width, 15)];
+					pageControl.userInteractionEnabled = NO;
+					pageControl.numberOfPages = pages;
+					pageControl.center = CGPointMake(CGRectGetMidX(blurEffectView.frame), blurEffectView.frame.size.height - 17);
+					[pageControl addTarget:self action:@selector(pageChanged) forControlEvents:UIControlEventValueChanged];
+					[blurEffectView addSubview:pageControl];
+				} else {
+					NSMutableArray *labels = [NSMutableArray array];
+					CGFloat maxWidth = 0;
+					CGFloat minWidth = ((NSNumber *)[self minimumWidthForKeyCommands:commands maxWidth:maxWP]).floatValue;
+					NSLog(@"Min width: %f", minWidth);
+					for (UIKeyCommand *kc in commands) {
+						UIView *l = [self discoverabilityLabelViewWithTitle:kc.discoverabilityTitle
+																   shortcut:[self modifierString:kc]
+																   minWidth:minWidth 
+																   maxWidth:maxWP];
+						[labels addObject:l];
+						NSLog(@"label width: %f", l.frame.size.width);
+						if (l.frame.size.width > maxWidth) maxWidth = l.frame.size.width;
+					}
+
+					blurEffectView.frame = CGRectMake(0, 0, 
+													  maxWidth + (DISCOVERABILITY_INSET * 2),
+													  (((UIView *)labels[0]).frame.size.height * labels.count) + 
+													  	(DISCOVERABILITY_GAP * (labels.count - 1)) + 
+													  	(2 * DISCOVERABILITY_INSET));
+					NSUInteger index = 0;
+					for (UIView *label in labels) {
+						label.frame = CGRectMake(DISCOVERABILITY_INSET, 
+												 DISCOVERABILITY_INSET + ((double)index * (DISCOVERABILITY_GAP + label.frame.size.height)), 
+												 label.frame.size.width,
+												 label.frame.size.height);
+						[blurEffectView addSubview:label];
+						index++;
+					}
+				}
+			}
+		
+			blurEffectView.center = (NSUInteger)[self maxIconsLS] == 6 ? CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds)) :
+																	     CGPointMake(CGRectGetMidX(contentFrame), CGRectGetMidY(contentFrame));
+
+			[window addSubview:blurEffectView];
+			[window makeKeyAndVisible];
+			discoverabilityShown = YES;			
+		}
+	}
+}
 
 %new
 - (NSNumber *)modifierFlagsForShortcut:(NSDictionary *)sc {
 	int mFlags = 0;
-	if (((NSNumber *)[sc objectForKey:@"cmd"]).boolValue) mFlags |= UIKeyModifierCommand;
-	if (((NSNumber *)[sc objectForKey:@"ctrl"]).boolValue) mFlags |= UIKeyModifierControl;
-	if (((NSNumber *)[sc objectForKey:@"alt"]).boolValue) mFlags |= UIKeyModifierAlternate;
+	if (((NSNumber *)[sc objectForKey:@"cmd"]).boolValue)   mFlags |= UIKeyModifierCommand;
+	if (((NSNumber *)[sc objectForKey:@"ctrl"]).boolValue)  mFlags |= UIKeyModifierControl;
+	if (((NSNumber *)[sc objectForKey:@"alt"]).boolValue)   mFlags |= UIKeyModifierAlternate;
 	if (((NSNumber *)[sc objectForKey:@"shift"]).boolValue) mFlags |= UIKeyModifierShift;
 	return @(mFlags);
 }
@@ -1100,7 +1507,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new 
 - (void)ui_leftKey {
-	if (enabled && controlEnabled && ![self switcherShown] && [self isActive]) {
+	if (enabled && controlEnabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
 		if (sliderMode) {
 			UISlider *slider = (UISlider *)[self selectedView];
 			float dec = (slider.maximumValue - slider.minimumValue) / SLIDER_LEVELS;
@@ -1147,6 +1554,10 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
 		}
 	}
+	else if (enabled && [self isActive] && discoverabilityShown) {
+		pageControl.currentPage--;
+		[self pageChanged];
+	}
 }
 
 %new
@@ -1159,7 +1570,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)ui_rightKey {
-	if (enabled && controlEnabled && ![self switcherShown] && [self isActive]) {
+	if (enabled && controlEnabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
 		if (sliderMode) {
 			UISlider *slider = (UISlider *)[self selectedView];
 			float inc = (slider.maximumValue - slider.minimumValue) / SLIDER_LEVELS;
@@ -1205,6 +1616,10 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			} else waitingForKeyRepeat = NO;
 			[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
 		}
+	}
+	else if (enabled && [self isActive] && discoverabilityShown) {
+		pageControl.currentPage++;
+		[self pageChanged];
 	}
 }
 
@@ -1311,6 +1726,10 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 					newOffset.y = scrollView.contentSize.height - scrollView.frame.size.height;
 			} 
 			[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
+		}
+		else {
+			UIView *scrollableView = [self findFirstScrollableView];
+			if (scrollableView) [self highlightView:scrollableView];
 		}
 		if (tableViewMode || collectionViewMode || scrollViewMode) {
 			if (!keyRepeatTimer) {
@@ -1427,6 +1846,10 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			} 
 			[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
 		}
+		else {
+			UIView *scrollableView = [self findFirstScrollableView];
+			if (scrollableView) [self highlightView:scrollableView];
+		}
 		if (tableViewMode || collectionViewMode || scrollViewMode) {
 			if (!keyRepeatTimer) {
 				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
@@ -1480,6 +1903,8 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 				if (((UIAlertAction *)[ac.actions objectAtIndex:0]).style == UIAlertActionStyleDefault) {
 					[ac dismissViewControllerAnimated:YES completion:nil];
 				}
+			} else if (tableViewMode) {
+				
 			}
 		} else {
 			//NSLog(@"Activating %@", ((UIView *)[self selectedView]).description);
@@ -1627,7 +2052,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)ui_tabDown {
 	if (enabled && controlEnabled && [self shiftDown] && ![self cmdDown] && ![self switcherShown]) {
-		[self highlightView:0];
+		[self highlightView:PREV_VIEW animated:YES force:NO];
 		if (!keyRepeatTimer) {
 			 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
 																	  target:self 
@@ -1637,7 +2062,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			waitingForKeyRepeat = YES;
 		} else waitingForKeyRepeat = NO;
 	} else if (enabled && controlEnabled && ![self cmdDown] && ![self switcherShown]) {
-		[self highlightView:1];
+		[self highlightView:NEXT_VIEW animated:YES force:NO];
 		if (!keyRepeatTimer) {
 			 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
 																	  target:self 
@@ -1666,7 +2091,14 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"down"]) keySelector = @selector(ui_downKey);
 	else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"left"]) keySelector = @selector(ui_leftKey);
 	else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"right"]) keySelector = @selector(ui_rightKey);
-	keyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_INTERVAL target:self selector:keySelector userInfo:nil repeats:YES];
+	keyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:(tableViewMode || 
+															  collectionViewMode || 
+															  [(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"tab"]) 
+															  ? KEY_REPEAT_INTERVAL_SLOW : KEY_REPEAT_INTERVAL 
+													  target:self 
+												    selector:keySelector 
+												    userInfo:nil 
+												     repeats:YES];
 }
 
 %new
@@ -1724,8 +2156,62 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 }
 
 %new
-- (void)highlightView:(int)next {
-	if (enabled && controlEnabled && [self isActive]) {
+- (void)highlightView:(UIView *)view {
+	selectedViewIndex = [(NSArray *)[self views] indexOfObject:view];
+	if (tableViewMode) selectedCell.selected = NO;
+
+	[self setSelectedView:[(NSArray *)[self views] objectAtIndex:selectedViewIndex]];
+	//[(UIView *)[self selectedView] becomeFirstResponder];
+
+	if ([[self selectedView] isKindOfClass:[UISlider class]]) sliderMode = YES;
+	else sliderMode = NO;
+
+	UIView *animView = (UIView *)[self selectedView];
+	if ([[self selectedView] isKindOfClass:[UITableView class]]) {
+		UITableView *tView = (UITableView *)[self selectedView];
+		if ([tView numberOfSections] && [tView numberOfRowsInSection:0]) {
+			selectedRow = selectedSection = 0;
+			tableViewMode = YES;
+			collectionViewMode = NO;
+			scrollViewMode = NO;
+			selectedCell = [tView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+			selectedCell.selected = YES;
+			selectedTableView = tView;
+			animView = selectedCell;
+			@try {
+				[selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionTop animated:YES];
+			} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
+		}
+	} else if ([[self selectedView] isKindOfClass:[UICollectionView class]]) {
+		UICollectionView *cView = (UICollectionView *)[self selectedView];
+		if ([cView numberOfSections] && [cView numberOfItemsInSection:0]) {
+			selectedRow = selectedSection = 0;
+			collectionViewMode = YES;
+			tableViewMode = NO;
+			scrollViewMode = NO;
+			selectedItem = [cView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+			selectedItem.selected = YES;
+			selectedCollectionView = cView;
+			animView = selectedItem;
+			@try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection] 
+					   						   	  atScrollPosition:UICollectionViewScrollPositionTop 
+											   		   	  animated:YES];
+			} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
+		}
+	} else {
+		tableViewMode = NO;
+		collectionViewMode = NO;
+		if ([[self selectedView] isKindOfClass:[UIScrollView class]]) {
+			scrollViewMode = YES;
+		} else scrollViewMode = NO;
+	}
+	NSLog(@"View %i: %@", selectedViewIndex, ((UIView *)[self selectedView]).description);
+	fView = nil;
+}
+
+%new
+- (void)highlightView:(int)next animated:(BOOL)animated force:(BOOL)force {
+	if (enabled && controlEnabled && ([self isActive] || force)) {
 		if ([self views] && ((NSArray *)[self views]).count) {
 			if (next) {
 				do {
@@ -1752,14 +2238,18 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 				if ([[self selectedView] isKindOfClass:[UISlider class]]) sliderMode = YES;
 				else sliderMode = NO;
 
+				UIView *animView = (UIView *)[self selectedView];
 				if ([[self selectedView] isKindOfClass:[UITableView class]]) {
 					UITableView *tView = (UITableView *)[self selectedView];
 					if ([tView numberOfSections] && [tView numberOfRowsInSection:0]) {
 						selectedRow = selectedSection = 0;
 						tableViewMode = YES;
+						collectionViewMode = NO;
+						scrollViewMode = NO;
 						selectedCell = [tView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
 						selectedCell.selected = YES;
 						selectedTableView = tView;
+						animView = selectedCell;
 						@try {
 							[selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionTop animated:YES];
 						} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
@@ -1769,9 +2259,12 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 					if ([cView numberOfSections] && [cView numberOfItemsInSection:0]) {
 						selectedRow = selectedSection = 0;
 						collectionViewMode = YES;
+						tableViewMode = NO;
+						scrollViewMode = NO;
 						selectedItem = [cView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
 						selectedItem.selected = YES;
 						selectedCollectionView = cView;
+						animView = selectedItem;
 						@try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection] 
 								   						   	  atScrollPosition:UICollectionViewScrollPositionTop 
 														   		   	  animated:YES];
@@ -1785,56 +2278,73 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 					} else scrollViewMode = NO;
 				}
 
-				//NSLog(@"View %i: %@", selectedViewIndex, ((UIView *)[self selectedView]).description);
+				NSLog(@"View %i: %@", selectedViewIndex, ((UIView *)[self selectedView]).description);
 
-				UIView *flashView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 
-																			 ((UIView *)[self selectedView]).frame.size.width,
-																			 ((UIView *)[self selectedView]).frame.size.height)];
-				flashView.backgroundColor = [UIColor whiteColor];
-				flashView.layer.cornerRadius = (((UIView *)[self selectedView]).layer.cornerRadius != 0.0f) ? 
-												((UIView *)[self selectedView]).layer.cornerRadius : FLASH_VIEW_CORNER_RADIUS;
-				flashView.clipsToBounds = YES;
-				flashView.userInteractionEnabled = NO;
-				[(UIView *)[self selectedView] addSubview:flashView];
-				[(UIView *)[self selectedView] bringSubviewToFront:flashView];
+				if (animated) {
+					UIView *flashView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 
+																				 ((UIView *)[self selectedView]).frame.size.width,
+																				 ((UIView *)[self selectedView]).frame.size.height)];
+					flashView.backgroundColor = [UIColor whiteColor];
+					flashView.layer.cornerRadius = (animView.layer.cornerRadius != 0.0f) ? 
+													animView.layer.cornerRadius : FLASH_VIEW_CORNER_RADIUS;
+					flashView.clipsToBounds = YES;
+					flashView.userInteractionEnabled = NO;
+					[animView addSubview:flashView];
+					[animView bringSubviewToFront:flashView];
 
-				CGAffineTransform backupTransform = ((UIView *)[self selectedView]).transform;
-				flashView.transform = backupTransform;
-
-				flashView.layer.borderWidth = 2.0f;
-				flashView.layer.borderColor = [UIColor colorWithRed:0.0 green:122.0/255.0 blue:1.0 alpha:1.0].CGColor;
-
-				/*if ([[self selectedView] isKindOfClass:[UIButton class]]) {
-					UIImage *maskImage = (UIImage *)[self image:[self whiteImageOfImage:[(UIButton *)[self selectedView] imageForState:UIControlStateNormal]] scaledToSize:((UIView *)[self selectedView]).frame.size];
-					UIImageView *iview = [[UIImageView alloc] initWithImage:maskImage];
-					iview.layer.allowsEdgeAntialiasing = YES;
-					[flashView addSubview:iview];
-				}*/
-
-				fView = flashView;
-
-				[UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
-					((UIView *)[self selectedView]).transform = CGAffineTransformConcat(((UIView *)[self selectedView]).transform, 
-																						CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
-					flashView.transform = CGAffineTransformConcat(flashView.transform, 
-																	  CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
-				} completion:nil];
-				[UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
-					((UIView *)[self selectedView]).transform = backupTransform;
+					CGAffineTransform backupTransform = animView.transform;
 					flashView.transform = backupTransform;
-					flashView.backgroundColor = [UIColor clearColor];
-				} completion:^(BOOL completed){
-					if (tableViewMode || collectionViewMode) [fView removeFromSuperview];
-					else {
-						HighlightThread *ht = (HighlightThread *)[%c(HighlightThread) new];
-						flashViewThread = (NSThread *)ht;
-						[ht setView:flashView];
-						[ht start];
-					}
-				}];
+
+					flashView.layer.borderWidth = 2.0f;
+					flashView.layer.borderColor = [UIColor colorWithRed:0.0 green:122.0/255.0 blue:1.0 alpha:1.0].CGColor;
+
+					/*if ([[self selectedView] isKindOfClass:[UIButton class]]) {
+						UIImage *maskImage = (UIImage *)[self image:[self whiteImageOfImage:[(UIButton *)[self selectedView] imageForState:UIControlStateNormal]] scaledToSize:((UIView *)[self selectedView]).frame.size];
+						UIImageView *iview = [[UIImageView alloc] initWithImage:maskImage];
+						iview.layer.allowsEdgeAntialiasing = YES;
+						[flashView addSubview:iview];
+					}*/
+
+					fView = flashView;
+
+					[UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
+						animView.transform = CGAffineTransformConcat(animView.transform, 
+																	 CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
+						flashView.transform = CGAffineTransformConcat(flashView.transform, 
+																	  CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
+					} completion:nil];
+					[UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
+						animView.transform = backupTransform;
+						flashView.transform = backupTransform;
+						flashView.backgroundColor = [UIColor clearColor];
+					} completion:^(BOOL completed){
+						if (tableViewMode || collectionViewMode) [fView removeFromSuperview];
+						else {
+							HighlightThread *ht = (HighlightThread *)[%c(HighlightThread) new];
+							flashViewThread = (NSThread *)ht;
+							[ht setView:flashView];
+							[ht start];
+						}
+					}];
+				} else {
+					fView = nil;
+				}
 			}
 		}
 	}
+}
+
+%new
+- (UIView *)findFirstScrollableView {
+	UIView *scrollableView = nil;
+	for (int i = 0; i < ((NSArray *)[self views]).count; i++) {
+		UIView *v = ((NSArray *)[self views])[i];
+		if ([v isKindOfClass:UIScrollView.class]) {
+			scrollableView = v;
+			break;
+		}
+	}
+	return scrollableView;
 }
 
 %new
@@ -1862,7 +2372,9 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	return @[@"UITableViewIndex",
 			 @"UITableViewWrapperView",
 			 @"_MFSearchAtomFieldEditor",
-			 @"_UIToolbarNavigationButton"];
+			 @"_UIToolbarNavigationButton",
+			 @"UICompatibilityInputViewController",
+			 @"UIInputWindowController"];
 }
 
 %new
@@ -1879,6 +2391,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			[view isKindOfClass:[UITextView class]] || 
 			[view isKindOfClass:[UIScrollView class]]) {
 			if (![(NSArray *)[self blockedClasses] containsObject:NSStringFromClass(view.class)]) {
+				if ([view isKindOfClass:[UITextView class]] && !((UITextView *)view).userInteractionEnabled) continue;
 				[filteredViews addObject:view];
 			}
 		}
@@ -1887,12 +2400,56 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 }
 
 %new
+- (NSArray *)postProcessViews:(NSArray *)views {
+	NSMutableArray *processedViews = [NSMutableArray arrayWithArray:views];
+	NSUInteger index = 0;
+	NSUInteger tableViews = 0;
+	NSUInteger scrollViews = 0;
+	NSUInteger collectionViews = 0;
+	for (; index < processedViews.count; index++) {
+		UIView *v = [processedViews objectAtIndex:index];
+		if ([v isKindOfClass:UITableView.class]) {
+			[processedViews removeObjectAtIndex:index];
+			[processedViews insertObject:v atIndex:tableViews];
+			//NSLog(@"Moved tableView to pos %i: %@", tableViews, v.description);
+			tableViews++;
+		}
+	}
+	index = tableViews;
+	for (; index < processedViews.count; index++) {
+		UIView *v = [processedViews objectAtIndex:index];
+		if ([v isKindOfClass:UIScrollView.class] && ![v isKindOfClass:UICollectionView.class]) {
+			[processedViews removeObjectAtIndex:index];
+			[processedViews insertObject:v atIndex:tableViews + scrollViews];
+			//NSLog(@"Moved scroll view to pos %i: %@", tableViews + scrollViews, v.description);
+			scrollViews++;
+		}
+	}
+	index = tableViews + scrollViews;
+	for (; index < processedViews.count; index++) {
+		UIView *v = [processedViews objectAtIndex:index];
+		if ([v isKindOfClass:UICollectionView.class]) {
+			[processedViews removeObjectAtIndex:index];
+			[processedViews insertObject:v atIndex:tableViews + scrollViews + collectionViews];
+			//NSLog(@"Moved collection view to pos %i: %@", tableViews + scrollViews + collectionViews, v.description);
+			collectionViews++;
+		}
+	}
+	if (processedViews.count >= 2 && 
+		[NSStringFromClass(((UIView *)processedViews[0]).class) isEqualToString:@"SPUISearchTableView"] &&
+		[((UIView *)processedViews[1]) isKindOfClass:[UIScrollView class]]) {
+		[processedViews exchangeObjectAtIndex:0 withObjectAtIndex:1];
+	}
+	return processedViews;
+}
+
+%new
 - (NSArray *)controlViews {
 	[self setViews:[NSMutableArray array]];
 	for (UIView *view in (NSArray *)[self rootViews]) {
 		[self addSubviews:view];
 	}
-	return [self filterViews:[self views]];
+	return [self postProcessViews:[self filterViews:[self views]]];
 }
 
 %new
@@ -1900,10 +2457,27 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	[self setViews:(NSArray *)[self controlViews]];
  	//NSLog(@"New views:\n%@", ((NSArray *)[self views]).description);
  	selectedViewIndex = -1;
+ 	[self setSelectedView:nil];
+ 	/*if (enabled && controlEnabled &&
+ 		((NSArray *)[self views]).count && [(UIView *)((NSArray *)[self views])[0] isKindOfClass:UITableView.class] ||
+ 		((NSArray *)[self views]).count && [(UIView *)((NSArray *)[self views])[0] isKindOfClass:UIScrollView.class] ||
+ 		((NSArray *)[self views]).count && [(UIView *)((NSArray *)[self views])[0] isKindOfClass:UICollectionView.class]) {
+ 		[self highlightView:NEXT_VIEW animated:NO force:YES];
+ 	}*/
 }
 
 %end
 
+/*
+%hook UIApplicationDelegate
+
+- (void)applicationDidBecomeActive:(UIApplication *)application {
+	%orig();
+	[[UIApplication sharedApplication] resetViews];
+}
+
+%end
+*/
 
 %hook UIViewController
 
