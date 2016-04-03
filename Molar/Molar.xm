@@ -2159,6 +2159,9 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)highlightView:(UIView *)view {
 	selectedViewIndex = [(NSArray *)[self views] indexOfObject:view];
+	
+	if (flashViewThread) [flashViewThread cancel];
+	if (fView) [fView removeFromSuperview];
 	if (tableViewMode) selectedCell.selected = NO;
 
 	[self setSelectedView:[(NSArray *)[self views] objectAtIndex:selectedViewIndex]];
