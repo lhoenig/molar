@@ -654,6 +654,16 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 }
 
 %new
+- (NSMutableArray *)alertActions {
+	return objc_getAssociatedObject(self, @selector(alertActions));
+}
+
+%new
+- (void)setAlertActions:(id)value {
+	objc_setAssociatedObject(self, @selector(alertActions), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
 - (void)handleCmdEnter:(UIKeyCommand *)keyCommand {
 	if ([self switcherShown]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
@@ -1020,7 +1030,6 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 									 maxWidth:(CGFloat)maxWidth {
 	
 	CGFloat modifierWidth = DISCOVERABILITY_MODIFIER_WIDTH;
-	NSLog(@"Minw: %f Maxw: %f", minWidth, maxWidth);
 
 	CGSize size = [(title ? title: @"") sizeWithAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE]}];
 	CGSize adjustedSize = CGSizeMake(ceilf(size.width), ceilf(size.height));
@@ -1089,14 +1098,18 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 				[commands removeObject:kc];
 			}
 		}
+		for (int i = 0; i < commands.count; i++) {
+			UIKeyCommand *kc = commands[i];
+			if (!kc.discoverabilityTitle && [[self modifierString:kc] isEqualToString:@"⌘ -"]) [commands removeObjectAtIndex:i];
+		}
 
 		if (commands.count) {
 
-			NSLog(@"Commands:");
+			/*NSLog(@"Commands:");
 			for (UIKeyCommand *kc in commands) {
 				NSLog(@"\t%@: %@", [self modifierString:kc], kc.discoverabilityTitle);
 				NSLog(@"\"%@\"", kc.input);
-			}
+			}*/
 
 			BOOL ls = UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation);
 
@@ -1176,13 +1189,15 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 						if (!cmdsLeft) break;
 					}
 					[blurEffectView addSubview:discoverabilityScrollView];
-					pageControl = [[UIPageControl alloc] initWithFrame:CGRectMake(0, 0, blurEffectView.frame.size.height, 15)];
-					pageControl.userInteractionEnabled = NO;
-					pageControl.numberOfPages = pages;
-					pageControl.frame = CGRectMake(0, 0, [pageControl sizeForNumberOfPages:pages].width, [pageControl sizeForNumberOfPages:pages].height);
-					pageControl.center = CGPointMake(CGRectGetMidX(blurEffectView.frame), CGRectGetMidY(blurEffectView.frame) + 109);
-					[pageControl addTarget:self action:@selector(pageChanged) forControlEvents:UIControlEventValueChanged];
-					[blurEffectView addSubview:pageControl];
+					if (pages > 1) {
+						pageControl = [[UIPageControl alloc] initWithFrame:CGRectMake(0, 0, blurEffectView.frame.size.height, 15)];
+						pageControl.userInteractionEnabled = NO;
+						pageControl.numberOfPages = pages;
+						pageControl.frame = CGRectMake(0, 0, [pageControl sizeForNumberOfPages:pages].width, [pageControl sizeForNumberOfPages:pages].height);
+						pageControl.center = CGPointMake(CGRectGetMidX(blurEffectView.frame), CGRectGetMidY(blurEffectView.frame) + 109);
+						[pageControl addTarget:self action:@selector(pageChanged) forControlEvents:UIControlEventValueChanged];
+						[blurEffectView addSubview:pageControl];
+					}
 				} else {
 					NSMutableArray *labels = [NSMutableArray array];
 					CGFloat maxWidth = 0;
@@ -1267,14 +1282,12 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 					NSMutableArray *labels = [NSMutableArray array];
 					CGFloat maxWidth = 0;
 					CGFloat minWidth = ((NSNumber *)[self minimumWidthForKeyCommands:commands maxWidth:maxWP]).floatValue;
-					NSLog(@"Min width: %f", minWidth);
 					for (UIKeyCommand *kc in commands) {
 						UIView *l = [self discoverabilityLabelViewWithTitle:kc.discoverabilityTitle
 																   shortcut:[self modifierString:kc]
 																   minWidth:minWidth 
 																   maxWidth:maxWP];
 						[labels addObject:l];
-						NSLog(@"label width: %f", l.frame.size.width);
 						if (l.frame.size.width > maxWidth) maxWidth = l.frame.size.width;
 					}
 
@@ -1687,7 +1700,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 				}
 				selectedRow = 0;
 				selectedSection++;
-				UICollectionViewCell *cell = [selectedTableView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+				UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
 				cell.selected = YES;
 				selectedItem = cell;
 			}
@@ -1808,7 +1821,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 				}
 				selectedSection--;
 				selectedRow = [selectedCollectionView numberOfItemsInSection:selectedSection] - 1;
-				UICollectionViewCell *cell = [selectedTableView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+				UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
 				cell.selected = YES;
 				selectedItem = cell;
 			}
@@ -1904,8 +1917,23 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 				if (((UIAlertAction *)[ac.actions objectAtIndex:0]).style == UIAlertActionStyleDefault) {
 					[ac dismissViewControllerAnimated:YES completion:nil];
 				}
-			} else if (tableViewMode) {
-				
+			} else if (collectionViewMode) {
+				NSUInteger idx = 0;
+				if ([self alertActions]) {
+					//NSLog(@"%@", ((NSMutableArray *)[self alertActions]).description);
+					for (NSDictionary *dict in (NSMutableArray *)[self alertActions]) {
+						//NSLog(@"%@", NSStringFromClass(selectedItem.class));
+						//NSLog(@"%@", [selectedItem recursiveDescription]);
+						NSString *title = ((UIAlertAction *)[((UIView *)selectedItem.subviews[0]).subviews[0] valueForKey:@"action"]).title;
+						if ([[dict objectForKey:@"title"] isEqualToString:title]) {
+							void (^handler)(UIAlertAction *action) = (void (^)(UIAlertAction *action))[dict objectForKey:@"handler"];
+							handler((UIAlertAction *)ac.actions[idx]);
+							[ac dismissViewControllerAnimated:YES completion:nil];
+							break;
+						}
+						idx++;
+					}
+				}
 			}
 		} else {
 			//NSLog(@"Activating %@", ((UIView *)[self selectedView]).description);
@@ -2410,6 +2438,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	NSUInteger tableViews = 0;
 	NSUInteger scrollViews = 0;
 	NSUInteger collectionViews = 0;
+	NSUInteger tabBarButtons = 0;
 	for (; index < processedViews.count; index++) {
 		UIView *v = [processedViews objectAtIndex:index];
 		if ([v isKindOfClass:UITableView.class]) {
@@ -2437,6 +2466,16 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			[processedViews insertObject:v atIndex:tableViews + scrollViews + collectionViews];
 			//NSLog(@"Moved collection view to pos %i: %@", tableViews + scrollViews + collectionViews, v.description);
 			collectionViews++;
+		}
+	}
+	index = tableViews + scrollViews + collectionViews;
+	for (; index < processedViews.count; index++) {
+		UIView *v = [processedViews objectAtIndex:index];
+		if ([NSStringFromClass(v.class) isEqualToString:@"UITabBarButton"]) {
+			[processedViews removeObjectAtIndex:index];
+			[processedViews insertObject:v atIndex:tableViews + scrollViews + collectionViews + tabBarButtons];
+			//NSLog(@"Moved collection view to pos %i: %@", tableViews + scrollViews + collectionViews, v.description);
+			tabBarButtons++;
 		}
 	}
 	if (processedViews.count >= 2 && 
@@ -2539,6 +2578,32 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
  		[[NSNotificationCenter defaultCenter] postNotificationName:@"ViewDidAppearNotification" object:nil];
  		[self.view endEditing:NO];
  	}
+}
+
+%end
+
+
+%hook UIAlertController
+
++ (id)alertControllerWithTitle:(NSString *)title message:(NSString *)message preferredStyle:(UIAlertControllerStyle)preferredStyle {
+	NSLog(@"New alert controller: %@ %@ %i", title, message, preferredStyle);
+	[[UIApplication sharedApplication] setAlertActions:[NSMutableArray array]];
+	return %orig;
+}
+
+%end
+
+
+%hook UIAlertAction
+
++ (id)actionWithTitle:(NSString *)title style:(UIAlertActionStyle)style handler:(void (^)(UIAlertAction *action))handler {
+	NSLog(@"Adding action with title: %@", title);
+	if (title && handler) {
+		if (![[UIApplication sharedApplication] alertActions]) [[UIApplication sharedApplication] setAlertActions:[NSMutableArray array]];
+		[(NSMutableArray *)[[UIApplication sharedApplication] alertActions] addObject:@{@"title": title, 
+								  													   	@"handler": [handler copy]}];
+	}
+	return %orig;
 }
 
 %end
