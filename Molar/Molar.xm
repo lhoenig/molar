@@ -1008,7 +1008,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
     else if ([kc.input isEqualToString:UIKeyInputRightArrow]) [mStr appendString:@"→ "];
     else if ([kc.input isEqualToString:UIKeyInputUpArrow])    [mStr appendString:@"↑ "];
     else if ([kc.input isEqualToString:UIKeyInputDownArrow])  [mStr appendString:@"↓ "];
-    else if ([kc.input isEqualToString:UIKeyInputEscape])     [mStr appendString:@"␛ "];
+    else if ([kc.input isEqualToString:UIKeyInputEscape])     [mStr appendString:@"ESC"];
     else [mStr appendString:kc.input.uppercaseString];
     return mStr;
 }
@@ -1142,7 +1142,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 													  	(DISCOVERABILITY_GAP * (iconsPerPage - 1)) + 
 													  	(2 * DISCOVERABILITY_INSET),
 													  blurEffectView.frame.size.width);*/
-					blurEffectView.frame = CGRectInset(blurEffectView.frame, DISCOVERABILITY_GAP, 0.0f);
+					blurEffectView.frame = CGRectInset(blurEffectView.frame, 16.0f, 0.0f);
 					discoverabilityScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, 
 																							  blurEffectView.frame.size.height,
 																							  blurEffectView.frame.size.width)];
@@ -1176,13 +1176,13 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 						if (!cmdsLeft) break;
 					}
 					[blurEffectView addSubview:discoverabilityScrollView];
-					pageControl = [[UIPageControl alloc] initWithFrame:CGRectMake(0, 0, blurEffectView.frame.size.width, 15)];
+					pageControl = [[UIPageControl alloc] initWithFrame:CGRectMake(0, 0, blurEffectView.frame.size.height, 15)];
 					pageControl.userInteractionEnabled = NO;
 					pageControl.numberOfPages = pages;
-					pageControl.center = CGPointMake(CGRectGetMidX(blurEffectView.frame), blurEffectView.frame.size.height - 17);
+					pageControl.frame = CGRectMake(0, 0, [pageControl sizeForNumberOfPages:pages].width, [pageControl sizeForNumberOfPages:pages].height);
+					pageControl.center = CGPointMake(CGRectGetMidX(blurEffectView.frame), CGRectGetMidY(blurEffectView.frame) + 109);
 					[pageControl addTarget:self action:@selector(pageChanged) forControlEvents:UIControlEventValueChanged];
 					[blurEffectView addSubview:pageControl];
-
 				} else {
 					NSMutableArray *labels = [NSMutableArray array];
 					CGFloat maxWidth = 0;
@@ -1221,7 +1221,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 																		   minWidth:maxWP
 																		   maxWidth:maxWP];
 					blurEffectView.frame = CGRectMake(0, 0, 
-													  blurEffectView.frame.size.width, //minWidth + (DISCOVERABILITY_INSET * 2),
+													  blurEffectView.frame.size.width,
 													  (testLabel.frame.size.height * iconsPerPage) + 
 													  	(DISCOVERABILITY_GAP * (iconsPerPage - 1)) + 
 													  	(2 * DISCOVERABILITY_INSET));
@@ -1259,6 +1259,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 					pageControl = [[UIPageControl alloc] initWithFrame:CGRectMake(0, 0, blurEffectView.frame.size.width, 15)];
 					pageControl.userInteractionEnabled = NO;
 					pageControl.numberOfPages = pages;
+					pageControl.frame = CGRectMake(0, 0, [pageControl sizeForNumberOfPages:pages].width, [pageControl sizeForNumberOfPages:pages].height);
 					pageControl.center = CGPointMake(CGRectGetMidX(blurEffectView.frame), blurEffectView.frame.size.height - 17);
 					[pageControl addTarget:self action:@selector(pageChanged) forControlEvents:UIControlEventValueChanged];
 					[blurEffectView addSubview:pageControl];
