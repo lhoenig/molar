@@ -43,13 +43,12 @@
 #define KEY_REPEAT_INTERVAL_SLOW 0.1
 #define KEY_REPEAT_STEP 3
 #define DISCOVERABILITY_DELAY 1.0
-//#define DISCOVERABILITY_MAX_WIDTH_LS 600.0
-//#define DISCOVERABILITY_MAX_WIDTH_PT 300.0
 #define DISCOVERABILITY_GAP 22.0
 #define DISCOVERABILITY_MODIFIER_GAP 28.0
 #define DISCOVERABILITY_INSET 30.0
 #define DISCOVERABILITY_MODIFIER_WIDTH 70.0
 #define DISCOVERABILITY_FONT_SIZE 20.0
+#define DISCOVERABILITY_LS_Y_DECREASE 16.0
 
 #define NEXT_VIEW 1
 #define PREV_VIEW 0
@@ -783,17 +782,28 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 }
 
 %new
+- (void)stopDiscoverabilityTimer {
+	if (discoverabilityTimer) { 
+		[discoverabilityTimer invalidate];
+		discoverabilityTimer = nil;
+	}
+}
+
+%new
 - (void)handleCmdShiftH:(UIKeyCommand *)keyCommand {
+	[self stopDiscoverabilityTimer];
 	[[%c(SBUIController) sharedInstance] clickedMenuButton];
 }
 
 %new
 - (void)handleCmdShiftP:(UIKeyCommand *)keyCommand {
+	[self stopDiscoverabilityTimer];
 	[[%c(SBUserAgent) sharedUserAgent] lockAndDimDevice];
 }
 
 %new
 - (void)handleCmd1:(UIKeyCommand *)keyCommand {
+	[self stopDiscoverabilityTimer];
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -803,6 +813,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)handleCmd2:(UIKeyCommand *)keyCommand {
+	[self stopDiscoverabilityTimer];
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -812,6 +823,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)handleCmd3:(UIKeyCommand *)keyCommand {
+	[self stopDiscoverabilityTimer];
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -821,6 +833,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)handleCmd4:(UIKeyCommand *)keyCommand {
+	[self stopDiscoverabilityTimer];
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -830,6 +843,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)handleCmd5:(UIKeyCommand *)keyCommand {
+	[self stopDiscoverabilityTimer];
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -839,6 +853,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)handleCmd6:(UIKeyCommand *)keyCommand {
+	[self stopDiscoverabilityTimer];
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -848,6 +863,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)handleCmd7:(UIKeyCommand *)keyCommand {
+	[self stopDiscoverabilityTimer];
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -857,6 +873,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)handleCmd8:(UIKeyCommand *)keyCommand {
+	[self stopDiscoverabilityTimer];
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -866,6 +883,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)handleCmd9:(UIKeyCommand *)keyCommand {
+	[self stopDiscoverabilityTimer];
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -875,6 +893,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)handleCmd0:(UIKeyCommand *)keyCommand {
+	[self stopDiscoverabilityTimer];
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
 		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -884,6 +903,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)handleCustomShortcut:(UIKeyCommand *)keyCommand {
+	[self stopDiscoverabilityTimer];
 	for (NSDictionary *sc in customShortcuts) {
 		if ([keyCommand.input isEqualToString:[sc objectForKey:@"input"]] && 
 			keyCommand.modifierFlags == ((NSNumber *)[self modifierFlagsForShortcut:sc]).intValue) {
@@ -1045,18 +1065,20 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	CGSize size = [(title ? title: @"") sizeWithAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE]}];
 	CGSize adjustedSize = CGSizeMake(ceilf(size.width), ceilf(size.height));
 	if (adjustedSize.width > maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP) adjustedSize = CGSizeMake(maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP, adjustedSize.height);
-	else if (adjustedSize.width < minWidth) adjustedSize = CGSizeMake(minWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP, adjustedSize.height);
+	else if (adjustedSize.width < minWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP) adjustedSize = CGSizeMake(minWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP, adjustedSize.height);
 
 	UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, adjustedSize.width, adjustedSize.height)];
 	titleLabel.font = [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE];
 	titleLabel.adjustsFontSizeToFitWidth = YES;
 	titleLabel.minimumFontSize = 14.0f;
 	titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+	if (darkMode) titleLabel.textColor = [UIColor whiteColor];
 	titleLabel.text = title;
 	//titleLabel.backgroundColor = [UIColor greenColor];
 
 	UILabel *shortcutLabel = [[UILabel alloc] initWithFrame:CGRectMake(adjustedSize.width + DISCOVERABILITY_MODIFIER_GAP, 0, modifierWidth, adjustedSize.height)];
 	shortcutLabel.font = [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE];
+	if (darkMode) shortcutLabel.textColor = [UIColor whiteColor];
 	shortcutLabel.text = shortcut;
 	shortcutLabel.textAlignment = NSTextAlignmentRight;
 	//shortcutLabel.backgroundColor = [UIColor greenColor];
@@ -1149,8 +1171,8 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 				blurEffectView.transform = CGAffineTransformMakeRotation(DegreesToRadians(180));
 			}
 
-			CGFloat maxWLS = ((NSNumber *)[self maxWidthLS]).floatValue;
-			CGFloat maxWP  = ((NSNumber *)[self maxWidthP]).floatValue;
+			CGFloat maxWLS = ((NSNumber *)[self maxWidthLS]).doubleValue;
+			CGFloat maxWP  = ((NSNumber *)[self maxWidthP]).doubleValue;
 
 			if (ls) {
 				int iconsPerPage = (NSUInteger)[self maxCommandsLS];
@@ -1166,7 +1188,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 													  	(DISCOVERABILITY_GAP * (iconsPerPage - 1)) + 
 													  	(2 * DISCOVERABILITY_INSET),
 													  blurEffectView.frame.size.width);*/
-					blurEffectView.frame = CGRectInset(blurEffectView.frame, 16.0f, 0.0f);
+					blurEffectView.frame = CGRectInset(blurEffectView.frame, DISCOVERABILITY_LS_Y_DECREASE, 0.0f);
 					discoverabilityScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, 
 																							  blurEffectView.frame.size.height,
 																							  blurEffectView.frame.size.width)];
@@ -1205,7 +1227,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 						pageControl.userInteractionEnabled = NO;
 						pageControl.numberOfPages = pages;
 						pageControl.frame = CGRectMake(0, 0, [pageControl sizeForNumberOfPages:pages].width, [pageControl sizeForNumberOfPages:pages].height);
-						pageControl.center = CGPointMake(CGRectGetMidX(blurEffectView.frame), CGRectGetMidY(blurEffectView.frame) + 109);
+						pageControl.center = CGPointMake(CGRectGetMidX(blurEffectView.frame) - DISCOVERABILITY_LS_Y_DECREASE, CGRectGetMidY(blurEffectView.frame) + 109);
 						[pageControl addTarget:self action:@selector(pageChanged) forControlEvents:UIControlEventValueChanged];
 						[blurEffectView addSubview:pageControl];
 					}
@@ -1291,7 +1313,6 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 					[blurEffectView addSubview:pageControl];
 				} else {
 					NSMutableArray *labels = [NSMutableArray array];
-					CGFloat maxWidth = 0;
 					CGFloat minWidth = ((NSNumber *)[self minimumWidthForKeyCommands:commands maxWidth:maxWP]).floatValue;
 					for (UIKeyCommand *kc in commands) {
 						UIView *l = [self discoverabilityLabelViewWithTitle:kc.discoverabilityTitle
@@ -1299,11 +1320,9 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 																   minWidth:minWidth 
 																   maxWidth:maxWP];
 						[labels addObject:l];
-						if (l.frame.size.width > maxWidth) maxWidth = l.frame.size.width;
 					}
-
 					blurEffectView.frame = CGRectMake(0, 0, 
-													  maxWidth + (DISCOVERABILITY_INSET * 2),
+													  minWidth + (DISCOVERABILITY_INSET * 2),
 													  (((UIView *)labels[0]).frame.size.height * labels.count) + 
 													  	(DISCOVERABILITY_GAP * (labels.count - 1)) + 
 													  	(2 * DISCOVERABILITY_INSET));
@@ -1533,6 +1552,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new 
 - (void)ui_leftKey {
 	if (enabled && controlEnabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
+		[self stopDiscoverabilityTimer];
 		if (sliderMode) {
 			UISlider *slider = (UISlider *)[self selectedView];
 			float dec = (slider.maximumValue - slider.minimumValue) / SLIDER_LEVELS;
@@ -1596,6 +1616,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)ui_rightKey {
 	if (enabled && controlEnabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
+		[self stopDiscoverabilityTimer];
 		if (sliderMode) {
 			UISlider *slider = (UISlider *)[self selectedView];
 			float inc = (slider.maximumValue - slider.minimumValue) / SLIDER_LEVELS;
@@ -1659,6 +1680,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)ui_downKey {
 	if (enabled && controlEnabled && [self isActive]) {
+		[self stopDiscoverabilityTimer];
 		if (tableViewMode) {
 			if ([self cmdDown]) {
 				selectedSection = [selectedTableView numberOfSections] - 1;
@@ -1736,9 +1758,18 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			}
 			UIScrollView *scrollView = (UIScrollView *)[self selectedView];
 			CGPoint newOffset;
+			UIViewController *topVC = (UIViewController *)[self topMostViewController];
+			CGRect navBar;
+			if ([topVC isKindOfClass:UINavigationController.class]) navBar = ((UINavigationController *)topVC).navigationBar.frame;
 			if ([self cmdDown]) {
-				newOffset = CGPointMake(scrollView.contentOffset.x,
-										scrollView.contentSize.height - scrollView.frame.size.height);
+				if ([topVC isKindOfClass:UINavigationController.class] && !((UINavigationController *)topVC).navigationBar.hidden) {
+					navBar = ((UINavigationController *)topVC).navigationBar.frame;
+					newOffset = CGPointMake(scrollView.contentOffset.x, 
+											scrollView.contentSize.height - scrollView.frame.size.height + (navBar.origin.y + navBar.size.height));
+				} else {
+					newOffset = CGPointMake(scrollView.contentOffset.x,
+											scrollView.contentSize.height - scrollView.frame.size.height);
+				}
 			} else {
 				if (keyRepeatTimer) {
 					newOffset = CGPointMake(scrollView.contentOffset.x,
@@ -1747,8 +1778,14 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 					newOffset = CGPointMake(scrollView.contentOffset.x,
 										scrollView.contentOffset.y + (scrollView.frame.size.height / 3));
 				}
-				if (newOffset.y > (scrollView.contentSize.height - scrollView.frame.size.height)) 
-					newOffset.y = scrollView.contentSize.height - scrollView.frame.size.height;
+				if ([topVC isKindOfClass:UINavigationController.class] && !((UINavigationController *)topVC).navigationBar.hidden) {
+					if (newOffset.y > (scrollView.contentSize.height - scrollView.frame.size.height) + (navBar.origin.y + navBar.size.height)) {
+						newOffset.y = (scrollView.contentSize.height - scrollView.frame.size.height) + (navBar.origin.y + navBar.size.height);
+					}
+				} else {
+					if (newOffset.y > (scrollView.contentSize.height - scrollView.frame.size.height)) 
+						newOffset.y = scrollView.contentSize.height - scrollView.frame.size.height;
+				}
 			} 
 			[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
 		}
@@ -1780,6 +1817,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)ui_upKey {
 	if (enabled && controlEnabled && [self isActive]) {
+		[self stopDiscoverabilityTimer];
 		if (tableViewMode) {
 			if ([self cmdDown]) {
 				selectedRow = selectedSection = 0;
@@ -1857,8 +1895,16 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			}
 			UIScrollView *scrollView = (UIScrollView *)[self selectedView];
 			CGPoint newOffset;
+			UIViewController *topVC = (UIViewController *)[self topMostViewController];
+			CGRect navBar;
+			if ([topVC isKindOfClass:UINavigationController.class]) navBar = ((UINavigationController *)topVC).navigationBar.frame;
 			if ([self cmdDown]) {
-				newOffset = CGPointMake(scrollView.contentOffset.x, 0);
+				if ([topVC isKindOfClass:UINavigationController.class] && !((UINavigationController *)topVC).navigationBar.hidden) {
+					navBar = ((UINavigationController *)topVC).navigationBar.frame;
+					newOffset = CGPointMake(scrollView.contentOffset.x, -(navBar.origin.y + navBar.size.height));
+				} else {
+					newOffset = CGPointMake(scrollView.contentOffset.x, 0);
+				}
 			} else {
 				if (keyRepeatTimer) {
 					newOffset = CGPointMake(scrollView.contentOffset.x,
@@ -1867,7 +1913,13 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 					newOffset = CGPointMake(scrollView.contentOffset.x,
 											scrollView.contentOffset.y - (scrollView.frame.size.height / 3));
 				}
-				if (newOffset.y < 0) newOffset.y = 0;
+				if ([topVC isKindOfClass:UINavigationController.class] && !((UINavigationController *)topVC).navigationBar.hidden) {
+					if (newOffset.y < (-(navBar.origin.y + navBar.size.height))) {
+						newOffset.y = (-(navBar.origin.y + navBar.size.height));
+					}
+				} else {
+					if (newOffset.y < 0) newOffset.y = 0;
+				}
 			} 
 			[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
 		}
@@ -1962,11 +2014,15 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 				[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
 			}
 			if (tableViewMode) {
-					if (selectedTableView.delegate && [selectedTableView.delegate respondsToSelector:@selector(tableView:didSelectRowAtIndexPath:)])
+					if (selectedTableView.delegate && [selectedTableView.delegate respondsToSelector:@selector(tableView:didSelectRowAtIndexPath:)]) {
+						selectedCell.selected = NO;
 						[selectedTableView.delegate tableView:selectedTableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+					}
 			} else if (collectionViewMode) {
-					if (selectedCollectionView.delegate && [selectedCollectionView.delegate respondsToSelector:@selector(collectionView:didSelectItemAtIndexPath:)])
+					if (selectedCollectionView.delegate && [selectedCollectionView.delegate respondsToSelector:@selector(collectionView:didSelectItemAtIndexPath:)]) {
+						selectedItem.selected = NO;
 						[selectedCollectionView.delegate collectionView:selectedCollectionView didSelectItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+					}
 					// what if delegate doesnt respond
 					//else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
 			} else {
@@ -2140,7 +2196,8 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"left"]) keySelector = @selector(ui_leftKey);
 	else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"right"]) keySelector = @selector(ui_rightKey);
 	keyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:(tableViewMode || 
-															  collectionViewMode || 
+															  collectionViewMode ||
+															  sliderMode ||
 															  [(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"tab"]) 
 															  ? KEY_REPEAT_INTERVAL_SLOW : KEY_REPEAT_INTERVAL 
 													  target:self 
@@ -2256,7 +2313,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			scrollViewMode = YES;
 		} else scrollViewMode = NO;
 	}
-	NSLog(@"View %i: %@", selectedViewIndex, ((UIView *)[self selectedView]).description);
+	//NSLog(@"View %i: %@", selectedViewIndex, ((UIView *)[self selectedView]).description);
 	fView = nil;
 }
 
@@ -2329,12 +2386,12 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 					} else scrollViewMode = NO;
 				}
 
-				NSLog(@"View %i: %@", selectedViewIndex, ((UIView *)[self selectedView]).description);
+				//NSLog(@"View %i: %@", selectedViewIndex, ((UIView *)[self selectedView]).description);
 
 				if (animated) {
 					UIView *flashView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 
-																				 ((UIView *)[self selectedView]).frame.size.width,
-																				 ((UIView *)[self selectedView]).frame.size.height)];
+																				 animView.frame.size.width,
+																				 animView.frame.size.height)];
 					flashView.backgroundColor = [UIColor whiteColor];
 					flashView.layer.cornerRadius = (animView.layer.cornerRadius != 0.0f) ? 
 													animView.layer.cornerRadius : FLASH_VIEW_CORNER_RADIUS;
@@ -2442,7 +2499,8 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			[view isKindOfClass:[UITextView class]] || 
 			[view isKindOfClass:[UIScrollView class]]) {
 			if (![(NSArray *)[self blockedClasses] containsObject:NSStringFromClass(view.class)]) {
-				if ([view isKindOfClass:[UITextView class]] && !((UITextView *)view).userInteractionEnabled) continue;
+				if ([view isKindOfClass:[UIButton class]] && !((UIButton *)view).userInteractionEnabled) continue;
+				else if ([view isKindOfClass:[UITextView class]] && !((UITextView *)view).userInteractionEnabled) continue;
 				[filteredViews addObject:view];
 			}
 		}
@@ -2519,6 +2577,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	[self setViews:(NSArray *)[self controlViews]];
  	//NSLog(@"New views:\n%@", ((NSArray *)[self views]).description);
  	selectedViewIndex = -1;
+ 	tableViewMode = collectionViewMode = scrollViewMode = sliderMode = NO;
  	[self setSelectedView:nil];
  	/*if (enabled && controlEnabled &&
  		((NSArray *)[self views]).count && [(UIView *)((NSArray *)[self views])[0] isKindOfClass:UITableView.class] ||
@@ -2526,6 +2585,11 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
  		((NSArray *)[self views]).count && [(UIView *)((NSArray *)[self views])[0] isKindOfClass:UICollectionView.class]) {
  		[self highlightView:NEXT_VIEW animated:NO force:YES];
  	}*/
+}
+
+%new
+- (UIViewController *)topMostViewController {
+    return [self topViewControllerWithRootViewController:[UIApplication sharedApplication].keyWindow.rootViewController];
 }
 
 %end
@@ -2605,7 +2669,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %hook UIAlertController
 
 + (id)alertControllerWithTitle:(NSString *)title message:(NSString *)message preferredStyle:(UIAlertControllerStyle)preferredStyle {
-	NSLog(@"New alert controller: %@ %@ %i", title, message, preferredStyle);
+	//NSLog(@"New alert controller: %@ %@ %i", title, message, preferredStyle);
 	[[UIApplication sharedApplication] setAlertActions:[NSMutableArray array]];
 	return %orig;
 }
