@@ -65,7 +65,8 @@ BOOL darkMode,
 	 sliderMode, 
 	 tableViewMode, 
 	 scrollViewMode, 
-	 collectionViewMode, 
+	 collectionViewMode,
+	 actionSheetMode, 
 	 tabIsDown, 
 	 waitingForKeyRepeat, 
 	 transformFinished,
@@ -661,6 +662,16 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)setAlertActions:(id)value {
 	objc_setAssociatedObject(self, @selector(alertActions), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (id)actionSheet {
+	return objc_getAssociatedObject(self, @selector(actionSheet));
+}
+
+%new
+- (void)setActionSheet:(id)value {
+	objc_setAssociatedObject(self, @selector(actionSheet), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 %new
@@ -1933,6 +1944,14 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 						}
 						idx++;
 					}
+				} else if (actionSheetMode) {
+					if ([self actionSheet] && ((UIActionSheet *)[self actionSheet]).delegate) {
+						[((UIActionSheet *)[self actionSheet]).delegate actionSheet:(UIActionSheet *)[self actionSheet] 
+																						  clickedButtonAtIndex:selectedRow];
+					}
+					[self setActionSheet:nil];
+					actionSheetMode = NO;
+					[(UIActionSheet *)[self actionSheet] dismissWithClickedButtonIndex:selectedRow animated:YES];
 				}
 			}
 		} else {
@@ -2597,13 +2616,24 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %hook UIAlertAction
 
 + (id)actionWithTitle:(NSString *)title style:(UIAlertActionStyle)style handler:(void (^)(UIAlertAction *action))handler {
-	NSLog(@"Adding action with title: %@", title);
 	if (title && handler) {
 		if (![[UIApplication sharedApplication] alertActions]) [[UIApplication sharedApplication] setAlertActions:[NSMutableArray array]];
 		[(NSMutableArray *)[[UIApplication sharedApplication] alertActions] addObject:@{@"title": title, 
 								  													   	@"handler": [handler copy]}];
 	}
 	return %orig;
+}
+
+%end
+
+
+%hook UIActionSheet
+
++ (id)alloc {
+	UIActionSheet *sheet = %orig;
+	[[UIApplication sharedApplication] setActionSheet:sheet];
+	actionSheetMode = YES;
+	return sheet;
 }
 
 %end
