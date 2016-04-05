@@ -21,7 +21,6 @@
 #define CMD_KEY     0xe3
 #define CMD_KEY_2   0xe7
 #define TAB_KEY     0x2b
-//#define T_KEY       0x17
 #define ESC_KEY     0x29
 #define RIGHT_KEY   0x4f
 #define LEFT_KEY    0x50
@@ -30,6 +29,7 @@
 #define ENTER_KEY   0x28
 #define SHIFT_KEY   0xe5
 #define SHIFT_KEY_2 0xe1
+//#define T_KEY       0x17
 //#define E_KEY       0x8
 #define R_KEY       0x15
 
@@ -1982,7 +1982,6 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 					if (collectionViewMode) {
 						NSUInteger idx = 0;
 						if ([self alertActions]) {
-							NSDebug(@"ALERT ACTIONS: %@", ((NSMutableArray *)[self alertActions]).description);
 							for (NSDictionary *dict in (NSMutableArray *)[self alertActions]) {
 								NSString *title = ((UIAlertAction *)[((UIView *)selectedItem.subviews[0]).subviews[0] valueForKey:@"action"]).title;
 								if ([[dict objectForKey:@"title"] isEqualToString:title]) {
@@ -1996,24 +1995,24 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 								}
 								idx++;
 							}
-						} else NSDebug(@"NO ALERT ACTIONS");
+						}
 					} else if (((UIAlertAction *)[ac.actions objectAtIndex:0]).style == UIAlertActionStyleDefault) {
 						NSDebug(@"ENTER ALERT: Dismissing Default");
 						[ac dismissViewControllerAnimated:YES completion:nil];
 					}
 				} else if (collectionViewMode) {
 					NSUInteger idx = 0;
-					if ([self alertActions]) {
+					if ([self alertActions] && !actionSheetMode) {
 						NSDebug(@"%@", ((NSMutableArray *)[self alertActions]).description);
 						for (NSDictionary *dict in (NSMutableArray *)[self alertActions]) {
 							NSString *title = ((UIAlertAction *)[((UIView *)selectedItem.subviews[0]).subviews[0] valueForKey:@"action"]).title;
 							if ([[dict objectForKey:@"title"] isEqualToString:title]) {
-								NSDebug(@"ENTER ALERT: Dismissing Handler");
+								NSDebug(@"ENTER ACTION SHEET: Dismissing Handler");
 								void (^handler)(UIAlertAction *action) = (void (^)(UIAlertAction *action))[dict objectForKey:@"handler"];
-								handler((UIAlertAction *)ac.actions[idx]);
 								[ac dismissViewControllerAnimated:YES completion:^{
 									[self resetViews];
-								}];								
+								}];
+								handler((UIAlertAction *)ac.actions[idx]);
 								break;
 							}
 							idx++;
@@ -2023,9 +2022,9 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 							[((UIActionSheet *)[self actionSheet]).delegate actionSheet:(UIActionSheet *)[self actionSheet] 
 																							  clickedButtonAtIndex:selectedRow];
 						}
+						[(UIActionSheet *)[self actionSheet] dismissWithClickedButtonIndex:selectedRow animated:YES];
 						[self setActionSheet:nil];
 						actionSheetMode = NO;
-						[(UIActionSheet *)[self actionSheet] dismissWithClickedButtonIndex:selectedRow animated:YES];
 						[self resetViews];
 					}
 				}
@@ -2616,14 +2615,13 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)resetViews {
 	[self setViews:(NSArray *)[self controlViews]];
- 	//NSLog(@"New views:\n%@", ((NSArray *)[self views]).description);
+ 	NSDebug(@"RESET VIEWS");
+ 	//NSLog(@"NEW VIEWS:\n%@", ((NSArray *)[self views]).description);
  	selectedViewIndex = -1;
  	tableViewMode = collectionViewMode = scrollViewMode = sliderMode = NO;
  	[self setSelectedView:nil];
  	/*if (enabled && controlEnabled &&
- 		((NSArray *)[self views]).count && [(UIView *)((NSArray *)[self views])[0] isKindOfClass:UITableView.class] ||
- 		((NSArray *)[self views]).count && [(UIView *)((NSArray *)[self views])[0] isKindOfClass:UIScrollView.class] ||
- 		((NSArray *)[self views]).count && [(UIView *)((NSArray *)[self views])[0] isKindOfClass:UICollectionView.class]) {
+ 		((NSArray *)[self views]).count && [(UIView *)((NSArray *)[self views])[0] isKindOfClass:UIScrollView.class])
  		[self highlightView:NEXT_VIEW animated:NO force:YES];
  	}*/
 }
