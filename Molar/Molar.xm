@@ -53,6 +53,14 @@
 #define NEXT_VIEW 1
 #define PREV_VIEW 0
 
+#define DEBUG 0
+
+#if DEBUG == 0
+#define NSDebug(...)
+#elif DEBUG == 1
+#define NSDebug(...) NSLog(__VA_ARGS__)
+#endif
+
 void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {}
 
 BOOL darkMode, 
@@ -1138,12 +1146,6 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 		if (commands.count) {
 
-			/*NSLog(@"Commands:");
-			for (UIKeyCommand *kc in commands) {
-				NSLog(@"\t%@: %@", [self modifierString:kc], kc.discoverabilityTitle);
-				NSLog(@"\"%@\"", kc.input);
-			}*/
-
 			BOOL ls = UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation);
 
 	    	CGRect bounds = [[UIScreen mainScreen] bounds];
@@ -1955,7 +1957,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			for (UIView *v in (NSArray *)[self views]) {
 				if ([v isKindOfClass:[UIRefreshControl class]]) {
 					if (v.superview == [self selectedView]) {
-						//NSLog(@"Reloading!");
+						NSDebug(@"RELOADING TABLE");
 						[(UIRefreshControl *)v sendActionsForControlEvents:UIControlEventValueChanged];
 						return;
 					}
@@ -1971,111 +1973,133 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	selectedViewIndex = -1;
 	NSLog(@"New subviews:\n%@", ((NSArray *)[self views]).description);*/
 	if (enabled && controlEnabled && [self isActive]) {
-
-		if ([UIApplication sharedApplication].keyWindow.rootViewController &&
-			[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController &&
-			[[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController isKindOfClass:[UIAlertController class]]) {
-			UIAlertController *ac = (UIAlertController *)[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController;
-			if (ac.preferredStyle == UIAlertControllerStyleAlert) {
-				if (((UIAlertAction *)[ac.actions objectAtIndex:0]).style == UIAlertActionStyleDefault) {
-					[ac dismissViewControllerAnimated:YES completion:nil];
-				}
-			} else if (collectionViewMode) {
-				NSUInteger idx = 0;
-				if ([self alertActions]) {
-					//NSLog(@"%@", ((NSMutableArray *)[self alertActions]).description);
-					for (NSDictionary *dict in (NSMutableArray *)[self alertActions]) {
-						//NSLog(@"%@", NSStringFromClass(selectedItem.class));
-						//NSLog(@"%@", [selectedItem recursiveDescription]);
-						NSString *title = ((UIAlertAction *)[((UIView *)selectedItem.subviews[0]).subviews[0] valueForKey:@"action"]).title;
-						if ([[dict objectForKey:@"title"] isEqualToString:title]) {
-							void (^handler)(UIAlertAction *action) = (void (^)(UIAlertAction *action))[dict objectForKey:@"handler"];
-							handler((UIAlertAction *)ac.actions[idx]);
-							[ac dismissViewControllerAnimated:YES completion:nil];
-							break;
+		@synchronized(self) {
+			if ([UIApplication sharedApplication].keyWindow.rootViewController &&
+				[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController &&
+				[[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController isKindOfClass:[UIAlertController class]]) {
+				UIAlertController *ac = (UIAlertController *)[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController;
+				if (ac.preferredStyle == UIAlertControllerStyleAlert) {
+					if (collectionViewMode) {
+						NSUInteger idx = 0;
+						if ([self alertActions]) {
+							NSDebug(@"ALERT ACTIONS: %@", ((NSMutableArray *)[self alertActions]).description);
+							for (NSDictionary *dict in (NSMutableArray *)[self alertActions]) {
+								NSString *title = ((UIAlertAction *)[((UIView *)selectedItem.subviews[0]).subviews[0] valueForKey:@"action"]).title;
+								if ([[dict objectForKey:@"title"] isEqualToString:title]) {
+									NSDebug(@"ENTER ALERT: Dismissing Handler");
+									void (^handler)(UIAlertAction *action) = (void (^)(UIAlertAction *action))[dict objectForKey:@"handler"];
+									handler((UIAlertAction *)ac.actions[idx]);
+									[ac dismissViewControllerAnimated:YES completion:^{
+										[self resetViews];
+									}];
+									break;
+								}
+								idx++;
+							}
+						} else NSDebug(@"NO ALERT ACTIONS");
+					} else if (((UIAlertAction *)[ac.actions objectAtIndex:0]).style == UIAlertActionStyleDefault) {
+						NSDebug(@"ENTER ALERT: Dismissing Default");
+						[ac dismissViewControllerAnimated:YES completion:nil];
+					}
+				} else if (collectionViewMode) {
+					NSUInteger idx = 0;
+					if ([self alertActions]) {
+						NSDebug(@"%@", ((NSMutableArray *)[self alertActions]).description);
+						for (NSDictionary *dict in (NSMutableArray *)[self alertActions]) {
+							NSString *title = ((UIAlertAction *)[((UIView *)selectedItem.subviews[0]).subviews[0] valueForKey:@"action"]).title;
+							if ([[dict objectForKey:@"title"] isEqualToString:title]) {
+								NSDebug(@"ENTER ALERT: Dismissing Handler");
+								void (^handler)(UIAlertAction *action) = (void (^)(UIAlertAction *action))[dict objectForKey:@"handler"];
+								handler((UIAlertAction *)ac.actions[idx]);
+								[ac dismissViewControllerAnimated:YES completion:^{
+									[self resetViews];
+								}];								
+								break;
+							}
+							idx++;
 						}
-						idx++;
+					} else if (actionSheetMode) {
+						if ([self actionSheet] && ((UIActionSheet *)[self actionSheet]).delegate) {
+							[((UIActionSheet *)[self actionSheet]).delegate actionSheet:(UIActionSheet *)[self actionSheet] 
+																							  clickedButtonAtIndex:selectedRow];
+						}
+						[self setActionSheet:nil];
+						actionSheetMode = NO;
+						[(UIActionSheet *)[self actionSheet] dismissWithClickedButtonIndex:selectedRow animated:YES];
+						[self resetViews];
 					}
-				} else if (actionSheetMode) {
-					if ([self actionSheet] && ((UIActionSheet *)[self actionSheet]).delegate) {
-						[((UIActionSheet *)[self actionSheet]).delegate actionSheet:(UIActionSheet *)[self actionSheet] 
-																						  clickedButtonAtIndex:selectedRow];
-					}
-					[self setActionSheet:nil];
-					actionSheetMode = NO;
-					[(UIActionSheet *)[self actionSheet] dismissWithClickedButtonIndex:selectedRow animated:YES];
 				}
-			}
-		} else {
-			//NSLog(@"Activating %@", ((UIView *)[self selectedView]).description);
-			//NSLog(@"Subviews: %@", ((UIView *)[self selectedView]).subviews.description);
-			if ([[self selectedView] isKindOfClass:[UITextField class]] || 
-				[[self selectedView] isKindOfClass:[UITextView class]]) {
-				[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
-			}
-			if (tableViewMode) {
-					if (selectedTableView.delegate && [selectedTableView.delegate respondsToSelector:@selector(tableView:didSelectRowAtIndexPath:)]) {
-						selectedCell.selected = NO;
-						[selectedTableView.delegate tableView:selectedTableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-					}
-			} else if (collectionViewMode) {
-					if (selectedCollectionView.delegate && [selectedCollectionView.delegate respondsToSelector:@selector(collectionView:didSelectItemAtIndexPath:)]) {
-						selectedItem.selected = NO;
-						[selectedCollectionView.delegate collectionView:selectedCollectionView didSelectItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
-					}
-					// what if delegate doesnt respond
-					//else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
 			} else {
-				// text controls
+				//NSLog(@"Activating %@", ((UIView *)[self selectedView]).description);
+				//NSLog(@"Subviews: %@", ((UIView *)[self selectedView]).subviews.description);
 				if ([[self selectedView] isKindOfClass:[UITextField class]] || 
 					[[self selectedView] isKindOfClass:[UITextView class]]) {
-					if ([(UIView *)[self selectedView] isFirstResponder]) {
-						[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
-					} else [[self selectedView] becomeFirstResponder];
+					[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
+				}
+				if (tableViewMode) {
+						if (selectedTableView.delegate && [selectedTableView.delegate respondsToSelector:@selector(tableView:didSelectRowAtIndexPath:)]) {
+							selectedCell.selected = NO;
+							[selectedTableView.delegate tableView:selectedTableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+						}
+				} else if (collectionViewMode) {
+						if (selectedCollectionView.delegate && [selectedCollectionView.delegate respondsToSelector:@selector(collectionView:didSelectItemAtIndexPath:)]) {
+							selectedItem.selected = NO;
+							[selectedCollectionView.delegate collectionView:selectedCollectionView didSelectItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+						}
+						// what if delegate doesnt respond
+						//else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
 				} else {
-					[[self selectedView] becomeFirstResponder];
-					if ([[self selectedView] isKindOfClass:[UIControl class]]) {
-						// switch
-						if ([[self selectedView] isKindOfClass:[UISwitch class]]) {
-							[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
-							((UISwitch *)[self selectedView]).on = !((UISwitch *)[self selectedView]).on;
-						}
-						// slider
-						else if ([[self selectedView] isKindOfClass:[UISlider class]]) {
-							sliderMode = YES;
-							// maybe set to middle value
-						}
-						// stepper
-						else if ([NSStringFromClass(((UIView *)[self selectedView]).class) isEqualToString:@"_UIStepperButton"]) {
-							BOOL plus = ((NSArray *)[self views]).count > selectedViewIndex ? !([NSStringFromClass(((UIView *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex + 1]).class) isEqualToString:@"_UIStepperButton"]) : YES;
-							if (plus) {
-								UIStepper *stepper = (UIStepper *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex - 2];
-								if (stepper.wraps && (stepper.value + stepper.stepValue) > stepper.maximumValue) stepper.value = stepper.minimumValue;
-								else stepper.value += stepper.stepValue;
-								[stepper sendActionsForControlEvents:UIControlEventValueChanged];
-							} else {
-								UIStepper *stepper = (UIStepper *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex - 1];
-								if (stepper.wraps && (stepper.value - stepper.stepValue) < stepper.minimumValue) stepper.value = stepper.maximumValue;
-								else stepper.value -= stepper.stepValue;
-								[stepper sendActionsForControlEvents:UIControlEventValueChanged];	
+					// text controls
+					if ([[self selectedView] isKindOfClass:[UITextField class]] || 
+						[[self selectedView] isKindOfClass:[UITextView class]]) {
+						if ([(UIView *)[self selectedView] isFirstResponder]) {
+							[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
+						} else [[self selectedView] becomeFirstResponder];
+					} else {
+						[[self selectedView] becomeFirstResponder];
+						if ([[self selectedView] isKindOfClass:[UIControl class]]) {
+							// switch
+							if ([[self selectedView] isKindOfClass:[UISwitch class]]) {
+								[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
+								((UISwitch *)[self selectedView]).on = !((UISwitch *)[self selectedView]).on;
 							}
-						}
-						// segmented control
-						else if ([[self selectedView] isKindOfClass:[UISegmentedControl class]]) {
-							if (!((UISegmentedControl *)[self selectedView]).momentary) {
-								((UISegmentedControl *)[self selectedView]).selectedSegmentIndex = (((UISegmentedControl *)[self selectedView]).selectedSegmentIndex + 1) % 
-																									((UISegmentedControl *)[self selectedView]).numberOfSegments;
+							// slider
+							else if ([[self selectedView] isKindOfClass:[UISlider class]]) {
+								sliderMode = YES;
+								// maybe set to middle value
+							}
+							// stepper
+							else if ([NSStringFromClass(((UIView *)[self selectedView]).class) isEqualToString:@"_UIStepperButton"]) {
+								BOOL plus = ((NSArray *)[self views]).count > selectedViewIndex ? !([NSStringFromClass(((UIView *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex + 1]).class) isEqualToString:@"_UIStepperButton"]) : YES;
+								if (plus) {
+									UIStepper *stepper = (UIStepper *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex - 2];
+									if (stepper.wraps && (stepper.value + stepper.stepValue) > stepper.maximumValue) stepper.value = stepper.minimumValue;
+									else stepper.value += stepper.stepValue;
+									[stepper sendActionsForControlEvents:UIControlEventValueChanged];
+								} else {
+									UIStepper *stepper = (UIStepper *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex - 1];
+									if (stepper.wraps && (stepper.value - stepper.stepValue) < stepper.minimumValue) stepper.value = stepper.maximumValue;
+									else stepper.value -= stepper.stepValue;
+									[stepper sendActionsForControlEvents:UIControlEventValueChanged];	
+								}
+							}
+							// segmented control
+							else if ([[self selectedView] isKindOfClass:[UISegmentedControl class]]) {
+								if (!((UISegmentedControl *)[self selectedView]).momentary) {
+									((UISegmentedControl *)[self selectedView]).selectedSegmentIndex = (((UISegmentedControl *)[self selectedView]).selectedSegmentIndex + 1) % 
+																										((UISegmentedControl *)[self selectedView]).numberOfSegments;
+									[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
+								}
+							}
+							// page control
+							else if ([[self selectedView] isKindOfClass:[UIPageControl class]]) {
+								UIPageControl *pageControl = (UIPageControl *)[self selectedView];
+								pageControl.currentPage = (pageControl.currentPage + 1) % pageControl.numberOfPages;
 								[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
 							}
+							// other
+							else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
 						}
-						// page control
-						else if ([[self selectedView] isKindOfClass:[UIPageControl class]]) {
-							UIPageControl *pageControl = (UIPageControl *)[self selectedView];
-							pageControl.currentPage = (pageControl.currentPage + 1) % pageControl.numberOfPages;
-							[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
-						}
-						// other
-						else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
 					}
 				}
 			}
@@ -2120,15 +2144,20 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController &&
 			[[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController isKindOfClass:[UIAlertController class]]) {
 			UIAlertController *ac = (UIAlertController *)[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController;
-			//NSLog(@"ESCAPE ALERT");
 			if (ac.preferredStyle == UIAlertControllerStyleAlert) {
 				if (((UIAlertAction *)[ac.actions objectAtIndex:0]).style == UIAlertActionStyleDefault) {
-					[ac dismissViewControllerAnimated:YES completion:nil];
+					NSDebug(@"ESCAPE ALERT: Dismissing Default");
+					[ac dismissViewControllerAnimated:YES completion:^{
+						[self resetViews];
+					}];
 				}
 			} else {
 				for (UIAlertAction *action in ac.actions) {
 					if (action.style == UIAlertActionStyleCancel) {
-						[ac dismissViewControllerAnimated:YES completion:nil];
+						NSDebug(@"ESCAPE ALERT: Dismissing Cancel");
+						[ac dismissViewControllerAnimated:YES completion:^{
+							[self resetViews];
+						}];
 					}
 				}
 			}
@@ -2136,18 +2165,17 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
 			UIView *firstResponder = [keyWindow performSelector:@selector(firstResponder)];
 			if ([firstResponder isKindOfClass:[UITextField class]] || [firstResponder isKindOfClass:[UITextView class]]) {
-				//NSLog(@"RESIGNING TEXT FIELD");
+				NSDebug(@"RESIGNING TEXT FIELD");
 				[firstResponder resignFirstResponder];
 			} else {
 				UIViewController *vc = [self topViewControllerWithRootViewController:[UIApplication sharedApplication].keyWindow.rootViewController];
 				if ([vc isKindOfClass:[UINavigationController class]]) {
-					//NSLog(@"TOP NAVIGATION CONTROLLER!");
 					if ([self cmdDown] && ![self switcherShown]) {
 						[vc popToRootViewControllerAnimated:YES];
 					} else {
 						[vc popViewControllerAnimated:YES];
 					}
-				} //else NSLog(@"TOP VC: %@", NSStringFromClass([vc class]));
+				}
 			}
 		}
 	}
@@ -2262,180 +2290,184 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)highlightView:(UIView *)view {
-	selectedViewIndex = [(NSArray *)[self views] indexOfObject:view];
-	
-	if (flashViewThread) [flashViewThread cancel];
-	if (fView) [fView removeFromSuperview];
-	if (tableViewMode) selectedCell.selected = NO;
+	@synchronized(self) {
+		selectedViewIndex = [(NSArray *)[self views] indexOfObject:view];
+		
+		if (flashViewThread) [flashViewThread cancel];
+		if (fView) [fView removeFromSuperview];
+		if (tableViewMode) selectedCell.selected = NO;
 
-	[self setSelectedView:[(NSArray *)[self views] objectAtIndex:selectedViewIndex]];
-	//[(UIView *)[self selectedView] becomeFirstResponder];
+		[self setSelectedView:[(NSArray *)[self views] objectAtIndex:selectedViewIndex]];
+		//[(UIView *)[self selectedView] becomeFirstResponder];
 
-	if ([[self selectedView] isKindOfClass:[UISlider class]]) sliderMode = YES;
-	else sliderMode = NO;
+		if ([[self selectedView] isKindOfClass:[UISlider class]]) sliderMode = YES;
+		else sliderMode = NO;
 
-	UIView *animView = (UIView *)[self selectedView];
-	if ([[self selectedView] isKindOfClass:[UITableView class]]) {
-		UITableView *tView = (UITableView *)[self selectedView];
-		if ([tView numberOfSections] && [tView numberOfRowsInSection:0]) {
-			selectedRow = selectedSection = 0;
-			tableViewMode = YES;
-			collectionViewMode = NO;
-			scrollViewMode = NO;
-			selectedCell = [tView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-			selectedCell.selected = YES;
-			selectedTableView = tView;
-			animView = selectedCell;
-			@try {
-				[selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionTop animated:YES];
-			} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
-		}
-	} else if ([[self selectedView] isKindOfClass:[UICollectionView class]]) {
-		UICollectionView *cView = (UICollectionView *)[self selectedView];
-		if ([cView numberOfSections] && [cView numberOfItemsInSection:0]) {
-			selectedRow = selectedSection = 0;
-			collectionViewMode = YES;
+		UIView *animView = (UIView *)[self selectedView];
+		if ([[self selectedView] isKindOfClass:[UITableView class]]) {
+			UITableView *tView = (UITableView *)[self selectedView];
+			if ([tView numberOfSections] && [tView numberOfRowsInSection:0]) {
+				selectedRow = selectedSection = 0;
+				tableViewMode = YES;
+				collectionViewMode = NO;
+				scrollViewMode = NO;
+				selectedCell = [tView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+				selectedCell.selected = YES;
+				selectedTableView = tView;
+				animView = selectedCell;
+				@try {
+					[selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionTop animated:YES];
+				} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
+			}
+		} else if ([[self selectedView] isKindOfClass:[UICollectionView class]]) {
+			UICollectionView *cView = (UICollectionView *)[self selectedView];
+			if ([cView numberOfSections] && [cView numberOfItemsInSection:0]) {
+				selectedRow = selectedSection = 0;
+				collectionViewMode = YES;
+				tableViewMode = NO;
+				scrollViewMode = NO;
+				selectedItem = [cView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+				selectedItem.selected = YES;
+				selectedCollectionView = cView;
+				animView = selectedItem;
+				@try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection] 
+						   						   	  atScrollPosition:UICollectionViewScrollPositionTop 
+												   		   	  animated:YES];
+				} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
+			}
+		} else {
 			tableViewMode = NO;
-			scrollViewMode = NO;
-			selectedItem = [cView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
-			selectedItem.selected = YES;
-			selectedCollectionView = cView;
-			animView = selectedItem;
-			@try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection] 
-					   						   	  atScrollPosition:UICollectionViewScrollPositionTop 
-											   		   	  animated:YES];
-			} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
+			collectionViewMode = NO;
+			if ([[self selectedView] isKindOfClass:[UIScrollView class]]) {
+				scrollViewMode = YES;
+			} else scrollViewMode = NO;
 		}
-	} else {
-		tableViewMode = NO;
-		collectionViewMode = NO;
-		if ([[self selectedView] isKindOfClass:[UIScrollView class]]) {
-			scrollViewMode = YES;
-		} else scrollViewMode = NO;
+		NSDebug(@"VIEW %i: %@", selectedViewIndex, ((UIView *)[self selectedView]).description);
+		fView = nil;
 	}
-	//NSLog(@"View %i: %@", selectedViewIndex, ((UIView *)[self selectedView]).description);
-	fView = nil;
 }
 
 %new
 - (void)highlightView:(int)next animated:(BOOL)animated force:(BOOL)force {
 	if (enabled && controlEnabled && ([self isActive] || force)) {
-		if ([self views] && ((NSArray *)[self views]).count) {
-			if (next) {
-				do {
-					selectedViewIndex = (selectedViewIndex + 1) % ((NSArray *)[self views]).count;
-				} while ([(NSArray *)[self skipClasses] containsObject:NSStringFromClass(((UIView *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex]).class)]);
-			}
-			else {
-				do {
-					selectedViewIndex--;
-					if (selectedViewIndex < 0) selectedViewIndex = ((NSArray *)[self views]).count - 1;
-				} while ([(NSArray *)[self skipClasses] containsObject:NSStringFromClass(((UIView *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex]).class)]);
-			}
-			if (((NSArray *)[self views]).count) {
-				
-				//[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
-				if (flashViewThread) [flashViewThread cancel];
-				if (fView) [fView removeFromSuperview];
-
-				if (tableViewMode) selectedCell.selected = NO;
-
-				[self setSelectedView:[(NSArray *)[self views] objectAtIndex:selectedViewIndex]];
-				//[(UIView *)[self selectedView] becomeFirstResponder];
-
-				if ([[self selectedView] isKindOfClass:[UISlider class]]) sliderMode = YES;
-				else sliderMode = NO;
-
-				UIView *animView = (UIView *)[self selectedView];
-				if ([[self selectedView] isKindOfClass:[UITableView class]]) {
-					UITableView *tView = (UITableView *)[self selectedView];
-					if ([tView numberOfSections] && [tView numberOfRowsInSection:0]) {
-						selectedRow = selectedSection = 0;
-						tableViewMode = YES;
-						collectionViewMode = NO;
-						scrollViewMode = NO;
-						selectedCell = [tView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-						selectedCell.selected = YES;
-						selectedTableView = tView;
-						animView = selectedCell;
-						@try {
-							[selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionTop animated:YES];
-						} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
-					}
-				} else if ([[self selectedView] isKindOfClass:[UICollectionView class]]) {
-					UICollectionView *cView = (UICollectionView *)[self selectedView];
-					if ([cView numberOfSections] && [cView numberOfItemsInSection:0]) {
-						selectedRow = selectedSection = 0;
-						collectionViewMode = YES;
-						tableViewMode = NO;
-						scrollViewMode = NO;
-						selectedItem = [cView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
-						selectedItem.selected = YES;
-						selectedCollectionView = cView;
-						animView = selectedItem;
-						@try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection] 
-								   						   	  atScrollPosition:UICollectionViewScrollPositionTop 
-														   		   	  animated:YES];
-						} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
-					}
-				} else {
-					tableViewMode = NO;
-					collectionViewMode = NO;
-					if ([[self selectedView] isKindOfClass:[UIScrollView class]]) {
-						scrollViewMode = YES;
-					} else scrollViewMode = NO;
+		@synchronized(self) {
+			if ([self views] && ((NSArray *)[self views]).count) {
+				if (next) {
+					do {
+						selectedViewIndex = (selectedViewIndex + 1) % ((NSArray *)[self views]).count;
+					} while ([(NSArray *)[self skipClasses] containsObject:NSStringFromClass(((UIView *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex]).class)]);
 				}
+				else {
+					do {
+						selectedViewIndex--;
+						if (selectedViewIndex < 0) selectedViewIndex = ((NSArray *)[self views]).count - 1;
+					} while ([(NSArray *)[self skipClasses] containsObject:NSStringFromClass(((UIView *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex]).class)]);
+				}
+				if (((NSArray *)[self views]).count) {
+					
+					//[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
+					if (flashViewThread) [flashViewThread cancel];
+					if (fView) [fView removeFromSuperview];
 
-				//NSLog(@"View %i: %@", selectedViewIndex, ((UIView *)[self selectedView]).description);
+					if (tableViewMode) selectedCell.selected = NO;
 
-				if (animated) {
-					UIView *flashView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 
-																				 animView.frame.size.width,
-																				 animView.frame.size.height)];
-					flashView.backgroundColor = [UIColor whiteColor];
-					flashView.layer.cornerRadius = (animView.layer.cornerRadius != 0.0f) ? 
-													animView.layer.cornerRadius : FLASH_VIEW_CORNER_RADIUS;
-					flashView.clipsToBounds = YES;
-					flashView.userInteractionEnabled = NO;
-					[animView addSubview:flashView];
-					[animView bringSubviewToFront:flashView];
+					[self setSelectedView:[(NSArray *)[self views] objectAtIndex:selectedViewIndex]];
+					//[(UIView *)[self selectedView] becomeFirstResponder];
 
-					CGAffineTransform backupTransform = animView.transform;
-					flashView.transform = backupTransform;
+					if ([[self selectedView] isKindOfClass:[UISlider class]]) sliderMode = YES;
+					else sliderMode = NO;
 
-					flashView.layer.borderWidth = 2.0f;
-					flashView.layer.borderColor = [UIColor colorWithRed:0.0 green:122.0/255.0 blue:1.0 alpha:1.0].CGColor;
-
-					/*if ([[self selectedView] isKindOfClass:[UIButton class]]) {
-						UIImage *maskImage = (UIImage *)[self image:[self whiteImageOfImage:[(UIButton *)[self selectedView] imageForState:UIControlStateNormal]] scaledToSize:((UIView *)[self selectedView]).frame.size];
-						UIImageView *iview = [[UIImageView alloc] initWithImage:maskImage];
-						iview.layer.allowsEdgeAntialiasing = YES;
-						[flashView addSubview:iview];
-					}*/
-
-					fView = flashView;
-
-					[UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
-						animView.transform = CGAffineTransformConcat(animView.transform, 
-																	 CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
-						flashView.transform = CGAffineTransformConcat(flashView.transform, 
-																	  CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
-					} completion:nil];
-					[UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
-						animView.transform = backupTransform;
-						flashView.transform = backupTransform;
-						flashView.backgroundColor = [UIColor clearColor];
-					} completion:^(BOOL completed){
-						if (tableViewMode || collectionViewMode) [fView removeFromSuperview];
-						else {
-							HighlightThread *ht = (HighlightThread *)[%c(HighlightThread) new];
-							flashViewThread = (NSThread *)ht;
-							[ht setView:flashView];
-							[ht start];
+					UIView *animView = (UIView *)[self selectedView];
+					if ([[self selectedView] isKindOfClass:[UITableView class]]) {
+						UITableView *tView = (UITableView *)[self selectedView];
+						if ([tView numberOfSections] && [tView numberOfRowsInSection:0]) {
+							selectedRow = selectedSection = 0;
+							tableViewMode = YES;
+							collectionViewMode = NO;
+							scrollViewMode = NO;
+							selectedCell = [tView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+							selectedCell.selected = YES;
+							selectedTableView = tView;
+							animView = selectedCell;
+							@try {
+								[selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionTop animated:YES];
+							} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
 						}
-					}];
-				} else {
-					fView = nil;
+					} else if ([[self selectedView] isKindOfClass:[UICollectionView class]]) {
+						UICollectionView *cView = (UICollectionView *)[self selectedView];
+						if ([cView numberOfSections] && [cView numberOfItemsInSection:0]) {
+							selectedRow = selectedSection = 0;
+							collectionViewMode = YES;
+							tableViewMode = NO;
+							scrollViewMode = NO;
+							selectedItem = [cView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+							selectedItem.selected = YES;
+							selectedCollectionView = cView;
+							animView = selectedItem;
+							@try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection] 
+									   						   	  atScrollPosition:UICollectionViewScrollPositionTop 
+															   		   	  animated:YES];
+							} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
+						}
+					} else {
+						tableViewMode = NO;
+						collectionViewMode = NO;
+						if ([[self selectedView] isKindOfClass:[UIScrollView class]]) {
+							scrollViewMode = YES;
+						} else scrollViewMode = NO;
+					}
+
+					NSDebug(@"VIEW %i: %@", selectedViewIndex, ((UIView *)[self selectedView]).description);
+
+					if (animated) {
+						UIView *flashView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 
+																					 animView.frame.size.width,
+																					 animView.frame.size.height)];
+						flashView.backgroundColor = [UIColor whiteColor];
+						flashView.layer.cornerRadius = (animView.layer.cornerRadius != 0.0f) ? 
+														animView.layer.cornerRadius : FLASH_VIEW_CORNER_RADIUS;
+						flashView.clipsToBounds = YES;
+						flashView.userInteractionEnabled = NO;
+						[animView addSubview:flashView];
+						[animView bringSubviewToFront:flashView];
+
+						CGAffineTransform backupTransform = animView.transform;
+						flashView.transform = backupTransform;
+
+						flashView.layer.borderWidth = 2.0f;
+						flashView.layer.borderColor = [UIColor colorWithRed:0.0 green:122.0/255.0 blue:1.0 alpha:1.0].CGColor;
+
+						/*if ([[self selectedView] isKindOfClass:[UIButton class]]) {
+							UIImage *maskImage = (UIImage *)[self image:[self whiteImageOfImage:[(UIButton *)[self selectedView] imageForState:UIControlStateNormal]] scaledToSize:((UIView *)[self selectedView]).frame.size];
+							UIImageView *iview = [[UIImageView alloc] initWithImage:maskImage];
+							iview.layer.allowsEdgeAntialiasing = YES;
+							[flashView addSubview:iview];
+						}*/
+
+						fView = flashView;
+
+						[UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
+							animView.transform = CGAffineTransformConcat(animView.transform, 
+																		 CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
+							flashView.transform = CGAffineTransformConcat(flashView.transform, 
+																		  CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
+						} completion:nil];
+						[UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
+							animView.transform = backupTransform;
+							flashView.transform = backupTransform;
+							flashView.backgroundColor = [UIColor clearColor];
+						} completion:^(BOOL completed){
+							if (tableViewMode || collectionViewMode) [fView removeFromSuperview];
+							else {
+								HighlightThread *ht = (HighlightThread *)[%c(HighlightThread) new];
+								flashViewThread = (NSThread *)ht;
+								[ht setView:flashView];
+								[ht start];
+							}
+						}];
+					} else {
+						fView = nil;
+					}
 				}
 			}
 		}
@@ -2466,6 +2498,11 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (NSArray *)rootViews {
+	if ([UIApplication sharedApplication].keyWindow.rootViewController &&
+		[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController &&
+		[[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController isKindOfClass:[UIAlertController class]]) {
+		return @[[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController.view];
+	}
 	NSArray *rootViews = ((UIWindow *)[UIWindow keyWindow]).subviews;
 	if (rootViews && 
 		rootViews.count && 
@@ -2482,7 +2519,9 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 			 @"_MFSearchAtomFieldEditor",
 			 @"_UIToolbarNavigationButton",
 			 @"UICompatibilityInputViewController",
-			 @"UIInputWindowController"];
+			 @"UIInputWindowController",
+			 @"SKUIProxyScrollView",
+			 @"_UIAlertControllerShadowedScrollView"];
 }
 
 %new
@@ -2503,6 +2542,8 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 				else if ([view isKindOfClass:[UITextView class]] && !((UITextView *)view).userInteractionEnabled) continue;
 				[filteredViews addObject:view];
 			}
+		} else if (view.userInteractionEnabled == YES) {
+			NSDebug(@"REJECTED INTERACTION VIEW: %@", view.description);
 		}
 	}
 	return filteredViews;
@@ -2521,7 +2562,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 		if ([v isKindOfClass:UITableView.class]) {
 			[processedViews removeObjectAtIndex:index];
 			[processedViews insertObject:v atIndex:tableViews];
-			//NSLog(@"Moved tableView to pos %i: %@", tableViews, v.description);
+			NSDebug(@"Moved tableView to pos %i: %@", tableViews, v.description);
 			tableViews++;
 		}
 	}
@@ -2531,7 +2572,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 		if ([v isKindOfClass:UIScrollView.class] && ![v isKindOfClass:UICollectionView.class]) {
 			[processedViews removeObjectAtIndex:index];
 			[processedViews insertObject:v atIndex:tableViews + scrollViews];
-			//NSLog(@"Moved scroll view to pos %i: %@", tableViews + scrollViews, v.description);
+			NSDebug(@"Moved scroll view to pos %i: %@", tableViews + scrollViews, v.description);
 			scrollViews++;
 		}
 	}
@@ -2541,7 +2582,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 		if ([v isKindOfClass:UICollectionView.class]) {
 			[processedViews removeObjectAtIndex:index];
 			[processedViews insertObject:v atIndex:tableViews + scrollViews + collectionViews];
-			//NSLog(@"Moved collection view to pos %i: %@", tableViews + scrollViews + collectionViews, v.description);
+			NSDebug(@"Moved collection view to pos %i: %@", tableViews + scrollViews + collectionViews, v.description);
 			collectionViews++;
 		}
 	}
@@ -2551,7 +2592,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 		if ([NSStringFromClass(v.class) isEqualToString:@"UITabBarButton"]) {
 			[processedViews removeObjectAtIndex:index];
 			[processedViews insertObject:v atIndex:tableViews + scrollViews + collectionViews + tabBarButtons];
-			//NSLog(@"Moved collection view to pos %i: %@", tableViews + scrollViews + collectionViews, v.description);
+			NSDebug(@"Moved tab bar button to pos %i: %@", tableViews + scrollViews + collectionViews, v.description);
 			tabBarButtons++;
 		}
 	}
@@ -2655,7 +2696,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 - (void)viewDidAppear:(BOOL)animated {
 	%orig();
- 	//NSLog(@"DID APPEAR: %@", NSStringFromClass([self class]));
+ 	NSDebug(@"DID APPEAR: %@", NSStringFromClass([self class]));
  	if (![NSStringFromClass([self class]) isEqualToString:@"UICompatibilityInputViewController"] &&
  		![NSStringFromClass([self class]) isEqualToString:@"UIInputWindowController"]) {
  		[[NSNotificationCenter defaultCenter] postNotificationName:@"ViewDidAppearNotification" object:nil];
@@ -2669,9 +2710,19 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %hook UIAlertController
 
 + (id)alertControllerWithTitle:(NSString *)title message:(NSString *)message preferredStyle:(UIAlertControllerStyle)preferredStyle {
-	//NSLog(@"New alert controller: %@ %@ %i", title, message, preferredStyle);
+	NSDebug(@"NEW ALERT CONTROLLER: %@ %@ %i", title, message, preferredStyle);
 	[[UIApplication sharedApplication] setAlertActions:[NSMutableArray array]];
 	return %orig;
+}
+
+- (void)addAction:(UIAlertAction *)action {
+	%orig();
+	if (action.title && [action valueForKey:@"handler"]) {
+		if (![[UIApplication sharedApplication] alertActions]) [[UIApplication sharedApplication] setAlertActions:[NSMutableArray array]];
+		[(NSMutableArray *)[[UIApplication sharedApplication] alertActions] addObject:@{@"title": action.title, 
+									  													@"handler": [[action valueForKey:@"handler"] copy]}];
+		NSDebug(@"ADD ACTION: %@", action.title);
+	}
 }
 
 %end
@@ -2684,6 +2735,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 		if (![[UIApplication sharedApplication] alertActions]) [[UIApplication sharedApplication] setAlertActions:[NSMutableArray array]];
 		[(NSMutableArray *)[[UIApplication sharedApplication] alertActions] addObject:@{@"title": title, 
 								  													   	@"handler": [handler copy]}];
+		NSDebug(@"NEW ACTION: \"%@\"", title);
 	}
 	return %orig;
 }
