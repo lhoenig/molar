@@ -68,6 +68,7 @@ BOOL darkMode,
 	 enabled,
 	 switcherEnabled, 
 	 controlEnabled, 
+	 keySheetEnabled,
 	 switcherOpenedInLandscape, 
 	 sliderMode, 
 	 tableViewMode, 
@@ -144,6 +145,7 @@ static void loadPrefs() {
 	CFPropertyListRef cf_enabled = 			  CFPreferencesCopyAppValue(CFSTR("enabled"), CFSTR("de.hoenig.molar"));
 	CFPropertyListRef cf_appSwitcherEnabled = CFPreferencesCopyAppValue(CFSTR("appSwitcherEnabled"), CFSTR("de.hoenig.molar"));
 	CFPropertyListRef cf_appControlEnabled =  CFPreferencesCopyAppValue(CFSTR("appControlEnabled"), CFSTR("de.hoenig.molar"));
+	CFPropertyListRef cf_keySheetEnabled =    CFPreferencesCopyAppValue(CFSTR("keySheetEnabled"), CFSTR("de.hoenig.molar"));
 	CFPropertyListRef cf_darkMode = 		  CFPreferencesCopyAppValue(CFSTR("darkMode"), CFSTR("de.hoenig.molar"));
 	CFPropertyListRef cf_hideLabels =         CFPreferencesCopyAppValue(CFSTR("hideLabels"), CFSTR("de.hoenig.molar"));
 	
@@ -161,6 +163,7 @@ static void loadPrefs() {
 	enabled = !cf_enabled ? YES : (cf_enabled == kCFBooleanTrue);
 	switcherEnabled = !cf_appSwitcherEnabled ? YES : (cf_appSwitcherEnabled == kCFBooleanTrue);
 	controlEnabled = !cf_appControlEnabled ? YES : (cf_appControlEnabled == kCFBooleanTrue);
+	keySheetEnabled = !cf_keySheetEnabled ? YES : (cf_keySheetEnabled == kCFBooleanTrue);
 	darkMode = (cf_darkMode == kCFBooleanTrue);
 	hideLabels = (cf_hideLabels == kCFBooleanTrue);
 
@@ -971,11 +974,11 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 %new
 - (void)cmdKeyDown {
-	discoverabilityTimer = [NSTimer scheduledTimerWithTimeInterval:DISCOVERABILITY_DELAY 
-															target:self 
-														  selector:@selector(showDiscoverability) 
-													      userInfo:nil 
-														   repeats:NO];
+	if (enabled && keySheetEnabled) discoverabilityTimer = [NSTimer scheduledTimerWithTimeInterval:DISCOVERABILITY_DELAY 
+											 									 			target:self 
+														  					   			  selector:@selector(showDiscoverability) 
+													                           			  userInfo:nil 
+														                        		   repeats:NO];
 	[self setCmdDown:[NSNull null]];
 	[self handleKeyStatus:0];
 }
