@@ -241,6 +241,10 @@
 			<true/>
 			<key>label</key>
 			<string>Activator</string>
+			<key>footerText</key>
+			<string>Changes sometimes require a respring to take effect.
+
+© 2016 Lukas Hönig</string>
 		</dict>
 		<dict>
 			<key>defaults</key>

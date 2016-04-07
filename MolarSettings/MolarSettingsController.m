@@ -80,6 +80,7 @@
     [super viewDidLoad];
     self.tableView.dataSource = self;
     dataSource.tableView = self.tableView;
+    self.title = @"Select App";
 }
 
 - (void)viewDidUnload
@@ -124,6 +125,8 @@
     
     CFStringRef notificationName = (CFStringRef)kNotificationName;
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), notificationName, NULL, NULL, YES);
+    
+    [self.navigationController popViewControllerAnimated:YES];
 }
 
 @end
