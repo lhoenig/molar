@@ -1,34 +1,7 @@
 Package: de.hoenig.molar
 Name: Molar
-Version: 1.0
-Description: Next level bluetooth keyboard experience
- Take total control of your device with custom shortcuts and navigate apps using your keyboard!
- .
- With features designed to work and feel like their OS X counterparts, Molar makes using your iPhone more like a desktop computer.
- .
- Molar is for iOS 7-9. Not tested on iPad.
- .
- Features:
- App Switcher: Press Cmd-Tab to bring up an app switcher that lets you cycle through open apps and quit them. The switcher handles exactly like on OS X and is available everywhere.
-    - Cmd-Tab to open the switcher, press repeatedly to cycle through apps, release to switch to the selected app. You can also use the Left and Right keys to select an app.
-    - Cmd-Q to close the selected app
-    - Cmd-Escape to close the app switcher without switching
-    - Cmd-Shift-H to simulate the home button
-    - Cmd-Shift-P to simulate the power button
-    - Options to change the appearance to Dark Mode and hide app labels
- Shortcuts: Create custom keyboard shortcuts and assign them to Activator actions. Endless possibilities to suit your needs exactly.
- App Control: Use the Tab and Arrow Keys to select an UI element, then press Enter to activate. Many interface elements are supported.
-    - Supported interface elements include: buttons, tables, switches, sliders, collections, segmented controls, text fields, text areas, scroll areas, alerts, steppers, page controls, date pickers
-    - Press Escape to go back to the previous view. Cmd-Escape to go to the first view. You can also dismiss text fields and alerts using Escape.
-    - Scroll views by selecting them and pressing the Arrow keys.
-    - Add the Cmd key to an Arrow key to directly go to the top / bottom / left border / right border. Works in tables and regular scroll areas.
-    - Modify sliders by selecting them and pressing Left or Right.
-    - Be advised that this feature is not 100% stable yet.
- App Launcher: predefined shortcuts to launch apps of your choice (Cmd-1 to Cmd-0)
- .
- Upcoming Features:
-    - Key Sheet: Hold Cmd to show a list of keyboard shortcuts that the current app provides (like Discoverability on the iPad)
-    - Further improvements to App Control
+Version: 1.1
+Description: 
 Section: Tweaks
 Depends: firmware (>= 7.0), mobilesubstrate, libactivator, applist
 Conflicts: 
