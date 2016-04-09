@@ -1214,10 +1214,6 @@ static void setupHID() {
 			if (!kc.discoverabilityTitle && [[self modifierString:kc] isEqualToString:@"⌘ -"]) [commands removeObjectAtIndex:i];
 		}
 
-		for (UIKeyCommand *kc in commands) {
-			NSLog(@"%@, Input: \"%@\"", [self modifierString:kc], kc.input);
-		}
-
 		if (commands.count) {
 
 			BOOL ls = UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation);
@@ -1273,6 +1269,7 @@ static void setupHID() {
 					discoverabilityScrollView.bounces = NO;
 					discoverabilityScrollView.showsHorizontalScrollIndicator = NO;
 					discoverabilityScrollView.userInteractionEnabled = NO;
+					NSUInteger idx = 0;
 					for (int i = 0; i < pages; i++) {
 						UIView *page = [[UIView alloc] initWithFrame:CGRectMake(i * discoverabilityScrollView.frame.size.width, 
 																				0, 
@@ -1281,7 +1278,7 @@ static void setupHID() {
 						for (int col = 0; col < 2; col++) {
 							for (int l = 0; l < iconsPerPage; l++) {
 								if (!cmdsLeft) break;
-								UIKeyCommand *kc = commands[l + (col ? iconsPerPage : 0) + (i ? (iconsPerPage * i - 1) : 0)];
+								UIKeyCommand *kc = commands[idx];
 								UIView *label = [self discoverabilityLabelViewWithTitle:kc.discoverabilityTitle
 																			   shortcut:[self modifierString:kc]
 																			   minWidth:maxWLS/2 - 25
@@ -1291,6 +1288,7 @@ static void setupHID() {
 														 label.frame.size.width, 
 													 	 label.frame.size.height);
 								[page addSubview:label];
+								idx++;
 								cmdsLeft--;
 							}
 						}
@@ -1357,6 +1355,7 @@ static void setupHID() {
 					discoverabilityScrollView.bounces = NO;
 					discoverabilityScrollView.showsHorizontalScrollIndicator = NO;
 					discoverabilityScrollView.userInteractionEnabled = NO;
+					NSUInteger idx = 0;
 					for (int i = 0; i < pages; i++) {
 						UIView *page = [[UIView alloc] initWithFrame:CGRectMake(i * discoverabilityScrollView.frame.size.width, 
 																				0, 
@@ -1364,7 +1363,7 @@ static void setupHID() {
 																				discoverabilityScrollView.frame.size.height)];
 						for (int l = 0; l < iconsPerPage; l++) {
 							if (!cmdsLeft) break;
-							UIKeyCommand *kc = commands[l + (i ? (iconsPerPage * i - 1) : 0)];
+							UIKeyCommand *kc = commands[idx];
 							UIView *label = [self discoverabilityLabelViewWithTitle:kc.discoverabilityTitle
 																		   shortcut:[self modifierString:kc]
 																		   minWidth:maxWP
@@ -1374,6 +1373,7 @@ static void setupHID() {
 													 label.frame.size.width, 
 												 	 label.frame.size.height);
 							[page addSubview:label];
+							idx++;
 							cmdsLeft--;
 						}
 						[discoverabilityScrollView addSubview:page];
