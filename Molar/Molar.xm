@@ -113,7 +113,7 @@ NSThread *flashViewThread;
 %hookf(void, handle_event, void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {
     //NSLog(@"handle_event : %d", IOHIDEventGetType(event));
     if (IOHIDEventGetType(event) == kIOHIDEventTypeKeyboard) {
-        //int usagePage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsagePage);
+        int usagePage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsagePage);
         int usage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage);
         int down = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown);
        	if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
@@ -136,7 +136,8 @@ NSThread *flashViewThread;
         else if (usage == ENTER_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EnterKeyDown" object:nil];
         else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyDown" object:nil];
         else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyUp" object:nil];
-        NSDebug(@"key: %i  down: %i", usage, down);
+        else if (usagePage == 7 && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"GenericKeyDown" object:nil];
+        NSDebug(@"page: %i  key: %i  down: %i", usagePage, usage, down);
     }
 }
 
@@ -295,7 +296,8 @@ static void setupHID() {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyUp) name:@"CmdKeyUp" object:nil];
    	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(escKeyDown) name:@"EscKeyDown" object:nil];
    	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rightKeyDown) name:@"RightKeyDown" object:nil];
-   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(leftKeyDown) name:@"LeftKeyDown" object:nil];			    
+   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(leftKeyDown) name:@"LeftKeyDown" object:nil];		
+   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(genericKeyDown) name:@"GenericKeyDown" object:nil];
    	
    	// shortcuts
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadShortcuts) name:@"ReloadShortcutsNotification" object:nil];
@@ -397,8 +399,9 @@ static void setupHID() {
 
 	if (![self switcherShown] && !discoverabilityShown && enabled && switcherEnabled && ![self iPad]) {
 
-		NSArray *apps = (NSArray *)[(SBApplicationController *)[%c(SBApplicationController) sharedInstance] runningApplications];
-		
+		//NSArray *apps = (NSArray *)[(SBApplicationController *)[%c(SBApplicationController) sharedInstance] runningApplications];
+		NSArray *apps = (NSArray *)[(SpringBoard *)[%c(SpringBoard) sharedApplication] _accessibilityRunningApplications];
+
 		if (apps.count) {
 			
 			NSMutableArray *appsFiltered = [NSMutableArray new];			
@@ -1078,6 +1081,14 @@ static void setupHID() {
 	}
 	else if (tabDown) {
 		[self handleCmdTab:nil];
+	}
+}
+
+%new
+- (void)genericKeyDown {
+	if (discoverabilityTimer) {
+		[discoverabilityTimer invalidate];
+		discoverabilityTimer = nil;
 	}
 }
 
