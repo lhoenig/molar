@@ -18,6 +18,9 @@
 #define CORNER_RADIUS_OVERLAY 10
 #define OVERLAY_SIZE 125
 
+#define SWITCHER_IOS9_MODE 1
+#define SWITCHER_IOS8_MODE 0
+
 #define CMD_KEY     0xe3
 #define CMD_KEY_2   0xe7
 #define TAB_KEY     0x2b
@@ -67,6 +70,7 @@ BOOL darkMode,
 	 hideLabels, 
 	 enabled,
 	 switcherEnabled, 
+	 switcherMode,
 	 controlEnabled, 
 	 keySheetEnabled,
 	 switcherOpenedInLandscape, 
@@ -208,6 +212,8 @@ static void setupHID() {
 										CFNotificationSuspensionBehaviorCoalesce);
 	}
 	dlclose(libHandle);
+
+	switcherMode = 0;
 
 	setupHID();
 }
@@ -408,20 +414,40 @@ static void setupHID() {
 			NSMutableArray *switcherItemsFiltered = [NSMutableArray new];
 			NSMutableArray *icons = [NSMutableArray new];
 			%c(SBAppSwitcherModel);
-			NSArray *switcherItems = [(SBAppSwitcherModel *)[%c(SBAppSwitcherModel) sharedInstance] mainSwitcherDisplayItems];
-			%c(SBApplication);
-			%c(SBApplicationIcon);
-			for (int i = 0; i < switcherItems.count; ++i) {
-				for (SBApplication *app in apps) {
-					if ([(NSString *)[app bundleIdentifier] isEqualToString:(NSString *)[switcherItems[i] displayIdentifier]]) {
-						[appsFiltered addObject:app];
-						[switcherItemsFiltered addObject:switcherItems[i]];
-						SBApplicationIcon *icon = [[%c(SBApplicationIcon) alloc] initWithApplication:app];
-						[icons addObject:[self image:(UIImage *)[icon getIconImage:8] scaledToSize:CGSizeMake(ICON_SIZE, ICON_SIZE)]];
-						break;
+			if ([(SBAppSwitcherModel *)[%c(SBAppSwitcherModel) sharedInstance] respondsToSelector:@selector(mainSwitcherDisplayItems)]) {
+				switcherMode = SWITCHER_IOS9_MODE;
+				NSArray *switcherItems = [(SBAppSwitcherModel *)[%c(SBAppSwitcherModel) sharedInstance] mainSwitcherDisplayItems];
+				%c(SBApplication);
+				%c(SBApplicationIcon);
+				for (int i = 0; i < switcherItems.count; ++i) {
+					for (SBApplication *app in apps) {
+						if ([(NSString *)[app bundleIdentifier] isEqualToString:(NSString *)[switcherItems[i] displayIdentifier]]) {
+							[appsFiltered addObject:app];
+							[switcherItemsFiltered addObject:switcherItems[i]];
+							SBApplicationIcon *icon = [[%c(SBApplicationIcon) alloc] initWithApplication:app];
+							[icons addObject:[self image:(UIImage *)[icon getIconImage:8] scaledToSize:CGSizeMake(ICON_SIZE, ICON_SIZE)]];
+							break;
+						}
 					}
-				}
+				}	
+			} else {
+				switcherMode = SWITCHER_IOS8_MODE;
+				NSArray *switcherItems = [(SBAppSwitcherModel *)[%c(SBAppSwitcherModel) sharedInstance] snapshotOfFlattenedArrayOfAppIdentifiersWhichIsOnlyTemporary];
+				%c(SBApplication);
+				%c(SBApplicationIcon);
+				for (int i = 0; i < switcherItems.count; ++i) {
+					for (SBApplication *app in apps) {
+						if ([(NSString *)[app bundleIdentifier] isEqualToString:(NSString *)switcherItems[i]]) {
+							[appsFiltered addObject:app];
+							[switcherItemsFiltered addObject:switcherItems[i]];
+							SBApplicationIcon *icon = [[%c(SBApplicationIcon) alloc] initWithApplication:app];
+							[icons addObject:[self image:(UIImage *)[icon generateIconImage:10] scaledToSize:CGSizeMake(ICON_SIZE, ICON_SIZE)]];
+							break;
+						}
+					}
+				}	
 			}
+			
 			[self setApps:appsFiltered];
 			[self setSwitcherItems:switcherItemsFiltered];
 
@@ -746,11 +772,20 @@ static void setupHID() {
 }
 
 %new
+- (void)activateBundleID:(NSString *)bundleID {
+	SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
+	SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
+	if (switcherMode == SWITCHER_IOS9_MODE) {
+		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:bundleID]];	
+	} else {
+		[uicontroller activateApplicationAnimated:[appcontroller applicationWithBundleIdentifier:bundleID]];
+	}
+}
+
+%new
 - (void)handleCmdEnter:(UIKeyCommand *)keyCommand {
 	if ([self switcherShown]) {
-		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
-		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
-		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:[((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) bundleIdentifier]]];
+		[self activateBundleID:[((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) bundleIdentifier]];
 		[self dismissAppSwitcher];
 	}
 }
@@ -770,11 +805,18 @@ static void setupHID() {
 		//BOOL ls = UIInterfaceOrientationIsLandscape((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation]);
 		BOOL ls = switcherOpenedInLandscape;
 
-		%c(SBDisplayItem);
-		SBDisplayItem *di = ((NSArray *)[self switcherItems])[((NSNumber *)[self selectedIcon]).intValue];
-		[[%c(SBAppSwitcherModel) sharedInstance] remove:di];
-		[[%c(SBApplicationController) sharedInstance] applicationService:nil suspendApplicationWithBundleIdentifier:[((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) bundleIdentifier]];
-	
+		if (switcherMode == SWITCHER_IOS9_MODE) {
+			%c(SBDisplayItem);
+			SBDisplayItem *di = ((NSArray *)[self switcherItems])[((NSNumber *)[self selectedIcon]).intValue];
+			[[%c(SBAppSwitcherModel) sharedInstance] remove:di];
+			[[%c(SBApplicationController) sharedInstance] applicationService:nil suspendApplicationWithBundleIdentifier:[((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) bundleIdentifier]];
+		} else {
+			%c(FBApplicationProcess);
+			%c(FBProcessManager);
+		    FBApplicationProcess *process = [(FBProcessManager *)[%c(FBProcessManager) sharedInstance] createApplicationProcessForBundleID:[((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) bundleIdentifier]];
+    		[process killForReason:1 andReport:NO withDescription:@"MolarAppSwitcher"];
+		}
+		
 		if (!((NSNumber *)[self selectedIcon]).intValue && ((NSArray *)[self switcherItems]).count == 1) {
 			[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
 				((UIView *)[self switcherView]).transform = CGAffineTransformConcat(((UIView *)[self switcherView]).transform, CGAffineTransformMakeScale(0.001, 0.001));
@@ -806,7 +848,13 @@ static void setupHID() {
 		[mImageViews removeObjectAtIndex:((NSNumber *)[self selectedIcon]).intValue];
 		[self setImageViews:mImageViews];
 
+		BOOL reopen = NO;
+		if (switcherMode == SWITCHER_IOS8_MODE && !((NSNumber *)[self selectedIcon]).intValue) reopen = YES;
 		[self setSelectedIcon:[NSNumber numberWithInt:((NSNumber *)[self selectedIcon]).intValue - ((((NSNumber *)[self selectedIcon]).intValue >= mLabels.count) ? 1 : 0)]];
+		
+		if (reopen) {
+			[self activateBundleID:[((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) bundleIdentifier]];
+		}
 
 		CGFloat h = SWITCHER_HEIGHT;	
 		CGFloat w = ([((NSArray *)[self apps]) count] < (ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsP])) ? ([((NSArray *)[self apps]) count] * ICON_SIZE + ([((NSArray *)[self apps]) count] + 1) * APP_GAP)
@@ -885,99 +933,79 @@ static void setupHID() {
 - (void)handleCmd1:(UIKeyCommand *)keyCommand {
 	[self stopDiscoverabilityTimer];
 	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
-		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
-		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
-		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp1]];
+		[self activateBundleID:launcherApp1];
 	}
 }
 
 %new
 - (void)handleCmd2:(UIKeyCommand *)keyCommand {
 	[self stopDiscoverabilityTimer];
-	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
-		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
-		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
-		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp2]];
+	if (launcherApp2 && ![launcherApp2 isEqualToString:@""]) {
+		[self activateBundleID:launcherApp2];
 	}
 }
 
 %new
 - (void)handleCmd3:(UIKeyCommand *)keyCommand {
 	[self stopDiscoverabilityTimer];
-	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
-		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
-		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
-		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp3]];
+	if (launcherApp3 && ![launcherApp3 isEqualToString:@""]) {
+		[self activateBundleID:launcherApp3];
 	}
 }
 
 %new
 - (void)handleCmd4:(UIKeyCommand *)keyCommand {
 	[self stopDiscoverabilityTimer];
-	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
-		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
-		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
-		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp4]];
+	if (launcherApp4 && ![launcherApp4 isEqualToString:@""]) {
+		[self activateBundleID:launcherApp4];
 	}
 }
 
 %new
 - (void)handleCmd5:(UIKeyCommand *)keyCommand {
 	[self stopDiscoverabilityTimer];
-	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
-		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
-		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
-		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp5]];
+	if (launcherApp5 && ![launcherApp5 isEqualToString:@""]) {
+		[self activateBundleID:launcherApp5];
 	}
 }
 
 %new
 - (void)handleCmd6:(UIKeyCommand *)keyCommand {
 	[self stopDiscoverabilityTimer];
-	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
-		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
-		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
-		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp6]];
+	if (launcherApp6 && ![launcherApp6 isEqualToString:@""]) {
+		[self activateBundleID:launcherApp6];
 	}
 }
 
 %new
 - (void)handleCmd7:(UIKeyCommand *)keyCommand {
 	[self stopDiscoverabilityTimer];
-	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
-		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
-		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
-		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp7]];
+	if (launcherApp7 && ![launcherApp7 isEqualToString:@""]) {
+		[self activateBundleID:launcherApp7];
 	}
 }
 
 %new
 - (void)handleCmd8:(UIKeyCommand *)keyCommand {
 	[self stopDiscoverabilityTimer];
-	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
-		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
-		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
-		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp8]];
+	if (launcherApp8 && ![launcherApp8 isEqualToString:@""]) {
+		[self activateBundleID:launcherApp8];
 	}
 }
 
 %new
 - (void)handleCmd9:(UIKeyCommand *)keyCommand {
 	[self stopDiscoverabilityTimer];
-	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
-		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
-		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
-		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp9]];
+	if (launcherApp9 && ![launcherApp9 isEqualToString:@""]) {
+		[self activateBundleID:launcherApp9];
 	}
 }
 
 %new
 - (void)handleCmd0:(UIKeyCommand *)keyCommand {
 	[self stopDiscoverabilityTimer];
-	if (launcherApp1 && ![launcherApp1 isEqualToString:@""]) {
-		SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
-		SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
-		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:launcherApp0]];
+	if (launcherApp0 && ![launcherApp0 isEqualToString:@""]) {
+		[self activateBundleID:launcherApp0];
 	}
 }
 
@@ -1086,10 +1114,7 @@ static void setupHID() {
 
 %new
 - (void)genericKeyDown {
-	if (discoverabilityTimer) {
-		[discoverabilityTimer invalidate];
-		discoverabilityTimer = nil;
-	}
+	[self stopDiscoverabilityTimer];
 }
 
 %new
