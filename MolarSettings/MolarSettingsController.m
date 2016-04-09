@@ -453,6 +453,10 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
     return value;
 }
 
+- (BOOL)iPad {
+    return [[[UIDevice currentDevice] model] isEqualToString:@"iPad"];
+}
+
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     if (section == 0) return 1;
     else if (section == 1) return 3;
@@ -464,6 +468,12 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
+    if (indexPath.section == 1 && [self iPad]) {
+        if (indexPath.row == 0 || indexPath.row == 2) {
+            ((UISwitch *)cell.accessoryView).on = NO;
+            ((UISwitch *)cell.accessoryView).enabled = NO;
+        }
+    }
     if (indexPath.section == 3) {
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         cell.selectionStyle = UITableViewCellSelectionStyleDefault;

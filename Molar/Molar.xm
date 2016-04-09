@@ -29,8 +29,8 @@
 #define ENTER_KEY   0x28
 #define SHIFT_KEY   0xe5
 #define SHIFT_KEY_2 0xe1
-//#define T_KEY       0x17
-//#define E_KEY       0x8
+#define T_KEY       0x17
+#define E_KEY       0x8
 #define R_KEY       0x15
 
 #define MAGNIFY_FACTOR 1.2
@@ -119,6 +119,7 @@ NSThread *flashViewThread;
        	if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
        	else if (usage == TAB_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyUp" object:nil];
        	//else if (usage == T_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
+       	//else if (usage == T_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyUp" object:nil];
         else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown" object:nil];
         else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY_2 && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp" object:nil];
         else if (usage == ESC_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil];
@@ -135,7 +136,7 @@ NSThread *flashViewThread;
         else if (usage == ENTER_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EnterKeyDown" object:nil];
         else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyDown" object:nil];
         else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyUp" object:nil];
-        //NSLog(@"key: %i  down: %i", usage, down);
+        NSDebug(@"key: %i  down: %i", usage, down);
     }
 }
 
@@ -176,6 +177,12 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	activeApp = (NSString *)[(NSDictionary *)userInfo objectForKey:@"app"];
 	[[NSNotificationCenter defaultCenter] postNotificationName:@"UpdateActiveAppUserApplicationNotification" object:nil userInfo:@{@"app": activeApp}];
 }
+
+static void setupHID() {
+	IOHIDEventSystemClientRef ioHIDEventSystem = IOHIDEventSystemClientCreate(kCFAllocatorDefault);
+    IOHIDEventSystemClientScheduleWithRunLoop(ioHIDEventSystem, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+    IOHIDEventSystemClientRegisterEventCallback(ioHIDEventSystem, (IOHIDEventSystemClientEventCallback)handle_event, NULL, NULL);
+}
  
 %ctor {
 	discoverabilityTimer = nil;
@@ -200,6 +207,8 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 										CFNotificationSuspensionBehaviorCoalesce);
 	}
 	dlclose(libHandle);
+
+	setupHID();
 }
 
 
@@ -263,6 +272,55 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 
 
 %hook UIApplication
+
+- (BOOL)canBecomeFirstResponder {
+    return YES;
+}
+
+%new
+- (BOOL)iPad {
+	return [[[UIDevice currentDevice] model] isEqualToString:@"iPad"];
+}
+
+- (id)init {
+	id s = %orig();
+	[self addMolarObservers];
+	return s;
+}
+
+%new
+- (void)addMolarObservers {
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tabKeyDown) name:@"TabKeyDown" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyDown) name:@"CmdKeyDown" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyUp) name:@"CmdKeyUp" object:nil];
+   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(escKeyDown) name:@"EscKeyDown" object:nil];
+   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rightKeyDown) name:@"RightKeyDown" object:nil];
+   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(leftKeyDown) name:@"LeftKeyDown" object:nil];			    
+   	
+   	// shortcuts
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadShortcuts) name:@"ReloadShortcutsNotification" object:nil];
+
+ 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_tabDown) name:@"TabKeyDown" object:nil];
+ 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_tabUp) name:@"TabKeyUp" object:nil];
+ 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(shiftKeyDown) name:@"ShiftKeyDown" object:nil];
+ 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(shiftKeyUp) name:@"ShiftKeyUp" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_enterKey) name:@"EnterKeyDown" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_leftKey) name:@"LeftKeyDown" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_leftUp) name:@"LeftKeyUp" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_rightKey) name:@"RightKeyDown" object:nil];
+ 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_rightUp) name:@"RightKeyUp" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_upKey) name:@"UpKeyDown" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_upKeyUp) name:@"UpKeyUp" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_downKey) name:@"DownKeyDown" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_downKeyUp) name:@"DownKeyUp" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_rKey) name:@"RKeyDown" object:nil];
+
+   	// app updates
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(resetViews) name:@"ViewDidAppearNotification" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBAppDidBecomeForeground" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBApplicationStateDidChange" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveAppProperty:) name:@"UpdateActiveAppUserApplicationNotification" object:nil];
+}
 
 %new
 - (NSUInteger)maxIconsLS {
@@ -337,7 +395,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
     CGRect bounds = [[UIScreen mainScreen] bounds];
     //NSLog(@"Bounds: %@", NSStringFromCGRect(bounds));
 
-	if (![self switcherShown] && !discoverabilityShown && enabled && switcherEnabled) {
+	if (![self switcherShown] && !discoverabilityShown && enabled && switcherEnabled && ![self iPad]) {
 
 		NSArray *apps = (NSArray *)[(SBApplicationController *)[%c(SBApplicationController) sharedInstance] runningApplications];
 		
@@ -803,13 +861,21 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)handleCmdShiftH:(UIKeyCommand *)keyCommand {
 	[self stopDiscoverabilityTimer];
-	[[%c(SBUIController) sharedInstance] clickedMenuButton];
+	//[[%c(SBUIController) sharedInstance] clickedMenuButton];
+	LAEvent *event = [LAEvent eventWithName:@"MolarHomeButton" mode:[LASharedActivator currentEventMode]];
+	[LASharedActivator assignEvent:event toListenerWithName:@"libactivator.system.homebutton"];
+    [LASharedActivator sendEventToListener:event];
+    [LASharedActivator unassignEvent:event];
 }
 
 %new
 - (void)handleCmdShiftP:(UIKeyCommand *)keyCommand {
 	[self stopDiscoverabilityTimer];
-	[[%c(SBUserAgent) sharedUserAgent] lockAndDimDevice];
+	//[[%c(SBUserAgent) sharedUserAgent] lockAndDimDevice];
+	LAEvent *event = [LAEvent eventWithName:@"MolarSleepButton" mode:[LASharedActivator currentEventMode]];
+	[LASharedActivator assignEvent:event toListenerWithName:@"libactivator.system.sleepbutton"];
+    [LASharedActivator sendEventToListener:event];
+    [LASharedActivator unassignEvent:event];
 }
 
 %new
@@ -1061,6 +1127,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
     else if ([kc.input isEqualToString:UIKeyInputUpArrow])    [mStr appendString:@"↑ "];
     else if ([kc.input isEqualToString:UIKeyInputDownArrow])  [mStr appendString:@"↓ "];
     else if ([kc.input isEqualToString:UIKeyInputEscape])     [mStr appendString:@"ESC"];
+    else if ([kc.input isEqualToString:@"	"])     [mStr appendString:@"⇥"];
     else [mStr appendString:kc.input.uppercaseString];
     return mStr;
 }
@@ -1123,7 +1190,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 %new
 - (void)showDiscoverability {
 	discoverabilityTimer = nil;
-	if (enabled && [self isActive] && ![self switcherShown]) {
+	if (enabled && [self isActive] && ![self switcherShown] && ![self iPad]) {
 
 		int addedKeyCommands = 13 + customShortcuts.count;
 		allKeyCommands = [NSMutableArray array];
@@ -1145,6 +1212,10 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 		for (int i = 0; i < commands.count; i++) {
 			UIKeyCommand *kc = commands[i];
 			if (!kc.discoverabilityTitle && [[self modifierString:kc] isEqualToString:@"⌘ -"]) [commands removeObjectAtIndex:i];
+		}
+
+		for (UIKeyCommand *kc in commands) {
+			NSLog(@"%@, Input: \"%@\"", [self modifierString:kc], kc.input);
 		}
 
 		if (commands.count) {
@@ -1483,51 +1554,6 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 															  modifierFlags:((NSNumber *)[self modifierFlagsForShortcut:shortcut]).intValue
 																	 action:@selector(handleCustomShortcut:)];
 			[arr addObject:customCommand];
-		}
-
-		if (![self hidSetup]) {
-			IOHIDEventSystemClientRef ioHIDEventSystem = IOHIDEventSystemClientCreate(kCFAllocatorDefault);
-		    IOHIDEventSystemClientScheduleWithRunLoop(ioHIDEventSystem, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-		    IOHIDEventSystemClientRegisterEventCallback(ioHIDEventSystem, (IOHIDEventSystemClientEventCallback)handle_event, NULL, NULL);
-
-			// app switcher		    
-		    if (switcherEnabled) {
-			    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tabKeyDown) name:@"TabKeyDown" object:nil];
-			    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyDown) name:@"CmdKeyDown" object:nil];
-			    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyUp) name:@"CmdKeyUp" object:nil];
-			   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(escKeyDown) name:@"EscKeyDown" object:nil];
-			   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rightKeyDown) name:@"RightKeyDown" object:nil];
-			   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(leftKeyDown) name:@"LeftKeyDown" object:nil];			    
-		    }
-		   	
-		   	// shortcuts
-		    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadShortcuts) name:@"ReloadShortcutsNotification" object:nil];
-
-			// UI control		    
-		    if (controlEnabled) {
-			 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_tabDown) name:@"TabKeyDown" object:nil];
-			 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_tabUp) name:@"TabKeyUp" object:nil];
-			 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(shiftKeyDown) name:@"ShiftKeyDown" object:nil];
-			 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(shiftKeyUp) name:@"ShiftKeyUp" object:nil];
-		 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_enterKey) name:@"EnterKeyDown" object:nil];
-		 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_leftKey) name:@"LeftKeyDown" object:nil];
-		 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_leftUp) name:@"LeftKeyUp" object:nil];
-		 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_rightKey) name:@"RightKeyDown" object:nil];
-		 	 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_rightUp) name:@"RightKeyUp" object:nil];
-		 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_upKey) name:@"UpKeyDown" object:nil];
-		 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_upKeyUp) name:@"UpKeyUp" object:nil];
-		 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_downKey) name:@"DownKeyDown" object:nil];
-		 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_downKeyUp) name:@"DownKeyUp" object:nil];
-		 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_rKey) name:@"RKeyDown" object:nil];
-		    }
-		    
-		   	// app updates
-	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(resetViews) name:@"ViewDidAppearNotification" object:nil];
-	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBAppDidBecomeForeground" object:nil];
-	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBApplicationStateDidChange" object:nil];
-	 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveAppProperty:) name:@"UpdateActiveAppUserApplicationNotification" object:nil];
-
-		    [self setHidSetup:[NSNull null]];
 		}
 	}
 
@@ -2701,7 +2727,7 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
  	if (![NSStringFromClass([self class]) isEqualToString:@"UICompatibilityInputViewController"] &&
  		![NSStringFromClass([self class]) isEqualToString:@"UIInputWindowController"]) {
  		[[NSNotificationCenter defaultCenter] postNotificationName:@"ViewDidAppearNotification" object:nil];
- 		[self.view endEditing:NO];
+ 		//[self.view endEditing:NO];
  	}
 }
 
