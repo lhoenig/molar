@@ -52,6 +52,7 @@
 #define DISCOVERABILITY_MODIFIER_WIDTH 70.0
 #define DISCOVERABILITY_FONT_SIZE 20.0
 #define DISCOVERABILITY_LS_Y_DECREASE 16.0
+#define ALERT_DISMISS_RESCAN_DELAY 1.0
 
 #define NEXT_VIEW 1
 #define PREV_VIEW 0
@@ -775,6 +776,7 @@ static void setupHID() {
 - (void)activateBundleID:(NSString *)bundleID {
 	SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 	SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
+	switcherMode = ([(SBAppSwitcherModel *)[%c(SBAppSwitcherModel) sharedInstance] respondsToSelector:@selector(mainSwitcherDisplayItems)]) ? SWITCHER_IOS9_MODE : SWITCHER_IOS8_MODE;
 	if (switcherMode == SWITCHER_IOS9_MODE) {
 		[uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:bundleID]];	
 	} else {
@@ -1472,7 +1474,9 @@ static void setupHID() {
 
 %new
 - (void)reloadShortcuts {
-	[self _updateSerializableKeyCommandsForResponder:((UIWindow *)[UIWindow keyWindow]).rootViewController];
+	if ([self respondsToSelector:@selector(_updateSerializableKeyCommandsForResponder:)]) {
+		[self _updateSerializableKeyCommandsForResponder:((UIWindow *)[UIWindow keyWindow]).rootViewController];
+	}
 }
 
 %new
@@ -1785,6 +1789,7 @@ static void setupHID() {
 				selectedCell.selected = YES;
 			}];
 		}
+		
 		else if (collectionViewMode) {
 			if ([selectedCollectionView numberOfItemsInSection:selectedSection] > selectedRow + 1) {
 				if (selectedItem) {
@@ -1818,6 +1823,7 @@ static void setupHID() {
 				selectedItem.transform = backupTransform;
 			} completion:nil];
 		}
+		
 		else if (scrollViewMode) {
 			if (fView) {
 				[fView removeFromSuperview];
@@ -1856,10 +1862,12 @@ static void setupHID() {
 			} 
 			[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
 		}
+		
 		else {
 			UIView *scrollableView = [self findFirstScrollableView];
 			if (scrollableView) [self highlightView:scrollableView];
 		}
+		
 		if (tableViewMode || collectionViewMode || scrollViewMode) {
 			if (!keyRepeatTimer) {
 				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
@@ -1922,6 +1930,7 @@ static void setupHID() {
 				selectedCell.selected = YES;
 			}];
 		}
+		
 		else if (collectionViewMode) {
 			if ((selectedRow - 1) >= 0) {
 				if (selectedItem) {
@@ -1955,6 +1964,7 @@ static void setupHID() {
 				selectedItem.transform = backupTransform;
 			} completion:nil];
 		}
+		
 		else if (scrollViewMode) {
 			if (fView) {
 				[fView removeFromSuperview];
@@ -1990,10 +2000,12 @@ static void setupHID() {
 			} 
 			[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
 		}
+		
 		else {
 			UIView *scrollableView = [self findFirstScrollableView];
 			if (scrollableView) [self highlightView:scrollableView];
 		}
+		
 		if (tableViewMode || collectionViewMode || scrollViewMode) {
 			if (!keyRepeatTimer) {
 				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
@@ -2034,9 +2046,6 @@ static void setupHID() {
 
 %new
 - (void)ui_enterKey {
-	/*[self setViews:((UIView *)[self selectedView]).subviews];
-	selectedViewIndex = -1;
-	NSLog(@"New subviews:\n%@", ((NSArray *)[self views]).description);*/
 	if (enabled && controlEnabled && [self isActive]) {
 		@synchronized(self) {
 			if ([UIApplication sharedApplication].keyWindow.rootViewController &&
@@ -2044,38 +2053,44 @@ static void setupHID() {
 				[[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController isKindOfClass:[UIAlertController class]]) {
 				UIAlertController *ac = (UIAlertController *)[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController;
 				if (ac.preferredStyle == UIAlertControllerStyleAlert) {
-					if (collectionViewMode) {
+					if (ac.preferredAction) {
+						NSDebug(@"ENTER ALERT: Dismissing preferredAction");
+						[self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
+					}
+					else if (collectionViewMode) {
+						NSString *title = ((UIAlertAction *)[((UIView *)selectedItem.subviews[0]).subviews[0] valueForKey:@"action"]).title;
 						NSUInteger idx = 0;
 						if ([self alertActions]) {
+							NSDebug(@"ALERT ACTION COUNT: %i", ((NSMutableArray *)[self alertActions]).count);
 							for (NSDictionary *dict in (NSMutableArray *)[self alertActions]) {
-								NSString *title = ((UIAlertAction *)[((UIView *)selectedItem.subviews[0]).subviews[0] valueForKey:@"action"]).title;
 								if ([[dict objectForKey:@"title"] isEqualToString:title]) {
-									NSDebug(@"ENTER ALERT: Dismissing Handler");
 									void (^handler)(UIAlertAction *action) = (void (^)(UIAlertAction *action))[dict objectForKey:@"handler"];
+									NSDebug(@"ENTER ALERT: Dismissing Handler %i at %p: %@", idx, handler, title);
 									handler((UIAlertAction *)ac.actions[idx]);
 									[ac dismissViewControllerAnimated:YES completion:^{
-										[self resetViews];
+										[self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
 									}];
-									break;
+									break;		
 								}
 								idx++;
 							}
 						}
 					} else if (((UIAlertAction *)[ac.actions objectAtIndex:0]).style == UIAlertActionStyleDefault) {
 						NSDebug(@"ENTER ALERT: Dismissing Default");
-						[ac dismissViewControllerAnimated:YES completion:nil];
+						[ac dismissViewControllerAnimated:YES completion:^{
+							[self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
+						}];
 					}
 				} else if (collectionViewMode) {
 					NSUInteger idx = 0;
 					if ([self alertActions] && !actionSheetMode) {
-						NSDebug(@"%@", ((NSMutableArray *)[self alertActions]).description);
 						for (NSDictionary *dict in (NSMutableArray *)[self alertActions]) {
 							NSString *title = ((UIAlertAction *)[((UIView *)selectedItem.subviews[0]).subviews[0] valueForKey:@"action"]).title;
 							if ([[dict objectForKey:@"title"] isEqualToString:title]) {
 								NSDebug(@"ENTER ACTION SHEET: Dismissing Handler");
 								void (^handler)(UIAlertAction *action) = (void (^)(UIAlertAction *action))[dict objectForKey:@"handler"];
 								[ac dismissViewControllerAnimated:YES completion:^{
-									[self resetViews];
+									[self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
 								}];
 								handler((UIAlertAction *)ac.actions[idx]);
 								break;
@@ -2087,10 +2102,11 @@ static void setupHID() {
 							[((UIActionSheet *)[self actionSheet]).delegate actionSheet:(UIActionSheet *)[self actionSheet] 
 																							  clickedButtonAtIndex:selectedRow];
 						}
+						NSDebug(@"ENTER ACTION SHEET: Dismissing actionSheetMode");
 						[(UIActionSheet *)[self actionSheet] dismissWithClickedButtonIndex:selectedRow animated:YES];
 						[self setActionSheet:nil];
 						actionSheetMode = NO;
-						[self resetViews];
+						[self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
 					}
 				}
 			} else {
@@ -2360,6 +2376,7 @@ static void setupHID() {
 		if (flashViewThread) [flashViewThread cancel];
 		if (fView) [fView removeFromSuperview];
 		if (tableViewMode) selectedCell.selected = NO;
+		else if (collectionViewMode) selectedItem.selected = NO;
 
 		[self setSelectedView:[(NSArray *)[self views] objectAtIndex:selectedViewIndex]];
 		//[(UIView *)[self selectedView] becomeFirstResponder];
@@ -2434,6 +2451,7 @@ static void setupHID() {
 					if (fView) [fView removeFromSuperview];
 
 					if (tableViewMode) selectedCell.selected = NO;
+					else if (collectionViewMode) selectedItem.selected = NO;
 
 					[self setSelectedView:[(NSArray *)[self views] objectAtIndex:selectedViewIndex]];
 					//[(UIView *)[self selectedView] becomeFirstResponder];
@@ -2521,7 +2539,7 @@ static void setupHID() {
 							flashView.transform = backupTransform;
 							flashView.backgroundColor = [UIColor clearColor];
 						} completion:^(BOOL completed){
-							if (tableViewMode || collectionViewMode) [fView removeFromSuperview];
+							if (tableViewMode || collectionViewMode) [fView removeFromSuperview];
 							else {
 								HighlightThread *ht = (HighlightThread *)[%c(HighlightThread) new];
 								flashViewThread = (NSThread *)ht;
@@ -2607,7 +2625,7 @@ static void setupHID() {
 				[filteredViews addObject:view];
 			}
 		} else if (view.userInteractionEnabled == YES) {
-			NSDebug(@"REJECTED INTERACTION VIEW: %@", view.description);
+			//NSDebug(@"REJECTED INTERACTION VIEW: %@", view.description);
 		}
 	}
 	return filteredViews;
@@ -2778,6 +2796,17 @@ static void setupHID() {
 	return %orig;
 }
 
+- (id)init {
+	[[UIApplication sharedApplication] setAlertActions:[NSMutableArray array]];
+	return %orig();
+}
+
+- (void)viewDidDisappear:(BOOL)animated {
+	%orig();
+	NSDebug(@"ALERT CONTROLLER DID DISAPPEAR");
+	[[UIApplication sharedApplication] performSelector:@selector(resetViews) withObject:nil afterDelay:ALERT_DISMISS_RESCAN_DELAY];
+}
+
 - (void)addAction:(UIAlertAction *)action {
 	%orig();
 	if (action.title && [action valueForKey:@"handler"]) {
@@ -2808,8 +2837,9 @@ static void setupHID() {
 
 %hook UIActionSheet
 
-+ (id)alloc {
++ (id)alloc {
 	UIActionSheet *sheet = %orig;
+	[[UIApplication sharedApplication] setAlertActions:[NSMutableArray array]];
 	[[UIApplication sharedApplication] setActionSheet:sheet];
 	actionSheetMode = YES;
 	return sheet;

@@ -200,7 +200,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
         inputTextField.layer.sublayerTransform = CATransform3DMakeTranslation(8, 0, 0);
         inputTextField.enabled = NO;
         
-        UIView *headerView = [[UIView alloc] initWithFrame:CGRectMake(0, 100, [UIScreen mainScreen].bounds.size.width, 130)];
+        UIView *headerView = [[UIView alloc] initWithFrame:CGRectMake(0, 100, self.tableView.frame.size.width, 130)];
         [headerView addSubview:modifierTextField];
         [headerView addSubview:inputTextField];
         
@@ -209,8 +209,14 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
         IOHIDEventSystemClientRegisterEventCallback(ioHIDEventSystem, (IOHIDEventSystemClientEventCallback)handle_event, NULL, NULL);
         
         self.tableView.tableHeaderView = headerView;
-        modifierTextField.center = CGPointMake(headerView.frame.size.width / 2 - (modifierTextField.frame.size.width / 2) - 5, 80);
-        inputTextField.center = CGPointMake(headerView.frame.size.width / 2 + (modifierTextField.frame.size.width / 2) + 5, 80);
+
+        if ([[[UIDevice currentDevice] model] isEqualToString:@"iPad"]) {
+            modifierTextField.center = CGPointMake((modifierTextField.frame.size.width / 2) + 30, 80);
+            inputTextField.center = CGPointMake(modifierTextField.frame.size.width + 40 + (inputTextField.frame.size.width / 2), 80);
+        } else {
+            modifierTextField.center = CGPointMake(headerView.frame.size.width / 2 - (modifierTextField.frame.size.width / 2) - 5, 80);
+            inputTextField.center = CGPointMake(headerView.frame.size.width / 2 + (modifierTextField.frame.size.width / 2) + 5, 80);
+        }
         
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdDown) name:@"SC_CmdKeyDown" object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdUp) name:@"SC_CmdKeyUp" object:nil];
