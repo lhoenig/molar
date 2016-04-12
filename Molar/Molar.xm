@@ -195,6 +195,7 @@ static void setupHID() {
 	waitForKeyRepeatTimer = nil;
 	keyRepeatTimer = nil;
     loadPrefs();
+
     CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), 
     								NULL, 
     								(CFNotificationCallback)loadPrefs, 
@@ -290,11 +291,13 @@ static void setupHID() {
 	return [[[UIDevice currentDevice] model] isEqualToString:@"iPad"];
 }
 
+/*
 - (id)init {
 	id s = %orig();
 	[self addMolarObservers];
 	return s;
 }
+*/
 
 %new
 - (void)addMolarObservers {
@@ -328,6 +331,11 @@ static void setupHID() {
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(resetViews) name:@"ViewDidAppearNotification" object:nil];
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBAppDidBecomeForeground" object:nil];
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBApplicationStateDidChange" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBFrontmostDisplayChangedNotification" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBHomescreenIconsDidAppearNotification" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBIconOpenFolderChangedNotification" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBAppSwitcherModelDidChangeNotification" object:nil];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBDisplayDidLaunchNotification" object:nil];
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveAppProperty:) name:@"UpdateActiveAppUserApplicationNotification" object:nil];
 }
 
@@ -1124,7 +1132,6 @@ static void setupHID() {
 	if ([vc respondsToSelector:@selector(keyCommands)]) {
 		[allKeyCommands addObjectsFromArray:vc.keyCommands];
 	}
-	//NSLog(@"Added %i commands: %@", vc.keyCommands.count, NSStringFromClass(vc.class));
 	// Handling UITabBarController
 	if ([vc isKindOfClass:[UITabBarController class]]) {
 	   	UITabBarController *tabBarController = (UITabBarController *)vc;
@@ -1485,6 +1492,7 @@ static void setupHID() {
 		%c(SpringBoard);
 		%c(SBApplication);
 		activeApp = [[(SpringBoard *)[%c(SpringBoard) sharedApplication] _accessibilityFrontMostApplication] bundleIdentifier];
+		if (!activeApp) activeApp = @"com.apple.springboard";
 
 	    CFDictionaryKeyCallBacks keyCallbacks = {0, NULL, NULL, CFCopyDescription, CFEqual, NULL}; 
     	CFDictionaryValueCallBacks valueCallbacks  = {0, NULL, NULL, CFCopyDescription, CFEqual};
@@ -1595,6 +1603,11 @@ static void setupHID() {
 																	 action:@selector(handleCustomShortcut:)];
 			[arr addObject:customCommand];
 		}
+	}
+	
+	if (![self hidSetup]) {
+		[self addMolarObservers];
+		[self setHidSetup:[NSNull null]];
 	}
 
 	return [NSArray arrayWithArray:arr];
