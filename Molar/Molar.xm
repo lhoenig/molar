@@ -216,8 +216,6 @@ static void setupHID() {
 	dlclose(libHandle);
 
 	switcherMode = 0;
-
-	setupHID();
 }
 
 
@@ -291,6 +289,11 @@ static void setupHID() {
 	return [[[UIDevice currentDevice] model] isEqualToString:@"iPad"];
 }
 
+%new
+- (BOOL)iOS9 {
+	return [UIKeyCommand respondsToSelector:@selector(keyCommandWithInput:modifierFlags:action:discoverabilityTitle:)];
+}
+
 /*
 - (id)init {
 	id s = %orig();
@@ -342,27 +345,33 @@ static void setupHID() {
 %new
 - (NSUInteger)maxIconsLS {
 	CGRect bounds = [[UIScreen mainScreen] bounds];
-	if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 6;
+	if (CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 1366)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1366, 1024))) return 10;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(768, 1024)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 768))) return 8;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 6;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return 5;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 568)) || CGSizeEqualToSize(bounds.size, CGSizeMake(568, 320))) return 4;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 480)) || CGSizeEqualToSize(bounds.size, CGSizeMake(480, 320))) return 4;
-	else return 4;
+	else return 6;
 }
 
 %new
 - (NSUInteger)maxIconsP {
 	CGRect bounds = [[UIScreen mainScreen] bounds];
-	if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 3;
+	if (CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 1366)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1366, 1024))) return 8;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(768, 1024)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 768))) return 6;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 3;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return 3;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 568)) || CGSizeEqualToSize(bounds.size, CGSizeMake(568, 320))) return 2;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 480)) || CGSizeEqualToSize(bounds.size, CGSizeMake(480, 320))) return 2;
-	else return 2;
+	else return 5;
 }
 
 %new
 - (NSUInteger)maxCommandsLS {
 	CGRect bounds = [[UIScreen mainScreen] bounds];
-	if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 6;
+	if (CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 1366)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1366, 1024))) return 20;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(768, 1024)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 768))) return 15;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 6;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return 6;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 568)) || CGSizeEqualToSize(bounds.size, CGSizeMake(568, 320))) return 5;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 480)) || CGSizeEqualToSize(bounds.size, CGSizeMake(480, 320))) return 5;
@@ -372,7 +381,9 @@ static void setupHID() {
 %new
 - (NSUInteger)maxCommandsP {
 	CGRect bounds = [[UIScreen mainScreen] bounds];
-	if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 15;
+	if (CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 1366)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1366, 1024))) return 25;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(768, 1024)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 768))) return 20;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 15;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return 13;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 568)) || CGSizeEqualToSize(bounds.size, CGSizeMake(568, 320))) return 10;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 480)) || CGSizeEqualToSize(bounds.size, CGSizeMake(480, 320))) return 7;
@@ -382,7 +393,9 @@ static void setupHID() {
 %new
 - (NSNumber *)maxWidthLS {
 	CGRect bounds = [[UIScreen mainScreen] bounds];
-	if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return @(670.0);
+	if (CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 1366)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1366, 1024))) return @(1280.0);
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(768, 1024)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 768))) return @(862.0);
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return @(670.0);
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return @(600.0);
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 568)) || CGSizeEqualToSize(bounds.size, CGSizeMake(568, 320))) return @(500.0);
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 480)) || CGSizeEqualToSize(bounds.size, CGSizeMake(480, 320))) return @(400.0);
@@ -392,7 +405,9 @@ static void setupHID() {
 %new
 - (NSNumber *)maxWidthP {
 	CGRect bounds = [[UIScreen mainScreen] bounds];
-	if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return @(300.0);
+	if (CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 1366)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1366, 1024))) return @(910.0);
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(768, 1024)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 768))) return @(670.0);
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return @(300.0);
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return @(285.0);
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 568)) || CGSizeEqualToSize(bounds.size, CGSizeMake(568, 320))) return @(200.0);
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 480)) || CGSizeEqualToSize(bounds.size, CGSizeMake(480, 320))) return @(200.0);
@@ -412,9 +427,8 @@ static void setupHID() {
     CGRect bounds = [[UIScreen mainScreen] bounds];
     //NSLog(@"Bounds: %@", NSStringFromCGRect(bounds));
 
-	if (![self switcherShown] && !discoverabilityShown && enabled && switcherEnabled && ![self iPad]) {
+	if (![self switcherShown] && !discoverabilityShown && enabled && switcherEnabled && !([self iPad] && [self iOS9])) {
 
-		//NSArray *apps = (NSArray *)[(SBApplicationController *)[%c(SBApplicationController) sharedInstance] runningApplications];
 		NSArray *apps = (NSArray *)[(SpringBoard *)[%c(SpringBoard) sharedApplication] _accessibilityRunningApplications];
 
 		if (apps.count) {
@@ -465,7 +479,7 @@ static void setupHID() {
 				CGRect contentFrame = CGRectMake(0, 0, ls ? [UIScreen mainScreen].bounds.size.height : [UIScreen mainScreen].bounds.size.width,
 													   ls ? [UIScreen mainScreen].bounds.size.width : [UIScreen mainScreen].bounds.size.height);
 	
-				UIWindow *window = [[UIWindow alloc] initWithFrame:((NSUInteger)[self maxIconsLS] == 6) ? contentFrame : bounds];
+				UIWindow *window = [[UIWindow alloc] initWithFrame:(((NSUInteger)[self maxIconsLS] == 6) || [self iPad]) ? contentFrame : bounds];
 				window.windowLevel = UIWindowLevelAlert;
 				
 				CGFloat h = SWITCHER_HEIGHT;
@@ -533,7 +547,7 @@ static void setupHID() {
 				else if ((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation] == UIInterfaceOrientationPortraitUpsideDown) {
 					switcherView.transform = CGAffineTransformMakeRotation(DegreesToRadians(180));
 				}
-				switcherView.center = (NSUInteger)[self maxIconsLS] == 6 ? CGPointMake(CGRectGetMidX(window.bounds), CGRectGetMidY(window.bounds)) :
+				switcherView.center = ((NSUInteger)[self maxIconsLS] == 6 || [self iPad]) ? CGPointMake(CGRectGetMidX(window.bounds), CGRectGetMidY(window.bounds)) :
 																		   CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds));
 																		   
 				[window addSubview:switcherView];
@@ -1235,7 +1249,7 @@ static void setupHID() {
 %new
 - (void)showDiscoverability {
 	discoverabilityTimer = nil;
-	if (enabled && [self isActive] && ![self switcherShown] && ![self iPad]) {
+	if (enabled && [self isActive] && ![self switcherShown] && !([self iPad] && [self iOS9])) {
 
 		int addedKeyCommands = 13 + customShortcuts.count;
 		allKeyCommands = [NSMutableArray array];
@@ -1267,9 +1281,13 @@ static void setupHID() {
 			CGRect contentFrame = CGRectMake(0, 0, ls ? bounds.size.height : bounds.size.width,
 												   ls ? bounds.size.width  : bounds.size.height);
 
+			if ([self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+				contentFrame = CGRectMake(contentFrame.origin.x, contentFrame.origin.y, contentFrame.size.height, contentFrame.size.width);
+			}
+
 			CGRect discRect = CGRectInset(((NSUInteger)[self maxIconsLS] == 6) ? contentFrame : bounds, 15.0f, 15.0f);
 
-			UIWindow *window = [[UIWindow alloc] initWithFrame:((NSUInteger)[self maxIconsLS] == 6) ? contentFrame : bounds];
+			UIWindow *window = [[UIWindow alloc] initWithFrame:((NSUInteger)[self maxIconsLS] == 6) || ([self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) ? contentFrame : bounds];
 			window.windowLevel = UIWindowLevelAlert;
 
 			UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:darkMode ? UIBlurEffectStyleDark : UIBlurEffectStyleLight];
@@ -1281,10 +1299,10 @@ static void setupHID() {
 
 			[self setDiscoverabilityWindow:window];
 
-			if (ls) blurEffectView.transform = (UIInterfaceOrientation)[UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation == UIInterfaceOrientationLandscapeLeft ? 
+			if (ls && ![self iPad] || (ls && [self iPad] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"])) blurEffectView.transform = (UIInterfaceOrientation)[UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation == UIInterfaceOrientationLandscapeLeft ? 
 												CGAffineTransformMakeRotation(DegreesToRadians(270)) :
 												CGAffineTransformMakeRotation(DegreesToRadians(90));
-			else if ((UIInterfaceOrientation)[UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation == UIInterfaceOrientationPortraitUpsideDown) {
+			else if ((UIInterfaceOrientation)[UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation == UIInterfaceOrientationPortraitUpsideDown && ![self iPad]) {
 				blurEffectView.transform = CGAffineTransformMakeRotation(DegreesToRadians(180));
 			}
 
@@ -1300,15 +1318,12 @@ static void setupHID() {
 																		   shortcut:@"Test"
 																		   minWidth:maxWP
 																		   maxWidth:maxWP];
-					/*blurEffectView.frame = CGRectMake(0, 0, 
-													  (testLabel.frame.size.height * iconsPerPage) + 
-													  	(DISCOVERABILITY_GAP * (iconsPerPage - 1)) + 
-													  	(2 * DISCOVERABILITY_INSET),
-													  blurEffectView.frame.size.width);*/
+
 					blurEffectView.frame = CGRectInset(blurEffectView.frame, DISCOVERABILITY_LS_Y_DECREASE, 0.0f);
-					discoverabilityScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, 
-																							  blurEffectView.frame.size.height,
-																							  blurEffectView.frame.size.width)];
+					discoverabilityScrollView = [[UIScrollView alloc] initWithFrame:[self iPad] ? blurEffectView.frame :
+																					 CGRectMake(0, 0, 
+																					  		    blurEffectView.frame.size.height,
+																							    blurEffectView.frame.size.width)];
 					discoverabilityScrollView.contentSize = CGSizeMake(discoverabilityScrollView.frame.size.width * pages, discoverabilityScrollView.frame.size.height);
 					discoverabilityScrollView.pagingEnabled = YES;
 					discoverabilityScrollView.bounces = NO;
@@ -1363,11 +1378,16 @@ static void setupHID() {
 						if (l.frame.size.width > maxWidth) maxWidth = l.frame.size.width;
 					}
 
-					blurEffectView.frame = CGRectMake(0, 0, 
-													  (((UIView *)labels[0]).frame.size.height * labels.count) + 
-													  	(DISCOVERABILITY_GAP * (labels.count - 1)) + 
-													  	(2 * DISCOVERABILITY_INSET),
-													  maxWidth + (DISCOVERABILITY_INSET * 2));
+					blurEffectView.frame = [self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] ? CGRectMake(0, 0, 
+													  				maxWidth + (DISCOVERABILITY_INSET * 2),
+													  				 (((UIView *)labels[0]).frame.size.height * labels.count) + 
+													  				 (DISCOVERABILITY_GAP * (labels.count - 1)) + 
+													  				 (2 * DISCOVERABILITY_INSET)) :
+													  	 CGRectMake(0, 0, 
+													  		 (((UIView *)labels[0]).frame.size.height * labels.count) + 
+													  		 (DISCOVERABILITY_GAP * (labels.count - 1)) + 
+													  		 (2 * DISCOVERABILITY_INSET),
+													  		maxWidth + (DISCOVERABILITY_INSET * 2));
 					NSUInteger index = 0;
 					for (UIView *label in labels) {
 						label.frame = CGRectMake(DISCOVERABILITY_INSET, 
@@ -1459,8 +1479,9 @@ static void setupHID() {
 				}
 			}
 		
-			blurEffectView.center = (NSUInteger)[self maxIconsLS] == 6 ? CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds)) :
-																	     CGPointMake(CGRectGetMidX(contentFrame), CGRectGetMidY(contentFrame));
+			blurEffectView.center = ((NSUInteger)[self maxIconsLS] == 6 || ([self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"])) ? CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds)) :
+																	     				  CGPointMake(CGRectGetMidX(contentFrame), CGRectGetMidY(contentFrame));
+			NSDebug(@"\nWINDOW: %@\nBOUNDS: %@\nCONTENT FRAME: %@\nBLUR FRAME: %@", NSStringFromCGRect(window.frame), NSStringFromCGRect(bounds), NSStringFromCGRect(contentFrame), NSStringFromCGRect(blurEffectView.frame));
 
 			[window addSubview:blurEffectView];
 			[window makeKeyAndVisible];
@@ -1604,8 +1625,9 @@ static void setupHID() {
 			[arr addObject:customCommand];
 		}
 	}
-	
+
 	if (![self hidSetup]) {
+		setupHID();
 		[self addMolarObservers];
 		[self setHidSetup:[NSNull null]];
 	}
