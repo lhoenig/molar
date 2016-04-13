@@ -27,6 +27,28 @@
 			<true/>
 			<key>label</key>
 			<string>Features</string>
+			<key>footerText</key>
+			<string>App Switcher
+Cmd-Tab: Open Switcher, cycle through Apps
+Cmd-Q: Quit App
+Cmd-Esc: Close Switcher
+
+Cmd-Shift-H: Home Button
+Cmd-Shift-P: Power Button
+Cmd-1 to Cmd-0: Launch Apps
+
+App Control
+Tab: Select UI Element
+Enter: Activate
+Esc: Go to previous view
+Cmd-Esc: Go to first view
+Arrow Keys: Scrolling, Cell Selection
+Cmd-Arrow: Go to Top / Bottom / Left / Right
+Cmd-Shift-R: Reload Table
+Left, Right: Change Slider
+
+Hold Cmd: Open Key Sheet
+</string>
 		</dict>
 		<dict>
 			<key>cell</key>
