@@ -463,6 +463,10 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
     return [[[UIDevice currentDevice] model] isEqualToString:@"iPad"];
 }
 
+- (BOOL)iOS9 {
+    return [UIKeyCommand respondsToSelector:@selector(keyCommandWithInput:modifierFlags:action:discoverabilityTitle:)];
+}
+
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     if (section == 0) return 1;
     else if (section == 1) return 3;
@@ -474,7 +478,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
-    if (indexPath.section == 1 && [self iPad]) {
+    if (indexPath.section == 1 && [self iPad] && [self iOS9]) {
         if (indexPath.row == 0 || indexPath.row == 2) {
             ((UISwitch *)cell.accessoryView).on = NO;
             ((UISwitch *)cell.accessoryView).enabled = NO;
