@@ -83,7 +83,8 @@ BOOL darkMode,
 	 tabIsDown, 
 	 waitingForKeyRepeat, 
 	 transformFinished,
-	 discoverabilityShown;
+	 discoverabilityShown,
+	 switcherShown;
 
 NSString *launcherApp1, 
 		 *launcherApp2, 
@@ -109,11 +110,12 @@ UICollectionViewCell *selectedItem;
 int selectedRow, 
 	selectedSection, 
 	selectedViewIndex;
+int numThreads;
 UIView *fView;
 UIPageControl *pageControl;
 UIScrollView *discoverabilityScrollView;
 NSString *activeApp;
-NSThread *flashViewThread;
+
 
 %hookf(void, handle_event, void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {
     //NSLog(@"handle_event : %d", IOHIDEventGetType(event));
@@ -123,12 +125,9 @@ NSThread *flashViewThread;
         int down = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown);
        	if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
        	else if (usage == TAB_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyUp" object:nil];
-       	//else if (usage == T_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
-       	//else if (usage == T_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyUp" object:nil];
         else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown" object:nil];
         else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY_2 && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp" object:nil];
-        else if (usage == ESC_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil];
-        //else if (usage == E_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil];
+        else if (usage == ESC_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil userInfo:@{@"sender": activeApp}];
         else if (usage == R_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RKeyDown" object:nil];
         else if (usage == RIGHT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyDown" object:nil];
         else if (usage == RIGHT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyUp" object:nil];
@@ -184,6 +183,18 @@ static void updateActiveAppUserApplication(CFNotificationCenterRef center, void 
 	[[NSNotificationCenter defaultCenter] postNotificationName:@"UpdateActiveAppUserApplicationNotification" object:nil userInfo:@{@"app": activeApp}];
 }
 
+static void updateSwitcherShown(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+	switcherShown = YES;
+}
+
+static void updateSwitcherNotShown(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+	switcherShown = NO;
+}
+
+static void hideSwitcherByNotification(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+	[[NSNotificationCenter defaultCenter] postNotificationName:@"HideSwitcherNotificationLocalNotification" object:nil];
+}
+
 static void setupHID() {
 	IOHIDEventSystemClientRef ioHIDEventSystem = IOHIDEventSystemClientCreate(kCFAllocatorDefault);
     IOHIDEventSystemClientScheduleWithRunLoop(ioHIDEventSystem, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
@@ -212,12 +223,34 @@ static void setupHID() {
 										CFSTR("NewFrontAppNotification"), 
 										NULL, 
 										CFNotificationSuspensionBehaviorCoalesce);
+
+		CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(), 
+										NULL, 
+										(CFNotificationCallback)updateSwitcherShown, 
+										CFSTR("SwitcherDidAppearNotification"),
+										NULL, 
+										CFNotificationSuspensionBehaviorCoalesce);
+
+		CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(), 
+										NULL, 
+										(CFNotificationCallback)updateSwitcherNotShown,
+										CFSTR("SwitcherDidDisappearNotification"),
+										NULL, 
+										CFNotificationSuspensionBehaviorCoalesce);
+
+		if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"]) {
+			CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(), 
+								NULL, 
+								(CFNotificationCallback)hideSwitcherByNotification,
+								CFSTR("HideSwitcherNotification"),
+								NULL, 
+								CFNotificationSuspensionBehaviorCoalesce);
+		}
 	}
 	dlclose(libHandle);
 
-	switcherMode = 0;
+	switcherMode = numThreads = 0;
 }
-
 
 %subclass HighlightThread : NSThread
 
@@ -232,22 +265,27 @@ static void setupHID() {
 }
 
 - (void)main {
-	if (![self isCancelled]) {
-		CABasicAnimation *anim1 = [CABasicAnimation animationWithKeyPath:@"borderColor"];
-		[anim1 setValue:@"borderColorAnimation1" forKey:@"id"];
-		anim1.fromValue = (id)((UIView *)[self view]).layer.borderColor;
-		anim1.toValue = (id)[UIColor whiteColor].CGColor;
-		((UIView *)[self view]).layer.borderColor = [UIColor whiteColor].CGColor;
-		anim1.duration = FLASH_VIEW_ANIM_DURATION;
-		anim1.timingFunction = [CATransaction animationTimingFunction];
-		anim1.delegate = self;
-		[UIView setAnimationDidStopSelector:@selector(animationDidStop:finished:)];
-		[((UIView *)[self view]).layer addAnimation:anim1 forKey:@"borderColor"];
+	if (!numThreads) {
+		if (![self isCancelled]) {
+			numThreads++;
+			NSDebug(@"MAIN: %@ threads: %i", ((NSThread *)self).description, numThreads);
+			CABasicAnimation *anim1 = [CABasicAnimation animationWithKeyPath:@"borderColor"];
+			[anim1 setValue:@"borderColorAnimation1" forKey:@"id"];
+			anim1.fromValue = (id)((UIView *)[self view]).layer.borderColor;
+			anim1.toValue = (id)[UIColor whiteColor].CGColor;
+			((UIView *)[self view]).layer.borderColor = [UIColor whiteColor].CGColor;
+			anim1.duration = FLASH_VIEW_ANIM_DURATION;
+			anim1.timingFunction = [CATransaction animationTimingFunction];
+			anim1.delegate = self;
+			[UIView setAnimationDidStopSelector:@selector(animationDidStop:finished:)];
+			[((UIView *)[self view]).layer addAnimation:anim1 forKey:@"borderColor"];
+		}
 	}
 }
 
 %new
 - (void)animationDidStop:(CAAnimation *)anim1 finished:(BOOL)flag {
+	NSDebug(@"DID STOP: %@ threads: %i", ((NSThread *)self).description, numThreads);
 	if ([[anim1 valueForKey:@"id"] isEqual:@"borderColorAnimation1"] && ![self isCancelled]) {
 		CABasicAnimation *anim2 = [CABasicAnimation animationWithKeyPath:@"borderColor"];
 		[anim2 setValue:@"borderColorAnimation2" forKey:@"id"];
@@ -273,6 +311,7 @@ static void setupHID() {
 		[UIView setAnimationDidStopSelector:@selector(animationDidStop:finished:)];
 		[((UIView *)[self view]).layer addAnimation:anim1 forKey:@"borderColor"];
 	}
+	if ([self isCancelled]) { numThreads--; NSDebug(@"Thread cancelled, now %i", numThreads); }
 }
 
 %end
@@ -294,20 +333,12 @@ static void setupHID() {
 	return [UIKeyCommand respondsToSelector:@selector(keyCommandWithInput:modifierFlags:action:discoverabilityTitle:)];
 }
 
-/*
-- (id)init {
-	id s = %orig();
-	[self addMolarObservers];
-	return s;
-}
-*/
-
 %new
 - (void)addMolarObservers {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tabKeyDown) name:@"TabKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyDown) name:@"CmdKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyUp) name:@"CmdKeyUp" object:nil];
-   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(escKeyDown) name:@"EscKeyDown" object:nil];
+   	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(escKeyDown:) name:@"EscKeyDown" object:nil];
    	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rightKeyDown) name:@"RightKeyDown" object:nil];
    	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(leftKeyDown) name:@"LeftKeyDown" object:nil];		
    	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(genericKeyDown) name:@"GenericKeyDown" object:nil];
@@ -340,6 +371,9 @@ static void setupHID() {
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBAppSwitcherModelDidChangeNotification" object:nil];
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBDisplayDidLaunchNotification" object:nil];
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveAppProperty:) name:@"UpdateActiveAppUserApplicationNotification" object:nil];
+
+	// switcher
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(dismissAppSwitcher) name:@"HideSwitcherNotificationLocalNotification" object:nil];
 }
 
 %new
@@ -479,7 +513,8 @@ static void setupHID() {
 				CGRect contentFrame = CGRectMake(0, 0, ls ? [UIScreen mainScreen].bounds.size.height : [UIScreen mainScreen].bounds.size.width,
 													   ls ? [UIScreen mainScreen].bounds.size.width : [UIScreen mainScreen].bounds.size.height);
 	
-				UIWindow *window = [[UIWindow alloc] initWithFrame:(((NSUInteger)[self maxIconsLS] == 6) || [self iPad]) ? contentFrame : bounds];
+				///UIWindow *window = [[UIWindow alloc] initWithFrame:(((NSUInteger)[self maxIconsLS] == 6) || [self iPad]) ? contentFrame : bounds];
+				UIWindow *window = [[UIWindow alloc] initWithFrame:contentFrame];
 				window.windowLevel = UIWindowLevelAlert;
 				
 				CGFloat h = SWITCHER_HEIGHT;
@@ -557,7 +592,18 @@ static void setupHID() {
 				
 				[self setSwitcherShown:[NSNull null]];
 				switcherOpenedInLandscape = ls; 
-				[[NSNotificationCenter defaultCenter] postNotificationName:@"SwitcherDidAppearNotification"];
+
+				CFStringRef notificationName = (CFStringRef)@"SwitcherDidAppearNotification";
+				
+				void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
+				CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
+				if(CFNotificationCenterGetDistributedCenter) {
+					CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(), 
+														 notificationName, 
+														 NULL, 
+														 NULL, 
+														 YES);
+				}
 			}
 		}
 	} 
@@ -621,7 +667,18 @@ static void setupHID() {
 - (void)dismissAppSwitcher {
 	[[self switcherWindow] setHidden:YES];
 	[self setSwitcherShown:nil];
-	[[NSNotificationCenter defaultCenter] postNotificationName:@"SwitcherDidDisappearNotification"];
+
+	CFStringRef notificationName = (CFStringRef)@"SwitcherDidDisappearNotification";
+	
+	void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
+	CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
+	if(CFNotificationCenterGetDistributedCenter) {
+		CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(), 
+											 notificationName, 
+											 NULL, 
+											 NULL, 
+											 YES);
+	}
 }
 
 %new
@@ -795,6 +852,16 @@ static void setupHID() {
 }
 
 %new
+- (id)flashViewThread {
+	return objc_getAssociatedObject(self, @selector(flashViewThread));
+}
+
+%new
+- (void)setFlashViewThread:(id)value {
+	objc_setAssociatedObject(self, @selector(flashViewThread), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
 - (void)activateBundleID:(NSString *)bundleID {
 	SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
 	SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -816,9 +883,22 @@ static void setupHID() {
 
 %new
 - (void)handleCmdEsc:(UIKeyCommand *)keyCommand {
-	if ([self switcherShown]) {
-		[self dismissAppSwitcher];
-		[self setSwitcherShown:nil];
+	if (switcherShown) {
+		NSDebug(@"DISMISSING SWITCHER");
+		CFStringRef notificationName = (CFStringRef)@"HideSwitcherNotification";
+
+		void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
+		CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
+		if(CFNotificationCenterGetDistributedCenter) {
+			CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(), 
+												 notificationName, 
+												 NULL, 
+												 NULL, 
+												 YES);
+		}
+	} else if (controlEnabled) {
+		NSDebug(@"INVOKING UI_ESC");
+		[self ui_esc];
 	}
 }
 
@@ -834,12 +914,11 @@ static void setupHID() {
 			SBDisplayItem *di = ((NSArray *)[self switcherItems])[((NSNumber *)[self selectedIcon]).intValue];
 			[[%c(SBAppSwitcherModel) sharedInstance] remove:di];
 			[[%c(SBApplicationController) sharedInstance] applicationService:nil suspendApplicationWithBundleIdentifier:[((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) bundleIdentifier]];
-		} else {
-			%c(FBApplicationProcess);
-			%c(FBProcessManager);
-		    FBApplicationProcess *process = [(FBProcessManager *)[%c(FBProcessManager) sharedInstance] createApplicationProcessForBundleID:[((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) bundleIdentifier]];
-    		[process killForReason:1 andReport:NO withDescription:@"MolarAppSwitcher"];
 		}
+		%c(FBApplicationProcess);
+		%c(FBProcessManager);
+	    FBApplicationProcess *process = [(FBProcessManager *)[%c(FBProcessManager) sharedInstance] createApplicationProcessForBundleID:[((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) bundleIdentifier]];
+		[process killForReason:1 andReport:NO withDescription:@"MolarAppSwitcher"];
 		
 		if (!((NSNumber *)[self selectedIcon]).intValue && ((NSArray *)[self switcherItems]).count == 1) {
 			[UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
@@ -914,14 +993,31 @@ static void setupHID() {
 									 l.frame.size.height);
 			}
 			// set switcher view center
-			((UIView *)[self switcherView]).center = CGPointMake(CGRectGetMidX(((UIWindow *)[self switcherWindow]).bounds), 
-																 CGRectGetMidY(((UIWindow *)[self switcherWindow]).bounds));
+			((UIView *)[self switcherView]).center = (ls && [self maxWidthLS] == @600.0) ? CGPointMake(CGRectGetMidY(((UIWindow *)[self switcherWindow]).bounds), 
+														 			  CGRectGetMidX(((UIWindow *)[self switcherWindow]).bounds))
+														: CGPointMake(CGRectGetMidX(((UIWindow *)[self switcherWindow]).bounds), 
+														 			  CGRectGetMidY(((UIWindow *)[self switcherWindow]).bounds));
 			// set overlay view center
 			((UIView *)[self overlayView]).center = CGPointMake(((UIImageView *)[self imageViews][(((NSNumber *)[self selectedIcon]).intValue)]).center.x - ((UIScrollView *)[self scrollView]).contentOffset.x,
 																((UIImageView *)[self imageViews][(((NSNumber *)[self selectedIcon]).intValue)]).center.y - ((UIScrollView *)[self scrollView]).contentOffset.y);
 		} completion:^(BOOL completed){
 			[killedAppIV removeFromSuperview];
 		}];
+	}
+	else if (enabled && ![self switcherShown] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+		if ([self iOS9]) {
+			%c(SBDisplayItem);
+			[[%c(SBApplicationController) sharedInstance] applicationService:nil suspendApplicationWithBundleIdentifier:[self activeAppUserApplication]];
+			%c(FBApplicationProcess);
+			%c(FBProcessManager);
+		    FBApplicationProcess *process = [(FBProcessManager *)[%c(FBProcessManager) sharedInstance] createApplicationProcessForBundleID:[self activeAppUserApplication]];
+    		[process killForReason:1 andReport:NO withDescription:@"MolarAppSwitcher"];
+		} else {
+			%c(FBApplicationProcess);
+			%c(FBProcessManager);
+		    FBApplicationProcess *process = [(FBProcessManager *)[%c(FBProcessManager) sharedInstance] createApplicationProcessForBundleID:[self activeAppUserApplication]];
+    		[process killForReason:1 andReport:NO withDescription:@"MolarAppSwitcher"];
+		}
 	}
 }
 
@@ -1078,13 +1174,22 @@ static void setupHID() {
 }
 
 %new
-- (void)escKeyDown {
-	if ([self cmdDown]) [self handleCmdEsc:nil];
-	else if (controlEnabled) [self ui_esc];
+- (void)escKeyDown:(NSNotification *)notif {
+	NSDebug(@"ESC DOWN: %@", [notif.userInfo objectForKey:@"sender"]);
+	if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:[notif.userInfo objectForKey:@"sender"]]) {
+		if ([self cmdDown]) {
+			NSDebug(@"escKeyDown -> handleCmdEsc");
+			[self handleCmdEsc:nil];
+		}
+		else if (controlEnabled) { 
+			NSDebug(@"escKeyDown -> ui_esc");
+			[self ui_esc]; 
+		}
+	}
 }
 
 %new
-- (void)tabKeyDown {
+- (void)tabKeyDown { 
 	[self handleKeyStatus:1];
 }
 
@@ -1231,11 +1336,20 @@ static void setupHID() {
 - (NSNumber *)minimumWidthForKeyCommands:(NSArray *)cmds maxWidth:(CGFloat)maxWidth {
 	CGFloat modifierWidth = DISCOVERABILITY_MODIFIER_WIDTH;
 	CGFloat max = 0.0;
-	for (UIKeyCommand *kc in cmds) {
-		CGSize size = [(kc.discoverabilityTitle ? kc.discoverabilityTitle: @"") sizeWithAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE]}];
-		CGSize adjustedSize = CGSizeMake(ceilf(size.width), ceilf(size.height));
-		if (adjustedSize.width > maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP) adjustedSize = CGSizeMake(maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP, adjustedSize.height);		
-		if (adjustedSize.width > max ) max = adjustedSize.width;
+	if ([self iOS9]) {
+		for (UIKeyCommand *kc in cmds) {
+			CGSize size = [(kc.discoverabilityTitle ? kc.discoverabilityTitle: @"") sizeWithAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE]}];
+			CGSize adjustedSize = CGSizeMake(ceilf(size.width), ceilf(size.height));
+			if (adjustedSize.width > maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP) adjustedSize = CGSizeMake(maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP, adjustedSize.height);		
+			if (adjustedSize.width > max ) max = adjustedSize.width;
+		}
+	} else {
+		for (UIKeyCommand *kc in cmds) {
+			CGSize size = [@"" sizeWithAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE]}];
+			CGSize adjustedSize = CGSizeMake(ceilf(size.width), ceilf(size.height));
+			if (adjustedSize.width > maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP) adjustedSize = CGSizeMake(maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP, adjustedSize.height);		
+			if (adjustedSize.width > max ) max = adjustedSize.width;
+		}
 	}
 	return @(max + DISCOVERABILITY_MODIFIER_GAP + modifierWidth);
 }
@@ -1262,15 +1376,26 @@ static void setupHID() {
 		}
 		for (int i = 0; i < commands.count; i++) {
 			UIKeyCommand *kc = commands[i];
-			if (!kc.discoverabilityTitle && 
-				kc.modifierFlags == UIKeyModifierCommand && 
-				([kc.input isEqualToString:@"+"] || [kc.input.uppercaseString isEqualToString:@"-"] || [kc.input isEqualToString:@"0"])) {
-				[commands removeObject:kc];
+			if ([self iOS9]) {
+				if (!kc.discoverabilityTitle && 
+					kc.modifierFlags == UIKeyModifierCommand && 
+					([kc.input isEqualToString:@"+"] || [kc.input.uppercaseString isEqualToString:@"-"] || [kc.input isEqualToString:@"0"])) {
+					[commands removeObject:kc];
+				}
+			} else {
+				if (kc.modifierFlags == UIKeyModifierCommand && 
+					([kc.input isEqualToString:@"+"] || [kc.input.uppercaseString isEqualToString:@"-"] || [kc.input isEqualToString:@"0"])) {
+					[commands removeObject:kc];
+				}
 			}
 		}
 		for (int i = 0; i < commands.count; i++) {
 			UIKeyCommand *kc = commands[i];
-			if (!kc.discoverabilityTitle && [[self modifierString:kc] isEqualToString:@"⌘ -"]) [commands removeObjectAtIndex:i];
+			if ([self iOS9]) {
+				if (!kc.discoverabilityTitle && [[self modifierString:kc] isEqualToString:@"⌘ -"]) [commands removeObjectAtIndex:i];
+			} else {
+				if ([[self modifierString:kc] isEqualToString:@"⌘ -"]) [commands removeObjectAtIndex:i];
+			}
 		}
 
 		if (commands.count) {
@@ -1314,7 +1439,7 @@ static void setupHID() {
 				if (commands.count > iconsPerPage) {
 					int pages = (int)ceil((double)commands.count / (iconsPerPage * 2));
 					int cmdsLeft = commands.count;
-					UILabel *testLabel = [self discoverabilityLabelViewWithTitle:((UIKeyCommand *)commands[0]).discoverabilityTitle
+					UILabel *testLabel = [self discoverabilityLabelViewWithTitle:@"Test"
 																		   shortcut:@"Test"
 																		   minWidth:maxWP
 																		   maxWidth:maxWP];
@@ -1339,7 +1464,7 @@ static void setupHID() {
 							for (int l = 0; l < iconsPerPage; l++) {
 								if (!cmdsLeft) break;
 								UIKeyCommand *kc = commands[idx];
-								UIView *label = [self discoverabilityLabelViewWithTitle:kc.discoverabilityTitle
+								UIView *label = [self discoverabilityLabelViewWithTitle:[self iOS9] ? kc.discoverabilityTitle : @""
 																			   shortcut:[self modifierString:kc]
 																			   minWidth:maxWLS/2 - 25
 																			   maxWidth:maxWLS/2 - 25];
@@ -1370,7 +1495,7 @@ static void setupHID() {
 					CGFloat maxWidth = 0;
 					CGFloat minWidth = ((NSNumber *)[self minimumWidthForKeyCommands:commands maxWidth:maxWLS]).floatValue;
 					for (UIKeyCommand *kc in commands) {
-						UIView *l = [self discoverabilityLabelViewWithTitle:kc.discoverabilityTitle
+						UIView *l = [self discoverabilityLabelViewWithTitle:[self iOS9] ? kc.discoverabilityTitle : @""
 																   shortcut:[self modifierString:kc]
 																   minWidth:minWidth 
 																   maxWidth:maxWLS];
@@ -1403,7 +1528,7 @@ static void setupHID() {
 				if (commands.count > iconsPerPage) {
 					int pages = (int)ceil((double)commands.count / iconsPerPage);
 					int cmdsLeft = commands.count;
-					UILabel *testLabel = [self discoverabilityLabelViewWithTitle:((UIKeyCommand *)commands[0]).discoverabilityTitle
+					UILabel *testLabel = [self discoverabilityLabelViewWithTitle:@"Test"
 																		   shortcut:@"Test"
 																		   minWidth:maxWP
 																		   maxWidth:maxWP];
@@ -1429,7 +1554,7 @@ static void setupHID() {
 						for (int l = 0; l < iconsPerPage; l++) {
 							if (!cmdsLeft) break;
 							UIKeyCommand *kc = commands[idx];
-							UIView *label = [self discoverabilityLabelViewWithTitle:kc.discoverabilityTitle
+							UIView *label = [self discoverabilityLabelViewWithTitle:[self iOS9] ? kc.discoverabilityTitle : @""
 																		   shortcut:[self modifierString:kc]
 																		   minWidth:maxWP
 																		   maxWidth:maxWP];
@@ -1456,7 +1581,7 @@ static void setupHID() {
 					NSMutableArray *labels = [NSMutableArray array];
 					CGFloat minWidth = ((NSNumber *)[self minimumWidthForKeyCommands:commands maxWidth:maxWP]).floatValue;
 					for (UIKeyCommand *kc in commands) {
-						UIView *l = [self discoverabilityLabelViewWithTitle:kc.discoverabilityTitle
+						UIView *l = [self discoverabilityLabelViewWithTitle:[self iOS9] ? kc.discoverabilityTitle : @""
 																   shortcut:[self modifierString:kc]
 																   minWidth:minWidth 
 																   maxWidth:maxWP];
@@ -1657,57 +1782,61 @@ static void setupHID() {
 
 %new 
 - (void)ui_leftKey {
-	if (enabled && controlEnabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
-		[self stopDiscoverabilityTimer];
-		if (sliderMode) {
-			UISlider *slider = (UISlider *)[self selectedView];
-			float dec = (slider.maximumValue - slider.minimumValue) / SLIDER_LEVELS;
-			[slider setValue:slider.value-dec animated:YES];
-			[slider sendActionsForControlEvents:UIControlEventValueChanged];
-			if (!keyRepeatTimer) {
-				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-																		  target:self 
-																		selector:@selector(keyRepeat:) 
-																		userInfo:@{@"key": @"left"} 
-																		 repeats:NO];
-				waitingForKeyRepeat = YES;
-			} else waitingForKeyRepeat = NO;
-		}
-		else if (scrollViewMode) {
+	if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+		if (enabled && controlEnabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
+			[self stopDiscoverabilityTimer];
+			if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
 			if (fView) {
 				[fView removeFromSuperview];
 				fView = nil;
 			}
-			UIScrollView *scrollView = (UIScrollView *)[self selectedView];
-			CGPoint newOffset;
-			if ([self cmdDown]) {
-				newOffset = CGPointMake(0,
-										scrollView.contentOffset.y);
-			} else {
-				if (keyRepeatTimer) {
-					newOffset = CGPointMake(scrollView.contentOffset.x - KEY_REPEAT_STEP,
+			if (sliderMode) {
+				UISlider *slider = (UISlider *)[self selectedView];
+				float dec = (slider.maximumValue - slider.minimumValue) / SLIDER_LEVELS;
+				[slider setValue:slider.value-dec animated:YES];
+				[slider sendActionsForControlEvents:UIControlEventValueChanged];
+				if (!keyRepeatTimer) {
+					 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																			  target:self 
+																			selector:@selector(keyRepeat:) 
+																			userInfo:@{@"key": @"left"} 
+																			 repeats:NO];
+					waitingForKeyRepeat = YES;
+				} else waitingForKeyRepeat = NO;
+			}
+			else if (scrollViewMode) {
+				UIScrollView *scrollView = (UIScrollView *)[self selectedView];
+				CGPoint newOffset;
+				if ([self cmdDown]) {
+					newOffset = CGPointMake(0,
 											scrollView.contentOffset.y);
-
 				} else {
-					newOffset = CGPointMake(scrollView.contentOffset.x - ((scrollView.frame.size.width) / 3),
-											scrollView.contentOffset.y);
-				}
-				if (newOffset.x <  0) newOffset.x = 0;
-			} 
-			if (!keyRepeatTimer) {
-				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-																		  target:self 
-																		selector:@selector(keyRepeat:) 
-																		userInfo:@{@"key": @"left"} 
-																		 repeats:NO];
-				waitingForKeyRepeat = YES;
-			} else waitingForKeyRepeat = NO;
-			[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
+					if (keyRepeatTimer) {
+						newOffset = CGPointMake(scrollView.contentOffset.x - KEY_REPEAT_STEP,
+												scrollView.contentOffset.y);
+
+					} else {
+						newOffset = CGPointMake(scrollView.contentOffset.x - ((scrollView.frame.size.width) / 3),
+												scrollView.contentOffset.y);
+					}
+					if (newOffset.x <  0) newOffset.x = 0;
+				} 
+				if (!keyRepeatTimer) {
+					if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
+					 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																			  target:self 
+																			selector:@selector(keyRepeat:) 
+																			userInfo:@{@"key": @"left"} 
+																			 repeats:NO];
+					waitingForKeyRepeat = YES;
+				} else waitingForKeyRepeat = NO;
+				[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
+			}
 		}
-	}
-	else if (enabled && [self isActive] && discoverabilityShown) {
-		pageControl.currentPage--;
-		[self pageChanged];
+		else if (enabled && [self isActive] && discoverabilityShown) {
+			pageControl.currentPage--;
+			[self pageChanged];
+		}
 	}
 }
 
@@ -1721,57 +1850,61 @@ static void setupHID() {
 
 %new
 - (void)ui_rightKey {
-	if (enabled && controlEnabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
-		[self stopDiscoverabilityTimer];
-		if (sliderMode) {
-			UISlider *slider = (UISlider *)[self selectedView];
-			float inc = (slider.maximumValue - slider.minimumValue) / SLIDER_LEVELS;
-			[slider setValue:slider.value+inc animated:YES];
-			[slider sendActionsForControlEvents:UIControlEventValueChanged];
-			if (!keyRepeatTimer) {
-				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-																		  target:self 
-																		selector:@selector(keyRepeat:) 
-																		userInfo:@{@"key": @"right"} 
-																		 repeats:NO];
-				waitingForKeyRepeat = YES;
-			} else waitingForKeyRepeat = NO;
-		}
-		else if (scrollViewMode) {
+	if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+		if (enabled && controlEnabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
+			[self stopDiscoverabilityTimer];
+			if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
 			if (fView) {
 				[fView removeFromSuperview];
 				fView = nil;
 			}
-			UIScrollView *scrollView = (UIScrollView *)[self selectedView];
-			CGPoint newOffset;
-			if ([self cmdDown]) {
-				newOffset = CGPointMake(scrollView.contentSize.width - scrollView.frame.size.width,
-										scrollView.contentOffset.y);
-			} else {
-				if (keyRepeatTimer) {
-					newOffset = CGPointMake(scrollView.contentOffset.x + KEY_REPEAT_STEP,
+			if (sliderMode) {
+				UISlider *slider = (UISlider *)[self selectedView];
+				float inc = (slider.maximumValue - slider.minimumValue) / SLIDER_LEVELS;
+				[slider setValue:slider.value+inc animated:YES];
+				[slider sendActionsForControlEvents:UIControlEventValueChanged];
+				if (!keyRepeatTimer) {
+					 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																			  target:self 
+																			selector:@selector(keyRepeat:) 
+																			userInfo:@{@"key": @"right"} 
+																			 repeats:NO];
+					waitingForKeyRepeat = YES;
+				} else waitingForKeyRepeat = NO;
+			}
+			else if (scrollViewMode) {
+				UIScrollView *scrollView = (UIScrollView *)[self selectedView];
+				CGPoint newOffset;
+				if ([self cmdDown]) {
+					newOffset = CGPointMake(scrollView.contentSize.width - scrollView.frame.size.width,
 											scrollView.contentOffset.y);
 				} else {
-					newOffset = CGPointMake(scrollView.contentOffset.x + ((scrollView.frame.size.width) / 3),
-											scrollView.contentOffset.y);
+					if (keyRepeatTimer) {
+						newOffset = CGPointMake(scrollView.contentOffset.x + KEY_REPEAT_STEP,
+												scrollView.contentOffset.y);
+					} else {
+						newOffset = CGPointMake(scrollView.contentOffset.x + ((scrollView.frame.size.width) / 3),
+												scrollView.contentOffset.y);
+					}
+					if (newOffset.x > (scrollView.contentSize.width - scrollView.frame.size.width)) 
+						newOffset.x = scrollView.contentSize.width - scrollView.frame.size.width;
 				}
-				if (newOffset.x > (scrollView.contentSize.width - scrollView.frame.size.width)) 
-					newOffset.x = scrollView.contentSize.width - scrollView.frame.size.width;
+				if (!keyRepeatTimer) {
+					if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
+					 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																			  target:self 
+																			selector:@selector(keyRepeat:) 
+																			userInfo:@{@"key": @"right"} 
+																			 repeats:NO];
+					waitingForKeyRepeat = YES;
+				} else waitingForKeyRepeat = NO;
+				[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
 			}
-			if (!keyRepeatTimer) {
-				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-																		  target:self 
-																		selector:@selector(keyRepeat:) 
-																		userInfo:@{@"key": @"right"} 
-																		 repeats:NO];
-				waitingForKeyRepeat = YES;
-			} else waitingForKeyRepeat = NO;
-			[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
 		}
-	}
-	else if (enabled && [self isActive] && discoverabilityShown) {
-		pageControl.currentPage++;
-		[self pageChanged];
+		else if (enabled && [self isActive] && discoverabilityShown) {
+			pageControl.currentPage++;
+			[self pageChanged];
+		}
 	}
 }
 
@@ -1785,133 +1918,137 @@ static void setupHID() {
 
 %new
 - (void)ui_downKey {
-	if (enabled && controlEnabled && [self isActive]) {
-		[self stopDiscoverabilityTimer];
-		if (tableViewMode) {
-			if ([self cmdDown]) {
-				selectedSection = [selectedTableView numberOfSections] - 1;
-				selectedRow = [selectedTableView numberOfRowsInSection:selectedSection] - 1;
-				UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-				selectedCell = cell;
-			} else if ([selectedTableView numberOfRowsInSection:selectedSection] > selectedRow + 1) {
-				if (selectedCell) {
-					selectedCell.selected = NO;
-				}
-				selectedRow++;
-				UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-				cell.selected = YES;
-				selectedCell = cell;
-			} else if ([selectedTableView numberOfSections] > selectedSection + 1) {
-				if (selectedCell) {
-					selectedCell.selected = NO;
-				}
-				selectedRow = 0;
-				selectedSection++;
-				UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-				cell.selected = YES;
-				selectedCell = cell;
-			}
-			CGAffineTransform backupTransform = selectedCell.transform;
-			[UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
-				@try { [selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES]; }
-				@catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
-				selectedCell.transform = CGAffineTransformConcat(selectedCell.transform, 
-																 CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
-			} completion:nil];
-			[UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
-				selectedCell.transform = backupTransform;
-			} completion:^(BOOL completed){
-				selectedCell.selected = YES;
-			}];
-		}
-		
-		else if (collectionViewMode) {
-			if ([selectedCollectionView numberOfItemsInSection:selectedSection] > selectedRow + 1) {
-				if (selectedItem) {
-					selectedItem.selected = NO;
-				}
-				selectedRow++;
-				UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
-				cell.selected = YES;
-				selectedItem = cell;
-			} else if ([selectedCollectionView numberOfSections] > selectedSection + 1) {
-				if (selectedItem) {
-					selectedItem.selected = NO;
-				}
-				selectedRow = 0;
-				selectedSection++;
-				UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
-				cell.selected = YES;
-				selectedItem = cell;
-			}
-			CGAffineTransform backupTransform = selectedItem.transform;
-			[UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
-				@try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow 
-															 inSection:selectedSection] 
-													  atScrollPosition:UICollectionViewScrollPositionCenteredVertically | UICollectionViewScrollPositionCenteredHorizontally 
-													          animated:YES];	
-				} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
-				selectedItem.transform = CGAffineTransformConcat(selectedItem.transform, 
-				CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
-			} completion:nil];
-			[UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
-				selectedItem.transform = backupTransform;
-			} completion:nil];
-		}
-		
-		else if (scrollViewMode) {
+	if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+		if (enabled && controlEnabled && [self isActive]) {
+			[self stopDiscoverabilityTimer];
+			if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
 			if (fView) {
 				[fView removeFromSuperview];
 				fView = nil;
 			}
-			UIScrollView *scrollView = (UIScrollView *)[self selectedView];
-			CGPoint newOffset;
-			UIViewController *topVC = (UIViewController *)[self topMostViewController];
-			CGRect navBar;
-			if ([topVC isKindOfClass:UINavigationController.class]) navBar = ((UINavigationController *)topVC).navigationBar.frame;
-			if ([self cmdDown]) {
-				if ([topVC isKindOfClass:UINavigationController.class] && !((UINavigationController *)topVC).navigationBar.hidden) {
-					navBar = ((UINavigationController *)topVC).navigationBar.frame;
-					newOffset = CGPointMake(scrollView.contentOffset.x, 
-											scrollView.contentSize.height - scrollView.frame.size.height + (navBar.origin.y + navBar.size.height));
-				} else {
-					newOffset = CGPointMake(scrollView.contentOffset.x,
-											scrollView.contentSize.height - scrollView.frame.size.height);
+			if (tableViewMode) {
+				if ([self cmdDown]) {
+					selectedSection = [selectedTableView numberOfSections] - 1;
+					selectedRow = [selectedTableView numberOfRowsInSection:selectedSection] - 1;
+					UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+					selectedCell = cell;
+				} else if ([selectedTableView numberOfRowsInSection:selectedSection] > selectedRow + 1) {
+					if (selectedCell) {
+						selectedCell.selected = NO;
+					}
+					selectedRow++;
+					UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+					cell.selected = YES;
+					selectedCell = cell;
+				} else if ([selectedTableView numberOfSections] > selectedSection + 1) {
+					if (selectedCell) {
+						selectedCell.selected = NO;
+					}
+					selectedRow = 0;
+					selectedSection++;
+					UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+					cell.selected = YES;
+					selectedCell = cell;
 				}
-			} else {
-				if (keyRepeatTimer) {
-					newOffset = CGPointMake(scrollView.contentOffset.x,
-										scrollView.contentOffset.y + KEY_REPEAT_STEP);
-				} else {
-					newOffset = CGPointMake(scrollView.contentOffset.x,
-										scrollView.contentOffset.y + (scrollView.frame.size.height / 3));
+				CGAffineTransform backupTransform = selectedCell.transform;
+				[UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
+					@try { [selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES]; }
+					@catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
+					selectedCell.transform = CGAffineTransformConcat(selectedCell.transform, 
+																	 CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
+				} completion:nil];
+				[UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
+					selectedCell.transform = backupTransform;
+				} completion:^(BOOL completed){
+					selectedCell.selected = YES;
+				}];
+			}
+			
+			else if (collectionViewMode) {
+				if ([selectedCollectionView numberOfItemsInSection:selectedSection] > selectedRow + 1) {
+					if (selectedItem) {
+						selectedItem.selected = NO;
+					}
+					selectedRow++;
+					UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+					cell.selected = YES;
+					selectedItem = cell;
+				} else if ([selectedCollectionView numberOfSections] > selectedSection + 1) {
+					if (selectedItem) {
+						selectedItem.selected = NO;
+					}
+					selectedRow = 0;
+					selectedSection++;
+					UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+					cell.selected = YES;
+					selectedItem = cell;
 				}
-				if ([topVC isKindOfClass:UINavigationController.class] && !((UINavigationController *)topVC).navigationBar.hidden) {
-					if (newOffset.y > (scrollView.contentSize.height - scrollView.frame.size.height) + (navBar.origin.y + navBar.size.height)) {
-						newOffset.y = (scrollView.contentSize.height - scrollView.frame.size.height) + (navBar.origin.y + navBar.size.height);
+				CGAffineTransform backupTransform = selectedItem.transform;
+				[UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
+					@try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow 
+																 inSection:selectedSection] 
+														  atScrollPosition:UICollectionViewScrollPositionCenteredVertically | UICollectionViewScrollPositionCenteredHorizontally 
+														          animated:YES];	
+					} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
+					selectedItem.transform = CGAffineTransformConcat(selectedItem.transform, 
+					CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
+				} completion:nil];
+				[UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
+					selectedItem.transform = backupTransform;
+				} completion:nil];
+			}
+			
+			else if (scrollViewMode) {
+				UIScrollView *scrollView = (UIScrollView *)[self selectedView];
+				CGPoint newOffset;
+				UIViewController *topVC = (UIViewController *)[self topMostViewController];
+				CGRect navBar;
+				if ([topVC isKindOfClass:UINavigationController.class]) navBar = ((UINavigationController *)topVC).navigationBar.frame;
+				if ([self cmdDown]) {
+					if ([topVC isKindOfClass:UINavigationController.class] && !((UINavigationController *)topVC).navigationBar.hidden) {
+						navBar = ((UINavigationController *)topVC).navigationBar.frame;
+						newOffset = CGPointMake(scrollView.contentOffset.x, 
+												scrollView.contentSize.height - scrollView.frame.size.height + (navBar.origin.y + navBar.size.height));
+					} else {
+						newOffset = CGPointMake(scrollView.contentOffset.x,
+												scrollView.contentSize.height - scrollView.frame.size.height);
 					}
 				} else {
-					if (newOffset.y > (scrollView.contentSize.height - scrollView.frame.size.height)) 
-						newOffset.y = scrollView.contentSize.height - scrollView.frame.size.height;
-				}
-			} 
-			[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
-		}
-		
-		else {
-			UIView *scrollableView = [self findFirstScrollableView];
-			if (scrollableView) [self highlightView:scrollableView];
-		}
-		
-		if (tableViewMode || collectionViewMode || scrollViewMode) {
-			if (!keyRepeatTimer) {
-				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-																		  target:self 
-																		selector:@selector(keyRepeat:) 
-																		userInfo:@{@"key": @"down"} 
-																		 repeats:NO];
-				waitingForKeyRepeat = YES;
-			} else waitingForKeyRepeat = NO;
+					if (keyRepeatTimer) {
+						newOffset = CGPointMake(scrollView.contentOffset.x,
+											scrollView.contentOffset.y + KEY_REPEAT_STEP);
+					} else {
+						newOffset = CGPointMake(scrollView.contentOffset.x,
+											scrollView.contentOffset.y + (scrollView.frame.size.height / 3));
+					}
+					if ([topVC isKindOfClass:UINavigationController.class] && !((UINavigationController *)topVC).navigationBar.hidden) {
+						if (newOffset.y > (scrollView.contentSize.height - scrollView.frame.size.height) + (navBar.origin.y + navBar.size.height)) {
+							newOffset.y = (scrollView.contentSize.height - scrollView.frame.size.height) + (navBar.origin.y + navBar.size.height);
+						}
+					} else {
+						if (newOffset.y > (scrollView.contentSize.height - scrollView.frame.size.height)) 
+							newOffset.y = scrollView.contentSize.height - scrollView.frame.size.height;
+					}
+				} 
+				[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
+			}
+			
+			else {
+				UIView *scrollableView = [self findFirstScrollableView];
+				if (scrollableView) [self highlightView:scrollableView];
+			}
+			
+			if (tableViewMode || collectionViewMode || scrollViewMode) {
+				if (!keyRepeatTimer) {
+					if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
+					 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																			  target:self 
+																			selector:@selector(keyRepeat:) 
+																			userInfo:@{@"key": @"down"} 
+																			 repeats:NO];
+					waitingForKeyRepeat = YES;
+				} else waitingForKeyRepeat = NO;
+			}
 		}
 	}
 }
@@ -1926,131 +2063,135 @@ static void setupHID() {
 
 %new
 - (void)ui_upKey {
-	if (enabled && controlEnabled && [self isActive]) {
-		[self stopDiscoverabilityTimer];
-		if (tableViewMode) {
-			if ([self cmdDown]) {
-				selectedRow = selectedSection = 0;
-				UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-				cell.selected = YES;
-				selectedCell = cell;
-			} else if ((selectedRow - 1) >= 0) {
-				if (selectedCell) {
-					selectedCell.selected = NO;
-				}
-				selectedRow--;
-				UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-				cell.selected = YES;
-				selectedCell = cell;
-			} else if (selectedSection > 0) {
-				if (selectedCell) {
-					selectedCell.selected = NO;
-				}
-				selectedSection--;
-				selectedRow = [selectedTableView numberOfRowsInSection:selectedSection] - 1;
-				UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-				cell.selected = YES;
-				selectedCell = cell;
-			}
-			CGAffineTransform backupTransform = selectedCell.transform;
-			[UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
-				@try { [selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES]; }
-				@catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
-				selectedCell.transform = CGAffineTransformConcat(selectedCell.transform, 
-																 CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
-			} completion:nil];
-			[UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
-				selectedCell.transform = backupTransform;
-			} completion:^(BOOL completed){
-				selectedCell.selected = YES;
-			}];
-		}
-		
-		else if (collectionViewMode) {
-			if ((selectedRow - 1) >= 0) {
-				if (selectedItem) {
-					selectedItem.selected = NO;
-				}
-				selectedRow--;
-				UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
-				cell.selected = YES;
-				selectedItem = cell;
-			} else if (selectedSection > 0) {
-				if (selectedItem) {
-					selectedItem.selected = NO;
-				}
-				selectedSection--;
-				selectedRow = [selectedCollectionView numberOfItemsInSection:selectedSection] - 1;
-				UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
-				cell.selected = YES;
-				selectedItem = cell;
-			}
-			CGAffineTransform backupTransform = selectedItem.transform;
-			[UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
-				@try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow 
-															 inSection:selectedSection] 
-													  atScrollPosition:UICollectionViewScrollPositionCenteredVertically | UICollectionViewScrollPositionCenteredHorizontally 
-													          animated:YES];
-				} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
-				selectedItem.transform = CGAffineTransformConcat(selectedItem.transform, 
-				CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
-			} completion:nil];
-			[UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
-				selectedItem.transform = backupTransform;
-			} completion:nil];
-		}
-		
-		else if (scrollViewMode) {
+	if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+		if (enabled && controlEnabled && [self isActive]) {
+			[self stopDiscoverabilityTimer];
+			if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
 			if (fView) {
 				[fView removeFromSuperview];
 				fView = nil;
+			}		
+			if (tableViewMode) {
+				if ([self cmdDown]) {
+					selectedRow = selectedSection = 0;
+					UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+					cell.selected = YES;
+					selectedCell = cell;
+				} else if ((selectedRow - 1) >= 0) {
+					if (selectedCell) {
+						selectedCell.selected = NO;
+					}
+					selectedRow--;
+					UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+					cell.selected = YES;
+					selectedCell = cell;
+				} else if (selectedSection > 0) {
+					if (selectedCell) {
+						selectedCell.selected = NO;
+					}
+					selectedSection--;
+					selectedRow = [selectedTableView numberOfRowsInSection:selectedSection] - 1;
+					UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+					cell.selected = YES;
+					selectedCell = cell;
+				}
+				CGAffineTransform backupTransform = selectedCell.transform;
+				[UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
+					@try { [selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES]; }
+					@catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
+					selectedCell.transform = CGAffineTransformConcat(selectedCell.transform, 
+																	 CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
+				} completion:nil];
+				[UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
+					selectedCell.transform = backupTransform;
+				} completion:^(BOOL completed){
+					selectedCell.selected = YES;
+				}];
 			}
-			UIScrollView *scrollView = (UIScrollView *)[self selectedView];
-			CGPoint newOffset;
-			UIViewController *topVC = (UIViewController *)[self topMostViewController];
-			CGRect navBar;
-			if ([topVC isKindOfClass:UINavigationController.class]) navBar = ((UINavigationController *)topVC).navigationBar.frame;
-			if ([self cmdDown]) {
-				if ([topVC isKindOfClass:UINavigationController.class] && !((UINavigationController *)topVC).navigationBar.hidden) {
-					navBar = ((UINavigationController *)topVC).navigationBar.frame;
-					newOffset = CGPointMake(scrollView.contentOffset.x, -(navBar.origin.y + navBar.size.height));
-				} else {
-					newOffset = CGPointMake(scrollView.contentOffset.x, 0);
+			
+			else if (collectionViewMode) {
+				if ((selectedRow - 1) >= 0) {
+					if (selectedItem) {
+						selectedItem.selected = NO;
+					}
+					selectedRow--;
+					UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+					cell.selected = YES;
+					selectedItem = cell;
+				} else if (selectedSection > 0) {
+					if (selectedItem) {
+						selectedItem.selected = NO;
+					}
+					selectedSection--;
+					selectedRow = [selectedCollectionView numberOfItemsInSection:selectedSection] - 1;
+					UICollectionViewCell *cell = [selectedCollectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+					cell.selected = YES;
+					selectedItem = cell;
 				}
-			} else {
-				if (keyRepeatTimer) {
-					newOffset = CGPointMake(scrollView.contentOffset.x,
-											scrollView.contentOffset.y - KEY_REPEAT_STEP);
-				} else {
-					newOffset = CGPointMake(scrollView.contentOffset.x,
-											scrollView.contentOffset.y - (scrollView.frame.size.height / 3));
-				}
-				if ([topVC isKindOfClass:UINavigationController.class] && !((UINavigationController *)topVC).navigationBar.hidden) {
-					if (newOffset.y < (-(navBar.origin.y + navBar.size.height))) {
-						newOffset.y = (-(navBar.origin.y + navBar.size.height));
+				CGAffineTransform backupTransform = selectedItem.transform;
+				[UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
+					@try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow 
+																 inSection:selectedSection] 
+														  atScrollPosition:UICollectionViewScrollPositionCenteredVertically | UICollectionViewScrollPositionCenteredHorizontally 
+														          animated:YES];
+					} @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
+					selectedItem.transform = CGAffineTransformConcat(selectedItem.transform, 
+					CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
+				} completion:nil];
+				[UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
+					selectedItem.transform = backupTransform;
+				} completion:nil];
+			}
+			
+			else if (scrollViewMode) {
+				UIScrollView *scrollView = (UIScrollView *)[self selectedView];
+				CGPoint newOffset;
+				UIViewController *topVC = (UIViewController *)[self topMostViewController];
+				CGRect navBar;
+				if ([topVC isKindOfClass:UINavigationController.class]) navBar = ((UINavigationController *)topVC).navigationBar.frame;
+				if ([self cmdDown]) {
+					if ([topVC isKindOfClass:UINavigationController.class] && !((UINavigationController *)topVC).navigationBar.hidden) {
+						navBar = ((UINavigationController *)topVC).navigationBar.frame;
+						newOffset = CGPointMake(scrollView.contentOffset.x, -(navBar.origin.y + navBar.size.height));
+					} else {
+						newOffset = CGPointMake(scrollView.contentOffset.x, 0);
 					}
 				} else {
-					if (newOffset.y < 0) newOffset.y = 0;
-				}
-			} 
-			[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
+					if (keyRepeatTimer) {
+						newOffset = CGPointMake(scrollView.contentOffset.x,
+												scrollView.contentOffset.y - KEY_REPEAT_STEP);
+					} else {
+						newOffset = CGPointMake(scrollView.contentOffset.x,
+												scrollView.contentOffset.y - (scrollView.frame.size.height / 3));
+					}
+					if ([topVC isKindOfClass:UINavigationController.class] && !((UINavigationController *)topVC).navigationBar.hidden) {
+						if (newOffset.y < (-(navBar.origin.y + navBar.size.height))) {
+							newOffset.y = (-(navBar.origin.y + navBar.size.height));
+						}
+					} else {
+						if (newOffset.y < 0) newOffset.y = 0;
+					}
+				} 
+				[scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
+			}
+			
+			else {
+				UIView *scrollableView = [self findFirstScrollableView];
+				if (scrollableView) [self highlightView:scrollableView];
+			}
+			
+			if (tableViewMode || collectionViewMode || scrollViewMode) {
+				if (!keyRepeatTimer) {
+					if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
+					 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																			  target:self 
+																			selector:@selector(keyRepeat:) 
+																			userInfo:@{@"key": @"up"} 
+																			 repeats:NO];
+					waitingForKeyRepeat = YES;
+				} else waitingForKeyRepeat = NO;
+			}		
 		}
-		
-		else {
-			UIView *scrollableView = [self findFirstScrollableView];
-			if (scrollableView) [self highlightView:scrollableView];
-		}
-		
-		if (tableViewMode || collectionViewMode || scrollViewMode) {
-			if (!keyRepeatTimer) {
-				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-																		  target:self 
-																		selector:@selector(keyRepeat:) 
-																		userInfo:@{@"key": @"up"} 
-																		 repeats:NO];
-				waitingForKeyRepeat = YES;
-			} else waitingForKeyRepeat = NO;
-		}		
 	}
 }
 
@@ -2064,14 +2205,16 @@ static void setupHID() {
 
 %new
 - (void)ui_rKey {
-	if (enabled && controlEnabled && [self isActive] && [self cmdDown] && [self shiftDown]) {
-		if ([[self selectedView] isKindOfClass:[UITableView class]]) {
-			for (UIView *v in (NSArray *)[self views]) {
-				if ([v isKindOfClass:[UIRefreshControl class]]) {
-					if (v.superview == [self selectedView]) {
-						NSDebug(@"RELOADING TABLE");
-						[(UIRefreshControl *)v sendActionsForControlEvents:UIControlEventValueChanged];
-						return;
+	if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+		if (enabled && controlEnabled && [self isActive] && [self cmdDown] && [self shiftDown]) {
+			if ([[self selectedView] isKindOfClass:[UITableView class]]) {
+				for (UIView *v in (NSArray *)[self views]) {
+					if ([v isKindOfClass:[UIRefreshControl class]]) {
+						if (v.superview == [self selectedView]) {
+							NSDebug(@"RELOADING TABLE");
+							[(UIRefreshControl *)v sendActionsForControlEvents:UIControlEventValueChanged];
+							return;
+						}
 					}
 				}
 			}
@@ -2081,139 +2224,146 @@ static void setupHID() {
 
 %new
 - (void)ui_enterKey {
-	if (enabled && controlEnabled && [self isActive]) {
-		@synchronized(self) {
-			if ([UIApplication sharedApplication].keyWindow.rootViewController &&
-				[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController &&
-				[[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController isKindOfClass:[UIAlertController class]]) {
-				UIAlertController *ac = (UIAlertController *)[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController;
-				if (ac.preferredStyle == UIAlertControllerStyleAlert) {
-					if (ac.preferredAction) {
-						NSDebug(@"ENTER ALERT: Dismissing preferredAction");
-						[self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
-					}
-					else if (collectionViewMode) {
-						NSString *title = ((UIAlertAction *)[((UIView *)selectedItem.subviews[0]).subviews[0] valueForKey:@"action"]).title;
+	if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+		if (enabled && controlEnabled && [self isActive]) {
+			@synchronized(self) {
+				if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
+				if (fView) {
+					[fView removeFromSuperview];
+					fView = nil;
+				}
+				if ([UIApplication sharedApplication].keyWindow.rootViewController &&
+					[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController &&
+					[[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController isKindOfClass:[UIAlertController class]]) {
+					UIAlertController *ac = (UIAlertController *)[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController;
+					if (ac.preferredStyle == UIAlertControllerStyleAlert) {
+						if (ac.preferredAction) {
+							NSDebug(@"ENTER ALERT: Dismissing preferredAction");
+							[self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
+						}
+						else if (collectionViewMode) {
+							NSString *title = ((UIAlertAction *)[((UIView *)selectedItem.subviews[0]).subviews[0] valueForKey:@"action"]).title;
+							NSUInteger idx = 0;
+							if ([self alertActions]) {
+								NSDebug(@"ALERT ACTION COUNT: %i", ((NSMutableArray *)[self alertActions]).count);
+								for (NSDictionary *dict in (NSMutableArray *)[self alertActions]) {
+									if ([[dict objectForKey:@"title"] isEqualToString:title]) {
+										void (^handler)(UIAlertAction *action) = (void (^)(UIAlertAction *action))[dict objectForKey:@"handler"];
+										NSDebug(@"ENTER ALERT: Dismissing Handler %i at %p: %@", idx, handler, title);
+										handler((UIAlertAction *)ac.actions[idx]);
+										[ac dismissViewControllerAnimated:YES completion:^{
+											[self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
+										}];
+										break;		
+									}
+									idx++;
+								}
+							}
+						} else if (((UIAlertAction *)[ac.actions objectAtIndex:0]).style == UIAlertActionStyleDefault) {
+							NSDebug(@"ENTER ALERT: Dismissing Default");
+							[ac dismissViewControllerAnimated:YES completion:^{
+								[self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
+							}];
+						}
+					} else if (collectionViewMode) {
 						NSUInteger idx = 0;
-						if ([self alertActions]) {
-							NSDebug(@"ALERT ACTION COUNT: %i", ((NSMutableArray *)[self alertActions]).count);
+						if ([self alertActions] && !actionSheetMode) {
 							for (NSDictionary *dict in (NSMutableArray *)[self alertActions]) {
+								NSString *title = ((UIAlertAction *)[((UIView *)selectedItem.subviews[0]).subviews[0] valueForKey:@"action"]).title;
 								if ([[dict objectForKey:@"title"] isEqualToString:title]) {
+									NSDebug(@"ENTER ACTION SHEET: Dismissing Handler");
 									void (^handler)(UIAlertAction *action) = (void (^)(UIAlertAction *action))[dict objectForKey:@"handler"];
-									NSDebug(@"ENTER ALERT: Dismissing Handler %i at %p: %@", idx, handler, title);
-									handler((UIAlertAction *)ac.actions[idx]);
 									[ac dismissViewControllerAnimated:YES completion:^{
 										[self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
 									}];
-									break;		
+									handler((UIAlertAction *)ac.actions[idx]);
+									break;
 								}
 								idx++;
 							}
-						}
-					} else if (((UIAlertAction *)[ac.actions objectAtIndex:0]).style == UIAlertActionStyleDefault) {
-						NSDebug(@"ENTER ALERT: Dismissing Default");
-						[ac dismissViewControllerAnimated:YES completion:^{
-							[self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
-						}];
-					}
-				} else if (collectionViewMode) {
-					NSUInteger idx = 0;
-					if ([self alertActions] && !actionSheetMode) {
-						for (NSDictionary *dict in (NSMutableArray *)[self alertActions]) {
-							NSString *title = ((UIAlertAction *)[((UIView *)selectedItem.subviews[0]).subviews[0] valueForKey:@"action"]).title;
-							if ([[dict objectForKey:@"title"] isEqualToString:title]) {
-								NSDebug(@"ENTER ACTION SHEET: Dismissing Handler");
-								void (^handler)(UIAlertAction *action) = (void (^)(UIAlertAction *action))[dict objectForKey:@"handler"];
-								[ac dismissViewControllerAnimated:YES completion:^{
-									[self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
-								}];
-								handler((UIAlertAction *)ac.actions[idx]);
-								break;
+						} else if (actionSheetMode) {
+							if ([self actionSheet] && ((UIActionSheet *)[self actionSheet]).delegate) {
+								[((UIActionSheet *)[self actionSheet]).delegate actionSheet:(UIActionSheet *)[self actionSheet] 
+																								  clickedButtonAtIndex:selectedRow];
 							}
-							idx++;
+							NSDebug(@"ENTER ACTION SHEET: Dismissing actionSheetMode");
+							[(UIActionSheet *)[self actionSheet] dismissWithClickedButtonIndex:selectedRow animated:YES];
+							[self setActionSheet:nil];
+							actionSheetMode = NO;
+							[self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
 						}
-					} else if (actionSheetMode) {
-						if ([self actionSheet] && ((UIActionSheet *)[self actionSheet]).delegate) {
-							[((UIActionSheet *)[self actionSheet]).delegate actionSheet:(UIActionSheet *)[self actionSheet] 
-																							  clickedButtonAtIndex:selectedRow];
-						}
-						NSDebug(@"ENTER ACTION SHEET: Dismissing actionSheetMode");
-						[(UIActionSheet *)[self actionSheet] dismissWithClickedButtonIndex:selectedRow animated:YES];
-						[self setActionSheet:nil];
-						actionSheetMode = NO;
-						[self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
 					}
-				}
-			} else {
-				//NSLog(@"Activating %@", ((UIView *)[self selectedView]).description);
-				//NSLog(@"Subviews: %@", ((UIView *)[self selectedView]).subviews.description);
-				if ([[self selectedView] isKindOfClass:[UITextField class]] || 
-					[[self selectedView] isKindOfClass:[UITextView class]]) {
-					[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
-				}
-				if (tableViewMode) {
-						if (selectedTableView.delegate && [selectedTableView.delegate respondsToSelector:@selector(tableView:didSelectRowAtIndexPath:)]) {
-							selectedCell.selected = NO;
-							[selectedTableView.delegate tableView:selectedTableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
-						}
-				} else if (collectionViewMode) {
-						if (selectedCollectionView.delegate && [selectedCollectionView.delegate respondsToSelector:@selector(collectionView:didSelectItemAtIndexPath:)]) {
-							selectedItem.selected = NO;
-							[selectedCollectionView.delegate collectionView:selectedCollectionView didSelectItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
-						}
-						// what if delegate doesnt respond
-						//else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
 				} else {
-					// text controls
+					//NSLog(@"Activating %@", ((UIView *)[self selectedView]).description);
+					//NSLog(@"Subviews: %@", ((UIView *)[self selectedView]).subviews.description);
 					if ([[self selectedView] isKindOfClass:[UITextField class]] || 
 						[[self selectedView] isKindOfClass:[UITextView class]]) {
-						if ([(UIView *)[self selectedView] isFirstResponder]) {
-							[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
-						} else [[self selectedView] becomeFirstResponder];
+						[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
+					}
+					if (tableViewMode) {
+							if (selectedTableView.delegate && [selectedTableView.delegate respondsToSelector:@selector(tableView:didSelectRowAtIndexPath:)]) {
+								selectedCell.selected = NO;
+								[selectedTableView.delegate tableView:selectedTableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+							}
+					} else if (collectionViewMode) {
+							if (selectedCollectionView.delegate && [selectedCollectionView.delegate respondsToSelector:@selector(collectionView:didSelectItemAtIndexPath:)]) {
+								selectedItem.selected = NO;
+								[selectedCollectionView.delegate collectionView:selectedCollectionView didSelectItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]];
+							}
+							// what if delegate doesnt respond
+							//else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
 					} else {
-						[[self selectedView] becomeFirstResponder];
-						if ([[self selectedView] isKindOfClass:[UIControl class]]) {
-							// switch
-							if ([[self selectedView] isKindOfClass:[UISwitch class]]) {
-								[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
-								((UISwitch *)[self selectedView]).on = !((UISwitch *)[self selectedView]).on;
-							}
-							// slider
-							else if ([[self selectedView] isKindOfClass:[UISlider class]]) {
-								sliderMode = YES;
-								// maybe set to middle value
-							}
-							// stepper
-							else if ([NSStringFromClass(((UIView *)[self selectedView]).class) isEqualToString:@"_UIStepperButton"]) {
-								BOOL plus = ((NSArray *)[self views]).count > selectedViewIndex ? !([NSStringFromClass(((UIView *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex + 1]).class) isEqualToString:@"_UIStepperButton"]) : YES;
-								if (plus) {
-									UIStepper *stepper = (UIStepper *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex - 2];
-									if (stepper.wraps && (stepper.value + stepper.stepValue) > stepper.maximumValue) stepper.value = stepper.minimumValue;
-									else stepper.value += stepper.stepValue;
-									[stepper sendActionsForControlEvents:UIControlEventValueChanged];
-								} else {
-									UIStepper *stepper = (UIStepper *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex - 1];
-									if (stepper.wraps && (stepper.value - stepper.stepValue) < stepper.minimumValue) stepper.value = stepper.maximumValue;
-									else stepper.value -= stepper.stepValue;
-									[stepper sendActionsForControlEvents:UIControlEventValueChanged];	
+						// text controls
+						if ([[self selectedView] isKindOfClass:[UITextField class]] || 
+							[[self selectedView] isKindOfClass:[UITextView class]]) {
+							if ([(UIView *)[self selectedView] isFirstResponder]) {
+								[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
+							} else [[self selectedView] becomeFirstResponder];
+						} else {
+							[[self selectedView] becomeFirstResponder];
+							if ([[self selectedView] isKindOfClass:[UIControl class]]) {
+								// switch
+								if ([[self selectedView] isKindOfClass:[UISwitch class]]) {
+									[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
+									((UISwitch *)[self selectedView]).on = !((UISwitch *)[self selectedView]).on;
 								}
-							}
-							// segmented control
-							else if ([[self selectedView] isKindOfClass:[UISegmentedControl class]]) {
-								if (!((UISegmentedControl *)[self selectedView]).momentary) {
-									((UISegmentedControl *)[self selectedView]).selectedSegmentIndex = (((UISegmentedControl *)[self selectedView]).selectedSegmentIndex + 1) % 
-																										((UISegmentedControl *)[self selectedView]).numberOfSegments;
+								// slider
+								else if ([[self selectedView] isKindOfClass:[UISlider class]]) {
+									sliderMode = YES;
+									// maybe set to middle value
+								}
+								// stepper
+								else if ([NSStringFromClass(((UIView *)[self selectedView]).class) isEqualToString:@"_UIStepperButton"]) {
+									BOOL plus = ((NSArray *)[self views]).count > selectedViewIndex ? !([NSStringFromClass(((UIView *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex + 1]).class) isEqualToString:@"_UIStepperButton"]) : YES;
+									if (plus) {
+										UIStepper *stepper = (UIStepper *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex - 2];
+										if (stepper.wraps && (stepper.value + stepper.stepValue) > stepper.maximumValue) stepper.value = stepper.minimumValue;
+										else stepper.value += stepper.stepValue;
+										[stepper sendActionsForControlEvents:UIControlEventValueChanged];
+									} else {
+										UIStepper *stepper = (UIStepper *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex - 1];
+										if (stepper.wraps && (stepper.value - stepper.stepValue) < stepper.minimumValue) stepper.value = stepper.maximumValue;
+										else stepper.value -= stepper.stepValue;
+										[stepper sendActionsForControlEvents:UIControlEventValueChanged];	
+									}
+								}
+								// segmented control
+								else if ([[self selectedView] isKindOfClass:[UISegmentedControl class]]) {
+									if (!((UISegmentedControl *)[self selectedView]).momentary) {
+										((UISegmentedControl *)[self selectedView]).selectedSegmentIndex = (((UISegmentedControl *)[self selectedView]).selectedSegmentIndex + 1) % 
+																											((UISegmentedControl *)[self selectedView]).numberOfSegments;
+										[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
+									}
+								}
+								// page control
+								else if ([[self selectedView] isKindOfClass:[UIPageControl class]]) {
+									UIPageControl *pageControl = (UIPageControl *)[self selectedView];
+									pageControl.currentPage = (pageControl.currentPage + 1) % pageControl.numberOfPages;
 									[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
 								}
+								// other
+								else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
 							}
-							// page control
-							else if ([[self selectedView] isKindOfClass:[UIPageControl class]]) {
-								UIPageControl *pageControl = (UIPageControl *)[self selectedView];
-								pageControl.currentPage = (pageControl.currentPage + 1) % pageControl.numberOfPages;
-								[[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
-							}
-							// other
-							else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
 						}
 					}
 				}
@@ -2254,41 +2404,51 @@ static void setupHID() {
 
 %new
 - (void)ui_esc {
-	if (enabled && controlEnabled && [self isActive]) {
-		if ([UIApplication sharedApplication].keyWindow.rootViewController &&
-			[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController &&
-			[[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController isKindOfClass:[UIAlertController class]]) {
-			UIAlertController *ac = (UIAlertController *)[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController;
-			if (ac.preferredStyle == UIAlertControllerStyleAlert) {
-				if (((UIAlertAction *)[ac.actions objectAtIndex:0]).style == UIAlertActionStyleDefault) {
-					NSDebug(@"ESCAPE ALERT: Dismissing Default");
-					[ac dismissViewControllerAnimated:YES completion:^{
-						[self resetViews];
-					}];
-				}
-			} else {
-				for (UIAlertAction *action in ac.actions) {
-					if (action.style == UIAlertActionStyleCancel) {
-						NSDebug(@"ESCAPE ALERT: Dismissing Cancel");
+	if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+		if (enabled && controlEnabled && [self isActive] && ![self switcherShown]) {
+			if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
+			if (fView) {
+				[fView removeFromSuperview];
+				fView = nil;
+			}
+			if ([UIApplication sharedApplication].keyWindow.rootViewController &&
+				[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController &&
+				[[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController isKindOfClass:[UIAlertController class]]) {
+				UIAlertController *ac = (UIAlertController *)[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController;
+				if (ac.preferredStyle == UIAlertControllerStyleAlert) {
+					if (((UIAlertAction *)[ac.actions objectAtIndex:0]).style == UIAlertActionStyleDefault) {
+						NSDebug(@"ESCAPE ALERT: Dismissing Default");
 						[ac dismissViewControllerAnimated:YES completion:^{
 							[self resetViews];
 						}];
 					}
+				} else {
+					for (UIAlertAction *action in ac.actions) {
+						if (action.style == UIAlertActionStyleCancel) {
+							NSDebug(@"ESCAPE ALERT: Dismissing Cancel");
+							[ac dismissViewControllerAnimated:YES completion:^{
+								[self resetViews];
+							}];
+						}
+					}
 				}
-			}
-		} else {
-			UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
-			UIView *firstResponder = [keyWindow performSelector:@selector(firstResponder)];
-			if ([firstResponder isKindOfClass:[UITextField class]] || [firstResponder isKindOfClass:[UITextView class]]) {
-				NSDebug(@"RESIGNING TEXT FIELD");
-				[firstResponder resignFirstResponder];
 			} else {
-				UIViewController *vc = [self topViewControllerWithRootViewController:[UIApplication sharedApplication].keyWindow.rootViewController];
-				if ([vc isKindOfClass:[UINavigationController class]]) {
-					if ([self cmdDown] && ![self switcherShown]) {
-						[vc popToRootViewControllerAnimated:YES];
+				UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+				UIView *firstResponder = [keyWindow performSelector:@selector(firstResponder)];
+				if ([firstResponder isKindOfClass:[UITextField class]] || [firstResponder isKindOfClass:[UITextView class]]) {
+					NSDebug(@"RESIGNING TEXT FIELD");
+					[firstResponder resignFirstResponder];
+				} else {
+					NSDebug(@"UI_ESC 3");
+					UIViewController *vc = [self topViewControllerWithRootViewController:[UIApplication sharedApplication].keyWindow.rootViewController];
+					if ([vc isKindOfClass:[UINavigationController class]]) {
+						if ([self cmdDown] && ![self switcherShown]) {
+							[vc popToRootViewControllerAnimated:YES];
+						} else {
+							[vc popViewControllerAnimated:YES];
+						}
 					} else {
-						[vc popViewControllerAnimated:YES];
+						NSDebug(NSStringFromClass(vc.class));
 					}
 				}
 			}
@@ -2298,26 +2458,29 @@ static void setupHID() {
 
 %new
 - (void)ui_tabDown {
-	if (enabled && controlEnabled && [self shiftDown] && ![self cmdDown] && ![self switcherShown]) {
-		[self highlightView:PREV_VIEW animated:YES force:NO];
-		if (!keyRepeatTimer) {
-			 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-																	  target:self 
-																	selector:@selector(keyRepeat:) 
-																	userInfo:@{@"key": @"tab"} 
-																	 repeats:NO];
-			waitingForKeyRepeat = YES;
-		} else waitingForKeyRepeat = NO;
-	} else if (enabled && controlEnabled && ![self cmdDown] && ![self switcherShown]) {
-		[self highlightView:NEXT_VIEW animated:YES force:NO];
-		if (!keyRepeatTimer) {
-			 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-																	  target:self 
-																	selector:@selector(keyRepeat:) 
-																	userInfo:@{@"key": @"tab"} 
-																	 repeats:NO];
-			waitingForKeyRepeat = YES;
-		} else waitingForKeyRepeat = NO;
+	if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+		if (enabled && controlEnabled && [self shiftDown] && ![self cmdDown] && ![self switcherShown]) {
+			[self highlightView:PREV_VIEW animated:YES force:NO];
+			if (!keyRepeatTimer) {
+				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																		  target:self 
+																		selector:@selector(keyRepeat:) 
+																		userInfo:@{@"key": @"tab"} 
+																		 repeats:NO];
+				waitingForKeyRepeat = YES;
+			} else waitingForKeyRepeat = NO;
+		} else if (enabled && controlEnabled && ![self cmdDown] && ![self switcherShown]) {
+			[self highlightView:NEXT_VIEW animated:YES force:NO];
+			if (!keyRepeatTimer) {
+				if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
+				 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
+																		  target:self 
+																		selector:@selector(keyRepeat:) 
+																		userInfo:@{@"key": @"tab"} 
+																		 repeats:NO];
+				waitingForKeyRepeat = YES;
+			} else waitingForKeyRepeat = NO;
+		}
 	}
 }
 
@@ -2355,61 +2518,15 @@ static void setupHID() {
 }
 
 %new
-- (UIImage*)whiteImageOfImage:(UIImage *)image {
-    CGImageRef imageRef = [image CGImage];
-
-    NSUInteger width = CGImageGetWidth(imageRef);
-    NSUInteger height = CGImageGetHeight(imageRef);
-    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-
-    NSUInteger bytesPerPixel = 4;
-    NSUInteger bytesPerRow = bytesPerPixel * width;
-    NSUInteger bitsPerComponent = 8;
-    NSUInteger bitmapByteCount = bytesPerRow * height;
-
-    unsigned char *rawData = (unsigned char*) calloc(bitmapByteCount, sizeof(unsigned char));
-
-    CGContextRef context = CGBitmapContextCreate(rawData, width, height,
-                                                 bitsPerComponent, bytesPerRow, colorSpace,
-                                                 kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
-    CGColorSpaceRelease(colorSpace);
-
-    CGContextDrawImage(context, CGRectMake(0, 0, width, height), imageRef);
-
-    int byteIndex = 0;
-
-    while (byteIndex < bitmapByteCount) {
-        unsigned char red   = rawData[byteIndex];
-        unsigned char green = rawData[byteIndex + 1];
-        unsigned char blue  = rawData[byteIndex + 2];
-
-        if (red || green || blue) {
-            // make the pixel transparent
-            //
-            rawData[byteIndex] = 0xff;
-            rawData[byteIndex + 1] = 0xff;
-            rawData[byteIndex + 2] = 0xff;
-            //rawData[byteIndex + 3] = 0xff;
-        }
-
-        byteIndex += 4;
-    }
-
-    UIImage *result = [UIImage imageWithCGImage:CGBitmapContextCreateImage(context)];
-
-    CGContextRelease(context);
-    free(rawData);
-
-    return result;
-}
-
-%new
 - (void)highlightView:(UIView *)view {
 	@synchronized(self) {
 		selectedViewIndex = [(NSArray *)[self views] indexOfObject:view];
 		
-		if (flashViewThread) [flashViewThread cancel];
-		if (fView) [fView removeFromSuperview];
+		if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
+		if (fView) {
+			[fView removeFromSuperview];
+			fView = nil;
+		}
 		if (tableViewMode) selectedCell.selected = NO;
 		else if (collectionViewMode) selectedItem.selected = NO;
 
@@ -2467,6 +2584,11 @@ static void setupHID() {
 - (void)highlightView:(int)next animated:(BOOL)animated force:(BOOL)force {
 	if (enabled && controlEnabled && ([self isActive] || force)) {
 		@synchronized(self) {
+			if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
+			if (fView) {
+				[fView removeFromSuperview];
+				fView = nil;
+			}			
 			if ([self views] && ((NSArray *)[self views]).count) {
 				if (next) {
 					do {
@@ -2482,8 +2604,6 @@ static void setupHID() {
 				if (((NSArray *)[self views]).count) {
 					
 					//[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
-					if (flashViewThread) [flashViewThread cancel];
-					if (fView) [fView removeFromSuperview];
 
 					if (tableViewMode) selectedCell.selected = NO;
 					else if (collectionViewMode) selectedItem.selected = NO;
@@ -2503,6 +2623,10 @@ static void setupHID() {
 							collectionViewMode = NO;
 							scrollViewMode = NO;
 							selectedCell = [tView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
+							// TODO fix for iPad preferences: Left section disappearing on tab (search controller gets activated)
+							/*if ([[tView firstResponder] isMemberOfClass:[%c(UISearchBarTextField) class]]) {
+								[selectedCell becomeFirstResponder];
+							}*/
 							selectedCell.selected = YES;
 							selectedTableView = tView;
 							animView = selectedCell;
@@ -2554,13 +2678,6 @@ static void setupHID() {
 						flashView.layer.borderWidth = 2.0f;
 						flashView.layer.borderColor = [UIColor colorWithRed:0.0 green:122.0/255.0 blue:1.0 alpha:1.0].CGColor;
 
-						/*if ([[self selectedView] isKindOfClass:[UIButton class]]) {
-							UIImage *maskImage = (UIImage *)[self image:[self whiteImageOfImage:[(UIButton *)[self selectedView] imageForState:UIControlStateNormal]] scaledToSize:((UIView *)[self selectedView]).frame.size];
-							UIImageView *iview = [[UIImageView alloc] initWithImage:maskImage];
-							iview.layer.allowsEdgeAntialiasing = YES;
-							[flashView addSubview:iview];
-						}*/
-
 						fView = flashView;
 
 						[UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
@@ -2576,10 +2693,12 @@ static void setupHID() {
 						} completion:^(BOOL completed){
 							if (tableViewMode || collectionViewMode) [fView removeFromSuperview];
 							else {
-								HighlightThread *ht = (HighlightThread *)[%c(HighlightThread) new];
-								flashViewThread = (NSThread *)ht;
+								if ([self flashViewThread]) { [(NSThread *)[self flashViewThread] cancel]; [self setFlashViewThread:nil]; }
+								/*HighlightThread *ht = (HighlightThread *)[%c(HighlightThread) new];
+								[self setFlashViewThread:(NSThread *)ht];
 								[ht setView:flashView];
-								[ht start];
+								[ht setThreadPriority:0.0];
+								[hx start];*/
 							}
 						}];
 					} else {
@@ -2737,7 +2856,12 @@ static void setupHID() {
  	//NSLog(@"NEW VIEWS:\n%@", ((NSArray *)[self views]).description);
  	selectedViewIndex = -1;
  	tableViewMode = collectionViewMode = scrollViewMode = sliderMode = NO;
- 	[self setSelectedView:nil];
+ 	if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
+	if (fView) {
+			[fView removeFromSuperview];
+			fView = nil;
+	} 	
+	[self setSelectedView:nil];
  	/*if (enabled && controlEnabled &&
  		((NSArray *)[self views]).count && [(UIView *)((NSArray *)[self views])[0] isKindOfClass:UIScrollView.class])
  		[self highlightView:NEXT_VIEW animated:NO force:YES];
@@ -2748,6 +2872,7 @@ static void setupHID() {
 - (UIViewController *)topMostViewController {
     return [self topViewControllerWithRootViewController:[UIApplication sharedApplication].keyWindow.rootViewController];
 }
+
 
 %end
 
