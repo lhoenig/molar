@@ -191,6 +191,14 @@ static void updateSwitcherNotShown(CFNotificationCenterRef center, void *observe
 	switcherShown = NO;
 }
 
+static void updateDiscoverabilityShown(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+	discoverabilityShown = YES;
+}
+
+static void updateDiscoverabilityNotShown(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+	discoverabilityShown = NO;
+}
+
 static void hideSwitcherByNotification(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
 	[[NSNotificationCenter defaultCenter] postNotificationName:@"HideSwitcherNotificationLocalNotification" object:nil];
 }
@@ -201,6 +209,20 @@ static void setupHID() {
     IOHIDEventSystemClientRegisterEventCallback(ioHIDEventSystem, (IOHIDEventSystemClientEventCallback)handle_event, NULL, NULL);
 }
  
+static void postDistributedNotification(NSString *notificationNameNSString) {
+	CFStringRef notificationName = (CFStringRef)notificationNameNSString;
+
+	void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
+	CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
+	if (CFNotificationCenterGetDistributedCenter) {
+		CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(), 
+											 notificationName, 
+											 NULL, 
+											 NULL, 
+											 YES);
+	}
+}
+
 %ctor {
 	discoverabilityTimer = nil;
 	waitForKeyRepeatTimer = nil;
@@ -235,6 +257,20 @@ static void setupHID() {
 										NULL, 
 										(CFNotificationCallback)updateSwitcherNotShown,
 										CFSTR("SwitcherDidDisappearNotification"),
+										NULL, 
+										CFNotificationSuspensionBehaviorCoalesce);
+
+		CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(), 
+										NULL, 
+										(CFNotificationCallback)updateDiscoverabilityShown, 
+										CFSTR("DiscoverabilityDidAppearNotification"),
+										NULL, 
+										CFNotificationSuspensionBehaviorCoalesce);
+
+		CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(), 
+										NULL, 
+										(CFNotificationCallback)updateDiscoverabilityNotShown,
+										CFSTR("DiscoverabilityDidDisappearNotification"),
 										NULL, 
 										CFNotificationSuspensionBehaviorCoalesce);
 
@@ -334,6 +370,11 @@ static void setupHID() {
 }
 
 %new
+- (BOOL)iPhonePlus {
+	return CGSizeEqualToSize([UIScreen mainScreen].bounds.size, CGSizeMake(736, 414)) || CGSizeEqualToSize([UIScreen mainScreen].bounds.size, CGSizeMake(414, 736));
+}
+
+%new
 - (void)addMolarObservers {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tabKeyDown) name:@"TabKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyDown) name:@"CmdKeyDown" object:nil];
@@ -405,7 +446,7 @@ static void setupHID() {
 	CGRect bounds = [[UIScreen mainScreen] bounds];
 	if (CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 1366)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1366, 1024))) return 20;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(768, 1024)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 768))) return 15;
-	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 6;
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return 7;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return 6;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 568)) || CGSizeEqualToSize(bounds.size, CGSizeMake(568, 320))) return 5;
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 480)) || CGSizeEqualToSize(bounds.size, CGSizeMake(480, 320))) return 5;
@@ -429,7 +470,7 @@ static void setupHID() {
 	CGRect bounds = [[UIScreen mainScreen] bounds];
 	if (CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 1366)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1366, 1024))) return @(1280.0);
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(768, 1024)) || CGSizeEqualToSize(bounds.size, CGSizeMake(1024, 768))) return @(862.0);
-	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return @(670.0);
+	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(414, 736)) || CGSizeEqualToSize(bounds.size, CGSizeMake(736, 414))) return @(635.0);
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(375, 667)) || CGSizeEqualToSize(bounds.size, CGSizeMake(667, 375))) return @(600.0);
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 568)) || CGSizeEqualToSize(bounds.size, CGSizeMake(568, 320))) return @(500.0);
 	else if (CGSizeEqualToSize(bounds.size, CGSizeMake(320, 480)) || CGSizeEqualToSize(bounds.size, CGSizeMake(480, 320))) return @(400.0);
@@ -592,18 +633,8 @@ static void setupHID() {
 				
 				[self setSwitcherShown:[NSNull null]];
 				switcherOpenedInLandscape = ls; 
-
-				CFStringRef notificationName = (CFStringRef)@"SwitcherDidAppearNotification";
 				
-				void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
-				CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
-				if(CFNotificationCenterGetDistributedCenter) {
-					CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(), 
-														 notificationName, 
-														 NULL, 
-														 NULL, 
-														 YES);
-				}
+				postDistributedNotification(@"SwitcherDidAppearNotification");
 			}
 		}
 	} 
@@ -667,18 +698,7 @@ static void setupHID() {
 - (void)dismissAppSwitcher {
 	[[self switcherWindow] setHidden:YES];
 	[self setSwitcherShown:nil];
-
-	CFStringRef notificationName = (CFStringRef)@"SwitcherDidDisappearNotification";
-	
-	void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
-	CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
-	if(CFNotificationCenterGetDistributedCenter) {
-		CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(), 
-											 notificationName, 
-											 NULL, 
-											 NULL, 
-											 YES);
-	}
+	postDistributedNotification(@"SwitcherDidDisappearNotification");
 }
 
 %new
@@ -885,17 +905,7 @@ static void setupHID() {
 - (void)handleCmdEsc:(UIKeyCommand *)keyCommand {
 	if (switcherShown) {
 		NSDebug(@"DISMISSING SWITCHER");
-		CFStringRef notificationName = (CFStringRef)@"HideSwitcherNotification";
-
-		void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
-		CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
-		if(CFNotificationCenterGetDistributedCenter) {
-			CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(), 
-												 notificationName, 
-												 NULL, 
-												 NULL, 
-												 YES);
-		}
+		postDistributedNotification(@"HideSwitcherNotification");
 	} else if (controlEnabled) {
 		NSDebug(@"INVOKING UI_ESC");
 		[self ui_esc];
@@ -1215,6 +1225,7 @@ static void setupHID() {
 	else if (discoverabilityShown) {
 		[(UIWindow *)[self discoverabilityWindow] setHidden:YES];
 		discoverabilityShown = NO;
+		postDistributedNotification(@"DiscoverabilityDidDisappearNotification");
 	}
 	discoverabilityTimer = nil;
 	[self setCmdDown:nil];
@@ -1400,7 +1411,11 @@ static void setupHID() {
 
 		if (commands.count) {
 
-			BOOL ls = UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation);
+			//BOOL ls = UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation);
+			//UIInterfaceOrientation orient = [UIDevice currentDevice].orientation;
+			//UIInterfaceOrientation orient = (UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation];
+			UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
+			BOOL ls = UIInterfaceOrientationIsLandscape(orient);
 
 	    	CGRect bounds = [[UIScreen mainScreen] bounds];
 			CGRect contentFrame = CGRectMake(0, 0, ls ? bounds.size.height : bounds.size.width,
@@ -1410,9 +1425,9 @@ static void setupHID() {
 				contentFrame = CGRectMake(contentFrame.origin.x, contentFrame.origin.y, contentFrame.size.height, contentFrame.size.width);
 			}
 
-			CGRect discRect = CGRectInset(((NSUInteger)[self maxIconsLS] == 6) ? contentFrame : bounds, 15.0f, 15.0f);
+			CGRect discRect = CGRectInset(((NSUInteger)[self maxIconsLS] == 6 && ![self iPhonePlus]) ? contentFrame : bounds, 15.0f, 15.0f);
 
-			UIWindow *window = [[UIWindow alloc] initWithFrame:((NSUInteger)[self maxIconsLS] == 6) || ([self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) ? contentFrame : bounds];
+			UIWindow *window = [[UIWindow alloc] initWithFrame:((NSUInteger)[self maxIconsLS] == 6 && ![self iPhonePlus]) || ([self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) ? contentFrame : bounds];
 			window.windowLevel = UIWindowLevelAlert;
 
 			UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:darkMode ? UIBlurEffectStyleDark : UIBlurEffectStyleLight];
@@ -1424,10 +1439,15 @@ static void setupHID() {
 
 			[self setDiscoverabilityWindow:window];
 
-			if (ls && ![self iPad] || (ls && [self iPad] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"])) blurEffectView.transform = (UIInterfaceOrientation)[UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation == UIInterfaceOrientationLandscapeLeft ? 
+			if ([self iPhonePlus] && ls) {
+				blurEffectView.transform = CGAffineTransformMakeRotation(DegreesToRadians(0));
+			}
+			else if (ls && ![self iPad] || 
+				(ls && [self iPad] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"])) 
+				blurEffectView.transform = orient == UIInterfaceOrientationLandscapeLeft ? 
 												CGAffineTransformMakeRotation(DegreesToRadians(270)) :
 												CGAffineTransformMakeRotation(DegreesToRadians(90));
-			else if ((UIInterfaceOrientation)[UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation == UIInterfaceOrientationPortraitUpsideDown && ![self iPad]) {
+			else if (orient == UIInterfaceOrientationPortraitUpsideDown && ![self iPad]) {
 				blurEffectView.transform = CGAffineTransformMakeRotation(DegreesToRadians(180));
 			}
 
@@ -1445,10 +1465,13 @@ static void setupHID() {
 																		   maxWidth:maxWP];
 
 					blurEffectView.frame = CGRectInset(blurEffectView.frame, DISCOVERABILITY_LS_Y_DECREASE, 0.0f);
-					discoverabilityScrollView = [[UIScrollView alloc] initWithFrame:[self iPad] ? blurEffectView.frame :
+					discoverabilityScrollView = [[UIScrollView alloc] initWithFrame:[self iPad] ? blurEffectView.frame : ([self iPhonePlus] ?
+																					CGRectMake(0, 0, 
+																					  		    blurEffectView.frame.size.width,
+																							    blurEffectView.frame.size.height) :
 																					 CGRectMake(0, 0, 
 																					  		    blurEffectView.frame.size.height,
-																							    blurEffectView.frame.size.width)];
+																							    blurEffectView.frame.size.width))];
 					discoverabilityScrollView.contentSize = CGSizeMake(discoverabilityScrollView.frame.size.width * pages, discoverabilityScrollView.frame.size.height);
 					discoverabilityScrollView.pagingEnabled = YES;
 					discoverabilityScrollView.bounces = NO;
@@ -1486,7 +1509,7 @@ static void setupHID() {
 						pageControl.userInteractionEnabled = NO;
 						pageControl.numberOfPages = pages;
 						pageControl.frame = CGRectMake(0, 0, [pageControl sizeForNumberOfPages:pages].width, [pageControl sizeForNumberOfPages:pages].height);
-						pageControl.center = CGPointMake(CGRectGetMidX(blurEffectView.frame) - DISCOVERABILITY_LS_Y_DECREASE, CGRectGetMidY(blurEffectView.frame) + 109);
+						pageControl.center = CGPointMake(CGRectGetMidX(blurEffectView.frame) - ([self iPhonePlus] ? pageControl.frame.size.width - 5 : DISCOVERABILITY_LS_Y_DECREASE), CGRectGetMidY(blurEffectView.frame) + ([self iPhonePlus] ? (blurEffectView.frame.size.height / 2) - 40 : 109));
 						[pageControl addTarget:self action:@selector(pageChanged) forControlEvents:UIControlEventValueChanged];
 						[blurEffectView addSubview:pageControl];
 					}
@@ -1507,12 +1530,17 @@ static void setupHID() {
 													  				maxWidth + (DISCOVERABILITY_INSET * 2),
 													  				 (((UIView *)labels[0]).frame.size.height * labels.count) + 
 													  				 (DISCOVERABILITY_GAP * (labels.count - 1)) + 
-													  				 (2 * DISCOVERABILITY_INSET)) :
-													  	 CGRectMake(0, 0, 
-													  		 (((UIView *)labels[0]).frame.size.height * labels.count) + 
-													  		 (DISCOVERABILITY_GAP * (labels.count - 1)) + 
-													  		 (2 * DISCOVERABILITY_INSET),
-													  		maxWidth + (DISCOVERABILITY_INSET * 2));
+													  				 (2 * DISCOVERABILITY_INSET)) : ([self iPhonePlus] ? 
+													  				 CGRectMake(0, 0,
+													  				 	maxWidth + (DISCOVERABILITY_INSET * 2),
+													  				 	(((UIView *)labels[0]).frame.size.height * labels.count) + 
+													  		 			(DISCOVERABILITY_GAP * (labels.count - 1)) + 
+													  		 			(2 * DISCOVERABILITY_INSET)) : 
+													  				 CGRectMake(0, 0, 
+													  		 			(((UIView *)labels[0]).frame.size.height * labels.count) + 
+													  		 			(DISCOVERABILITY_GAP * (labels.count - 1)) + 
+													  		 			(2 * DISCOVERABILITY_INSET),
+													  					maxWidth + (DISCOVERABILITY_INSET * 2)));
 					NSUInteger index = 0;
 					for (UIView *label in labels) {
 						label.frame = CGRectMake(DISCOVERABILITY_INSET, 
@@ -1606,11 +1634,12 @@ static void setupHID() {
 		
 			blurEffectView.center = ((NSUInteger)[self maxIconsLS] == 6 || ([self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"])) ? CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds)) :
 																	     				  CGPointMake(CGRectGetMidX(contentFrame), CGRectGetMidY(contentFrame));
-			NSDebug(@"\nWINDOW: %@\nBOUNDS: %@\nCONTENT FRAME: %@\nBLUR FRAME: %@", NSStringFromCGRect(window.frame), NSStringFromCGRect(bounds), NSStringFromCGRect(contentFrame), NSStringFromCGRect(blurEffectView.frame));
+			NSDebug(@"\nLS: %i\nWINDOW: %@\nBOUNDS: %@\nCONTENT FRAME: %@\nBLUR FRAME: %@\nROTATION: %@", ls, NSStringFromCGRect(window.frame), NSStringFromCGRect(bounds), NSStringFromCGRect(contentFrame), NSStringFromCGRect(blurEffectView.frame), NSStringFromCGAffineTransform(blurEffectView.transform));
 
 			[window addSubview:blurEffectView];
 			[window makeKeyAndVisible];
-			discoverabilityShown = YES;			
+			discoverabilityShown = YES;
+			postDistributedNotification(@"DiscoverabilityDidAppearNotification");
 		}
 	}
 }
