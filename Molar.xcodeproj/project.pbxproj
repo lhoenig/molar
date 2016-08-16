@@ -34,6 +34,7 @@
 		37D222751C21E56E004D8F68 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		37D222771C22302C004D8F68 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		800BA7E61CA0517100FEE37C /* libapplist.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libapplist.dylib; path = ../../../../opt/theos/lib/libapplist.dylib; sourceTree = "<group>"; };
+		804844F21D5DF0DA000FD6A0 /* SpringBoard */ = {isa = PBXFileReference; lastKnownFileType = folder; path = SpringBoard; sourceTree = "<group>"; };
 		807516341CA33D7100D19C0D /* libactivator */ = {isa = PBXFileReference; lastKnownFileType = folder; path = libactivator; sourceTree = "<group>"; };
 		807516381CA34A5500D19C0D /* PreferenceBundles */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PreferenceBundles; path = Package/Library/PreferenceBundles; sourceTree = "<group>"; };
 		807B4F711CA332A90009CFE1 /* Molar.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = Molar.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -137,6 +138,7 @@
 		807B4F731CA332A90009CFE1 /* Molar */ = {
 			isa = PBXGroup;
 			children = (
+				804844F21D5DF0DA000FD6A0 /* SpringBoard */,
 				807B4F8A1CA332F00009CFE1 /* IOKit */,
 				807B4F811CA332A90009CFE1 /* Molar.xm */,
 				807B4F821CA332A90009CFE1 /* Molar.mm */,
@@ -579,7 +581,7 @@
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Molar/**";
 				iOSOpenDevBuildPackageOnAnyBuild = NO;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = 172.16.0.98;
+				iOSOpenDevDevice = 192.168.178.51;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
@@ -608,7 +610,7 @@
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Molar/**";
 				iOSOpenDevBuildPackageOnAnyBuild = NO;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = 172.16.0.98;
+				iOSOpenDevDevice = 192.168.178.51;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
