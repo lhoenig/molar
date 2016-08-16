@@ -151,7 +151,7 @@ SBApplicationIcon *selectedSBIconInOpenedFolder;
 
 %hookf(void, handle_event, void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {
     //NSLog(@"handle_event : %d", IOHIDEventGetType(event));
-    if (IOHIDEventGetType(event) == kIOHIDEventTypeKeyboard) {
+    if (service && event && IOHIDEventGetType(event) == kIOHIDEventTypeKeyboard) {
         int usagePage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsagePage);
         int usage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage);
         int down = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown);
