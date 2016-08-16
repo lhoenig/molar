@@ -84,6 +84,7 @@ BOOL darkMode,
      switcherMode,
      controlEnabled, 
      keySheetEnabled,
+     launcherEnabled,
      switcherOpenedInLandscape, 
      sliderMode, 
      tableViewMode, 
@@ -184,6 +185,7 @@ static void loadPrefs() {
     CFPropertyListRef cf_appSwitcherEnabled = CFPreferencesCopyAppValue(CFSTR("appSwitcherEnabled"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_appControlEnabled =  CFPreferencesCopyAppValue(CFSTR("appControlEnabled"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_keySheetEnabled =    CFPreferencesCopyAppValue(CFSTR("keySheetEnabled"), CFSTR("de.hoenig.molar"));
+    CFPropertyListRef cf_launcherEnabled =    CFPreferencesCopyAppValue(CFSTR("launcherEnabled"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_darkMode =           CFPreferencesCopyAppValue(CFSTR("darkMode"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_hideLabels =         CFPreferencesCopyAppValue(CFSTR("hideLabels"), CFSTR("de.hoenig.molar"));
     
@@ -202,6 +204,7 @@ static void loadPrefs() {
     switcherEnabled = !cf_appSwitcherEnabled ? YES : (cf_appSwitcherEnabled == kCFBooleanTrue);
     controlEnabled = !cf_appControlEnabled ? YES : (cf_appControlEnabled == kCFBooleanTrue);
     keySheetEnabled = !cf_keySheetEnabled ? YES : (cf_keySheetEnabled == kCFBooleanTrue);
+    launcherEnabled = !cf_launcherEnabled ? YES : (cf_launcherEnabled == kCFBooleanTrue);
     darkMode = (cf_darkMode == kCFBooleanTrue);
     hideLabels = (cf_hideLabels == kCFBooleanTrue);
 
@@ -1751,55 +1754,57 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                   action:@selector(handleCmdShiftP:)];
         [arr addObject:cmdShiftP];
 
-        UIKeyCommand *cmd1 = [UIKeyCommand keyCommandWithInput:@"1"
+        if (launcherEnabled) {
+            UIKeyCommand *cmd1 = [UIKeyCommand keyCommandWithInput:@"1"
                                   modifierFlags:UIKeyModifierCommand
                                   action:@selector(handleCmd1:)];
-        [arr addObject:cmd1];
+            [arr addObject:cmd1];
 
-        UIKeyCommand *cmd2 = [UIKeyCommand keyCommandWithInput:@"2"
-                                  modifierFlags:UIKeyModifierCommand
-                                  action:@selector(handleCmd2:)];
-        [arr addObject:cmd2];
+            UIKeyCommand *cmd2 = [UIKeyCommand keyCommandWithInput:@"2"
+                                      modifierFlags:UIKeyModifierCommand
+                                      action:@selector(handleCmd2:)];
+            [arr addObject:cmd2];
 
-        UIKeyCommand *cmd3 = [UIKeyCommand keyCommandWithInput:@"3"
-                                  modifierFlags:UIKeyModifierCommand
-                                  action:@selector(handleCmd3:)];
-        [arr addObject:cmd3];
+            UIKeyCommand *cmd3 = [UIKeyCommand keyCommandWithInput:@"3"
+                                      modifierFlags:UIKeyModifierCommand
+                                      action:@selector(handleCmd3:)];
+            [arr addObject:cmd3];
 
-        UIKeyCommand *cmd4 = [UIKeyCommand keyCommandWithInput:@"4"
-                                  modifierFlags:UIKeyModifierCommand
-                                  action:@selector(handleCmd4:)];
-        [arr addObject:cmd4];
+            UIKeyCommand *cmd4 = [UIKeyCommand keyCommandWithInput:@"4"
+                                      modifierFlags:UIKeyModifierCommand
+                                      action:@selector(handleCmd4:)];
+            [arr addObject:cmd4];
 
-        UIKeyCommand *cmd5 = [UIKeyCommand keyCommandWithInput:@"5"
-                                  modifierFlags:UIKeyModifierCommand
-                                  action:@selector(handleCmd5:)];
-        [arr addObject:cmd5];
+            UIKeyCommand *cmd5 = [UIKeyCommand keyCommandWithInput:@"5"
+                                      modifierFlags:UIKeyModifierCommand
+                                      action:@selector(handleCmd5:)];
+            [arr addObject:cmd5];
 
-        UIKeyCommand *cmd6 = [UIKeyCommand keyCommandWithInput:@"6"
-                                  modifierFlags:UIKeyModifierCommand
-                                  action:@selector(handleCmd6:)];
-        [arr addObject:cmd6];
+            UIKeyCommand *cmd6 = [UIKeyCommand keyCommandWithInput:@"6"
+                                      modifierFlags:UIKeyModifierCommand
+                                      action:@selector(handleCmd6:)];
+            [arr addObject:cmd6];
 
-        UIKeyCommand *cmd7 = [UIKeyCommand keyCommandWithInput:@"7"
-                                  modifierFlags:UIKeyModifierCommand
-                                  action:@selector(handleCmd7:)];
-        [arr addObject:cmd7];
+            UIKeyCommand *cmd7 = [UIKeyCommand keyCommandWithInput:@"7"
+                                      modifierFlags:UIKeyModifierCommand
+                                      action:@selector(handleCmd7:)];
+            [arr addObject:cmd7];
 
-        UIKeyCommand *cmd8 = [UIKeyCommand keyCommandWithInput:@"8"
-                                  modifierFlags:UIKeyModifierCommand
-                                  action:@selector(handleCmd8:)];
-        [arr addObject:cmd8];
+            UIKeyCommand *cmd8 = [UIKeyCommand keyCommandWithInput:@"8"
+                                      modifierFlags:UIKeyModifierCommand
+                                      action:@selector(handleCmd8:)];
+            [arr addObject:cmd8];
 
-        UIKeyCommand *cmd9 = [UIKeyCommand keyCommandWithInput:@"9"
-                                  modifierFlags:UIKeyModifierCommand
-                                  action:@selector(handleCmd9:)];
-        [arr addObject:cmd9];
+            UIKeyCommand *cmd9 = [UIKeyCommand keyCommandWithInput:@"9"
+                                      modifierFlags:UIKeyModifierCommand
+                                      action:@selector(handleCmd9:)];
+            [arr addObject:cmd9];
 
-        UIKeyCommand *cmd0 = [UIKeyCommand keyCommandWithInput:@"0"
-                                  modifierFlags:UIKeyModifierCommand
-                                  action:@selector(handleCmd0:)];
-        [arr addObject:cmd0];
+            UIKeyCommand *cmd0 = [UIKeyCommand keyCommandWithInput:@"0"
+                                      modifierFlags:UIKeyModifierCommand
+                                      action:@selector(handleCmd0:)];
+            [arr addObject:cmd0];
+        }
 
         CFPreferencesAppSynchronize(CFSTR("de.hoenig.molar"));
         customShortcuts = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcuts"), CFSTR("de.hoenig.molar")));
