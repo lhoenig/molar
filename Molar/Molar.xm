@@ -3204,6 +3204,12 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 %new
+- (NSNumber *)sbIconCornerRadius {
+    if ([self iPad]) return @17.0f;
+    else return @13.0f;
+}
+
+%new
 - (void)selectSBIcon {
 
     sbIconSelected = YES;
@@ -3230,7 +3236,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     
     sbIconOverlay = [[UIView alloc] initWithFrame:CGRectMake(1, 1, sbIconView.frame.size.width - 2, sbIconView.frame.size.height - 2)];
     sbIconOverlay.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.35];
-    sbIconOverlay.layer.cornerRadius = 13.0f;
+    sbIconOverlay.layer.cornerRadius = [[self sbIconCornerRadius] doubleValue];
     sbIconOverlay.clipsToBounds = YES;
     [sbIconView addSubview:sbIconOverlay];
 
