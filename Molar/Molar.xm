@@ -3509,6 +3509,37 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     }
 }
 
+- (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)orientation {
+    %orig();
+
+    if (sbIconSelected || sbDockIconSelected) { 
+     
+        BOOL ls = UIInterfaceOrientationIsLandscape((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation]);
+        if (ls) {
+            sbRows = [[%c(SBIconController) sharedInstance] maxRowCountForListInRootFolderWithInterfaceOrientation:0];
+            sbColumns = [[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:0 inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] model] maxNumberOfIcons] /
+                        [[%c(SBIconController) sharedInstance] maxRowCountForListInRootFolderWithInterfaceOrientation:0];
+        } else {
+            sbRows = [[%c(SBIconController) sharedInstance] maxRowCountForListInRootFolderWithInterfaceOrientation:1];
+            sbColumns = [[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:0 inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] model] maxNumberOfIcons] /
+                        [[%c(SBIconController) sharedInstance] maxRowCountForListInRootFolderWithInterfaceOrientation:1];
+        }
+        sbDockIcons = (NSArray *)[[[[%c(SBIconController) sharedInstance] rootFolder] dock] icons];
+        sbDockIconCount = sbDockIcons.count;
+
+        sbPages = [(SBFolder *)[[%c(SBIconController) sharedInstance] rootFolder] listCount];
+
+        NSDebug(@"R: %i C: %i D: %i", sbRows, sbColumns, sbDockIconCount);
+
+        sbSelectedColumn = sbSelectedRow = sbSelectedPage = 0;
+        sbIconSelected = YES;
+        sbDockIconSelected = NO;
+
+        [[UIApplication sharedApplication] scrollSBToPage:sbSelectedPage];
+        [[UIApplication sharedApplication] selectSBIcon];
+    }
+}
+
 %end
 
 
