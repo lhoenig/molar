@@ -77,22 +77,22 @@
 
 void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {}
 
-BOOL darkMode, 
-     hideLabels, 
+BOOL darkMode,
+     hideLabels,
      enabled,
-     switcherEnabled, 
+     switcherEnabled,
      switcherMode,
-     controlEnabled, 
+     controlEnabled,
      keySheetEnabled,
      launcherEnabled,
-     switcherOpenedInLandscape, 
-     sliderMode, 
-     tableViewMode, 
-     scrollViewMode, 
+     switcherOpenedInLandscape,
+     sliderMode,
+     tableViewMode,
+     scrollViewMode,
      collectionViewMode,
-     actionSheetMode, 
-     tabIsDown, 
-     waitingForKeyRepeat, 
+     actionSheetMode,
+     tabIsDown,
+     waitingForKeyRepeat,
      transformFinished,
      discoverabilityShown,
      switcherShown,
@@ -101,19 +101,19 @@ BOOL darkMode,
      sbFolderIconSelected,
      sbFolderOpened;
 
-NSString *launcherApp1, 
-         *launcherApp2, 
-         *launcherApp3, 
-         *launcherApp4, 
-         *launcherApp5, 
-         *launcherApp6, 
-         *launcherApp7, 
-         *launcherApp8, 
-         *launcherApp9, 
+NSString *launcherApp1,
+         *launcherApp2,
+         *launcherApp3,
+         *launcherApp4,
+         *launcherApp5,
+         *launcherApp6,
+         *launcherApp7,
+         *launcherApp8,
+         *launcherApp9,
          *launcherApp0;
 
-NSTimer *discoverabilityTimer, 
-        *waitForKeyRepeatTimer, 
+NSTimer *discoverabilityTimer,
+        *waitForKeyRepeatTimer,
         *keyRepeatTimer;
 
 NSArray *customShortcuts;
@@ -122,8 +122,8 @@ UITableView *selectedTableView;
 UITableViewCell *selectedCell;
 UICollectionView *selectedCollectionView;
 UICollectionViewCell *selectedItem;
-int selectedRow, 
-    selectedSection, 
+int selectedRow,
+    selectedSection,
     selectedViewIndex;
 int numThreads;
 UIView *fView;
@@ -180,7 +180,7 @@ SBApplicationIcon *selectedSBIconInOpenedFolder;
 
 static void loadPrefs() {
     CFPreferencesAppSynchronize(CFSTR("de.hoenig.molar"));
-    
+
     CFPropertyListRef cf_enabled =            CFPreferencesCopyAppValue(CFSTR("enabled"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_appSwitcherEnabled = CFPreferencesCopyAppValue(CFSTR("appSwitcherEnabled"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_appControlEnabled =  CFPreferencesCopyAppValue(CFSTR("appControlEnabled"), CFSTR("de.hoenig.molar"));
@@ -188,7 +188,7 @@ static void loadPrefs() {
     CFPropertyListRef cf_launcherEnabled =    CFPreferencesCopyAppValue(CFSTR("launcherEnabled"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_darkMode =           CFPreferencesCopyAppValue(CFSTR("darkMode"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_hideLabels =         CFPreferencesCopyAppValue(CFSTR("hideLabels"), CFSTR("de.hoenig.molar"));
-    
+
     launcherApp1 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp1"), CFSTR("de.hoenig.molar"));
     launcherApp2 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp2"), CFSTR("de.hoenig.molar"));
     launcherApp3 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp3"), CFSTR("de.hoenig.molar"));
@@ -243,17 +243,17 @@ static void setupHID() {
     IOHIDEventSystemClientScheduleWithRunLoop(ioHIDEventSystem, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
     IOHIDEventSystemClientRegisterEventCallback(ioHIDEventSystem, (IOHIDEventSystemClientEventCallback)handle_event, NULL, NULL);
 }
- 
+
 static void postDistributedNotification(NSString *notificationNameNSString) {
     CFStringRef notificationName = (CFStringRef)notificationNameNSString;
 
     void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
     CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
     if (CFNotificationCenterGetDistributedCenter) {
-        CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(), 
-                                             notificationName, 
-                                             NULL, 
-                                             NULL, 
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(),
+                                             notificationName,
+                                             NULL,
+                                             NULL,
                                              YES);
     }
 }
@@ -264,57 +264,57 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     keyRepeatTimer = nil;
     loadPrefs();
 
-    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), 
-                                    NULL, 
-                                    (CFNotificationCallback)loadPrefs, 
+    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
+                                    NULL,
+                                    (CFNotificationCallback)loadPrefs,
                                     CFSTR("de.hoenig.molar-preferencesChanged"),
-                                    NULL, 
+                                    NULL,
                                     CFNotificationSuspensionBehaviorCoalesce);
-    
+
     void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
     CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
     if (CFNotificationCenterGetDistributedCenter) {
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(), 
-                                        NULL, 
-                                        (CFNotificationCallback)updateActiveAppUserApplication, 
-                                        CFSTR("NewFrontAppNotification"), 
-                                        NULL, 
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                        NULL,
+                                        (CFNotificationCallback)updateActiveAppUserApplication,
+                                        CFSTR("NewFrontAppNotification"),
+                                        NULL,
                                         CFNotificationSuspensionBehaviorCoalesce);
 
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(), 
-                                        NULL, 
-                                        (CFNotificationCallback)updateSwitcherShown, 
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                        NULL,
+                                        (CFNotificationCallback)updateSwitcherShown,
                                         CFSTR("SwitcherDidAppearNotification"),
-                                        NULL, 
+                                        NULL,
                                         CFNotificationSuspensionBehaviorCoalesce);
 
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(), 
-                                        NULL, 
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                        NULL,
                                         (CFNotificationCallback)updateSwitcherNotShown,
                                         CFSTR("SwitcherDidDisappearNotification"),
-                                        NULL, 
+                                        NULL,
                                         CFNotificationSuspensionBehaviorCoalesce);
 
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(), 
-                                        NULL, 
-                                        (CFNotificationCallback)updateDiscoverabilityShown, 
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                        NULL,
+                                        (CFNotificationCallback)updateDiscoverabilityShown,
                                         CFSTR("DiscoverabilityDidAppearNotification"),
-                                        NULL, 
+                                        NULL,
                                         CFNotificationSuspensionBehaviorCoalesce);
 
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(), 
-                                        NULL, 
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                        NULL,
                                         (CFNotificationCallback)updateDiscoverabilityNotShown,
                                         CFSTR("DiscoverabilityDidDisappearNotification"),
-                                        NULL, 
+                                        NULL,
                                         CFNotificationSuspensionBehaviorCoalesce);
 
         if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"]) {
-            CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(), 
-                                NULL, 
+            CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                NULL,
                                 (CFNotificationCallback)hideSwitcherByNotification,
                                 CFSTR("HideSwitcherNotification"),
-                                NULL, 
+                                NULL,
                                 CFNotificationSuspensionBehaviorCoalesce);
         }
     }
@@ -322,6 +322,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
     switcherMode = numThreads = 0;
 }
+
 
 %subclass HighlightThread : NSThread
 
@@ -416,9 +417,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyUp) name:@"CmdKeyUp" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(escKeyDown:) name:@"EscKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rightKeyDown) name:@"RightKeyDown" object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(leftKeyDown) name:@"LeftKeyDown" object:nil];     
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(leftKeyDown) name:@"LeftKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(genericKeyDown) name:@"GenericKeyDown" object:nil];
-    
+
     // shortcuts
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadShortcuts) name:@"ReloadShortcutsNotification" object:nil];
 
@@ -525,7 +526,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 %new
-- (void)handleCmdTab:(UIKeyCommand *)keyCommand {   
+- (void)handleCmdTab:(UIKeyCommand *)keyCommand {
 
     if (discoverabilityTimer) [discoverabilityTimer invalidate];
     discoverabilityTimer = nil;
@@ -542,8 +543,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         NSArray *apps = (NSArray *)[(SpringBoard *)[%c(SpringBoard) sharedApplication] _accessibilityRunningApplications];
 
         if (apps.count) {
-            
-            NSMutableArray *appsFiltered = [NSMutableArray new];            
+
+            NSMutableArray *appsFiltered = [NSMutableArray new];
             NSMutableArray *switcherItemsFiltered = [NSMutableArray new];
             NSMutableArray *icons = [NSMutableArray new];
             %c(SBAppSwitcherModel);
@@ -562,7 +563,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                             break;
                         }
                     }
-                }   
+                }
             } else {
                 switcherMode = SWITCHER_IOS8_MODE;
                 NSArray *switcherItems = [(SBAppSwitcherModel *)[%c(SBAppSwitcherModel) sharedInstance] snapshotOfFlattenedArrayOfAppIdentifiersWhichIsOnlyTemporary];
@@ -578,21 +579,21 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                             break;
                         }
                     }
-                }   
+                }
             }
-            
+
             [self setApps:appsFiltered];
             [self setSwitcherItems:switcherItemsFiltered];
 
             if (appsFiltered.count) {
-                
+
                 CGRect contentFrame = CGRectMake(0, 0, ls ? [UIScreen mainScreen].bounds.size.height : [UIScreen mainScreen].bounds.size.width,
                                                        ls ? [UIScreen mainScreen].bounds.size.width : [UIScreen mainScreen].bounds.size.height);
-    
+
                 ///UIWindow *window = [[UIWindow alloc] initWithFrame:(((NSUInteger)[self maxIconsLS] == 6) || [self iPad]) ? contentFrame : bounds];
                 UIWindow *window = [[UIWindow alloc] initWithFrame:contentFrame];
                 window.windowLevel = UIWindowLevelAlert;
-                
+
                 CGFloat h = SWITCHER_HEIGHT;
                 CGFloat w = ([((NSArray *)[self apps]) count] < (ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsP])) ? ([((NSArray *)[self apps]) count] * ICON_SIZE + ([((NSArray *)[self apps]) count] + 1) * APP_GAP)
                                                                                                  : ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsP]) * ICON_SIZE + ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsP]) + 1) * APP_GAP);
@@ -646,13 +647,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 UIView *overlayView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, OVERLAY_SIZE, OVERLAY_SIZE)];
                 overlayView.backgroundColor = darkMode ? [[UIColor whiteColor] colorWithAlphaComponent:0.15] : [[UIColor blackColor] colorWithAlphaComponent:0.12];
                 overlayView.layer.cornerRadius = CORNER_RADIUS_OVERLAY;
-                overlayView.center = ((UIView *)[iviews objectAtIndex:((NSNumber *)[self selectedIcon]).intValue]).center;  
+                overlayView.center = ((UIView *)[iviews objectAtIndex:((NSNumber *)[self selectedIcon]).intValue]).center;
                 [switcherView insertSubview:overlayView atIndex:1];
                 [self setOverlayView:overlayView];
 
                 [switcherView insertSubview:scrollView atIndex:2];
 
-                if (ls) switcherView.transform = (UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation] == UIInterfaceOrientationLandscapeLeft ? 
+                if (ls) switcherView.transform = (UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation] == UIInterfaceOrientationLandscapeLeft ?
                                                     CGAffineTransformMakeRotation(DegreesToRadians(270)) :
                                                     CGAffineTransformMakeRotation(DegreesToRadians(90));
                 else if ((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation] == UIInterfaceOrientationPortraitUpsideDown) {
@@ -660,23 +661,23 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 }
                 switcherView.center = ((NSUInteger)[self maxIconsLS] == 6 || [self iPad]) ? CGPointMake(CGRectGetMidX(window.bounds), CGRectGetMidY(window.bounds)) :
                                                                            CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds));
-                                                                           
+
                 [window addSubview:switcherView];
                 [self setSwitcherView:switcherView];
                 [self setSwitcherWindow:window];
                 [window makeKeyAndVisible];
-                
+
                 [self setSwitcherShown:[NSNull null]];
-                switcherOpenedInLandscape = ls; 
-                
+                switcherOpenedInLandscape = ls;
+
                 postDistributedNotification(@"SwitcherDidAppearNotification");
             }
         }
-    } 
+    }
     else if (((NSArray *)[self apps]).count > 1) {
 
         [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-            
+
             int nextImageViewIndex = (((NSNumber *)[self selectedIcon]).intValue + 1) % ((NSArray *)[self imageViews]).count;
 
             UIImageView *nextImageView = (UIImageView *)[self imageViews][nextImageViewIndex];
@@ -684,7 +685,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             CGRect rectForScrollView = CGRectMake(nextImageView.frame.origin.x - APP_GAP, 0, 2 * APP_GAP + ICON_SIZE, SWITCHER_HEIGHT);
 
             [(UIScrollView *)[self scrollView] scrollRectToVisible:rectForScrollView animated:NO];
-            
+
             ((UIView *)[self overlayView]).center = CGPointMake(nextImageView.center.x - ((UIScrollView *)[self scrollView]).contentOffset.x,
                                                                 nextImageView.center.y - ((UIScrollView *)[self scrollView]).contentOffset.y);
 
@@ -692,7 +693,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 ((UILabel *)[self appLabels][((NSNumber *)[self selectedIcon]).intValue]).alpha = 0;
                 ((UILabel *)[self appLabels][nextImageViewIndex]).alpha = 1;
             }
-        
+
             [self setSelectedIcon:[NSNumber numberWithInt:nextImageViewIndex]];
         } completion:nil];
     }
@@ -706,16 +707,16 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         BOOL ls = UIInterfaceOrientationIsLandscape((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation]);
 
         [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-            
+
             int nextImageViewIndex = (((NSNumber *)[self selectedIcon]).intValue - 1) < 0 ? (((NSArray *)[self imageViews]).count - 1) :
                                      ((((NSNumber *)[self selectedIcon]).intValue - 1) % ((NSArray *)[self imageViews]).count);
-            
+
             UIImageView *nextImageView = (UIImageView *)[self imageViews][nextImageViewIndex];
 
             CGRect rectForScrollView = CGRectMake(nextImageView.frame.origin.x - APP_GAP, 0, 2 * APP_GAP + ICON_SIZE, SWITCHER_HEIGHT);
 
             [(UIScrollView *)[self scrollView] scrollRectToVisible:rectForScrollView animated:NO];
-            
+
             ((UIView *)[self overlayView]).center = CGPointMake(nextImageView.center.x - ((UIScrollView *)[self scrollView]).contentOffset.x,
                                                                 nextImageView.center.y - ((UIScrollView *)[self scrollView]).contentOffset.y);
 
@@ -723,7 +724,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 ((UILabel *)[self appLabels][((NSNumber *)[self selectedIcon]).intValue]).alpha = 0;
                 ((UILabel *)[self appLabels][nextImageViewIndex]).alpha = 1;
             }
-    
+
             [self setSelectedIcon:[NSNumber numberWithInt:nextImageViewIndex]];
         } completion:nil];
     }
@@ -922,7 +923,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
     switcherMode = ([(SBAppSwitcherModel *)[%c(SBAppSwitcherModel) sharedInstance] respondsToSelector:@selector(mainSwitcherDisplayItems)]) ? SWITCHER_IOS9_MODE : SWITCHER_IOS8_MODE;
     if (switcherMode == SWITCHER_IOS9_MODE) {
-        [uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:bundleID]];    
+        [uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:bundleID]];
     } else {
         [uicontroller activateApplicationAnimated:[appcontroller applicationWithBundleIdentifier:bundleID]];
     }
@@ -950,7 +951,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)handleCmdQ:(UIKeyCommand *)keyCommand {
     if ([self switcherShown] && [((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) pid] > 0) {
-        
+
         //BOOL ls = UIInterfaceOrientationIsLandscape((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation]);
         BOOL ls = switcherOpenedInLandscape;
 
@@ -964,12 +965,12 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         %c(FBProcessManager);
         FBApplicationProcess *process = [(FBProcessManager *)[%c(FBProcessManager) sharedInstance] createApplicationProcessForBundleID:[((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) bundleIdentifier]];
         [process killForReason:1 andReport:NO withDescription:@"MolarAppSwitcher"];
-        
+
         if (!((NSNumber *)[self selectedIcon]).intValue && ((NSArray *)[self switcherItems]).count == 1) {
             [UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
                 ((UIView *)[self switcherView]).transform = CGAffineTransformConcat(((UIView *)[self switcherView]).transform, CGAffineTransformMakeScale(0.001, 0.001));
             } completion:^(BOOL completed){
-                [self dismissAppSwitcher];      
+                [self dismissAppSwitcher];
                 [self setSwitcherShown:nil];
             }];
             return;
@@ -988,7 +989,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         [mLabels removeObjectAtIndex:((NSNumber *)[self selectedIcon]).intValue];
         ((UIView *)[mLabels objectAtIndex:(((NSNumber *)[self selectedIcon]).intValue >= mLabels.count) ? mLabels.count - 1 : ((NSNumber *)[self selectedIcon]).intValue]).alpha = 1;
         [self setAppLabels:mLabels];
-    
+
 
         [((NSArray *)[((UIScrollView *)[self scrollView]) subviews]) removeObjectAtIndex:((NSNumber *)[self selectedIcon]).intValue];
         NSMutableArray *mImageViews = [NSMutableArray arrayWithArray:(NSArray *)[self imageViews]];
@@ -999,48 +1000,48 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         BOOL reopen = NO;
         if (switcherMode == SWITCHER_IOS8_MODE && !((NSNumber *)[self selectedIcon]).intValue) reopen = YES;
         [self setSelectedIcon:[NSNumber numberWithInt:((NSNumber *)[self selectedIcon]).intValue - ((((NSNumber *)[self selectedIcon]).intValue >= mLabels.count) ? 1 : 0)]];
-        
+
         if (reopen) {
             [self activateBundleID:[((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) bundleIdentifier]];
         }
 
-        CGFloat h = SWITCHER_HEIGHT;    
+        CGFloat h = SWITCHER_HEIGHT;
         CGFloat w = ([((NSArray *)[self apps]) count] < (ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsP])) ? ([((NSArray *)[self apps]) count] * ICON_SIZE + ([((NSArray *)[self apps]) count] + 1) * APP_GAP)
                                                                                                  : ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsP]) * ICON_SIZE + ((ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsP]) + 1) * APP_GAP);
         CGRect newSwitcherFrame = CGRectMake(0, 0, ls ? h : w, ls ? w : h);
-        
+
         CGSize newScrollViewContentSize = CGSizeMake(APP_GAP * (((NSArray *)[self apps]).count + 1) + ICON_SIZE * ((NSArray *)[self apps]).count, SWITCHER_HEIGHT);
-        
+
         [UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
-            // switcher view frame adjustment 
+            // switcher view frame adjustment
             ((UIView *)[self switcherView]).frame = newSwitcherFrame;
             // scroll view content size
             ((UIScrollView *)[self scrollView]).contentSize = newScrollViewContentSize;
             // animate killed app out
-            if (((NSNumber *)[self selectedIcon]).intValue) killedAppIV.frame = CGRectMake(killedAppIV.frame.origin.x - ICON_SIZE, 
-                                                                                           killedAppIV.frame.origin.y, 
-                                                                                           killedAppIV.frame.size.width, 
+            if (((NSNumber *)[self selectedIcon]).intValue) killedAppIV.frame = CGRectMake(killedAppIV.frame.origin.x - ICON_SIZE,
+                                                                                           killedAppIV.frame.origin.y,
+                                                                                           killedAppIV.frame.size.width,
                                                                                            killedAppIV.frame.size.height);
             killedAppIV.transform = CGAffineTransformMakeScale(0.001, 0.001);
             killedAppIV.alpha = 0;
             // adjust image view frames
             for (int i = 0; i < ((NSArray *)[self imageViews]).count; i++) {
                 UIImageView *iv = (UIImageView *)[(NSArray *)[self imageViews] objectAtIndex:i];
-                iv.frame = CGRectMake(APP_GAP * (i + 1) + ICON_SIZE * i, 
-                                      (SWITCHER_HEIGHT / 2) - (ICON_SIZE / 2), 
-                                      ICON_SIZE, 
+                iv.frame = CGRectMake(APP_GAP * (i + 1) + ICON_SIZE * i,
+                                      (SWITCHER_HEIGHT / 2) - (ICON_SIZE / 2),
+                                      ICON_SIZE,
                                       ICON_SIZE);
                 UILabel *l = (UILabel *)[(NSArray *)[self appLabels] objectAtIndex:i];
                 l.center = iv.center;
-                l.frame = CGRectMake(l.frame.origin.x, 
-                                     l.frame.origin.y + ICON_SIZE / 2 + 10, 
-                                     l.frame.size.width, 
+                l.frame = CGRectMake(l.frame.origin.x,
+                                     l.frame.origin.y + ICON_SIZE / 2 + 10,
+                                     l.frame.size.width,
                                      l.frame.size.height);
             }
             // set switcher view center
-            ((UIView *)[self switcherView]).center = (ls && [self maxWidthLS] == @600.0) ? CGPointMake(CGRectGetMidY(((UIWindow *)[self switcherWindow]).bounds), 
+            ((UIView *)[self switcherView]).center = (ls && [self maxWidthLS] == @600.0) ? CGPointMake(CGRectGetMidY(((UIWindow *)[self switcherWindow]).bounds),
                                                                       CGRectGetMidX(((UIWindow *)[self switcherWindow]).bounds))
-                                                        : CGPointMake(CGRectGetMidX(((UIWindow *)[self switcherWindow]).bounds), 
+                                                        : CGPointMake(CGRectGetMidX(((UIWindow *)[self switcherWindow]).bounds),
                                                                       CGRectGetMidY(((UIWindow *)[self switcherWindow]).bounds));
             // set overlay view center
             ((UIView *)[self overlayView]).center = CGPointMake(((UIImageView *)[self imageViews][(((NSNumber *)[self selectedIcon]).intValue)]).center.x - ((UIScrollView *)[self scrollView]).contentOffset.x,
@@ -1068,7 +1069,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)stopDiscoverabilityTimer {
-    if (discoverabilityTimer) { 
+    if (discoverabilityTimer) {
         [discoverabilityTimer invalidate];
         discoverabilityTimer = nil;
     }
@@ -1182,7 +1183,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 - (void)handleCustomShortcut:(UIKeyCommand *)keyCommand {
     [self stopDiscoverabilityTimer];
     for (NSDictionary *sc in customShortcuts) {
-        if ([keyCommand.input isEqualToString:[sc objectForKey:@"input"]] && 
+        if ([keyCommand.input isEqualToString:[sc objectForKey:@"input"]] &&
             keyCommand.modifierFlags == ((NSNumber *)[self modifierFlagsForShortcut:sc]).intValue) {
             LAEvent *event = [LAEvent eventWithName:[sc objectForKey:@"eventName"] mode:[LASharedActivator currentEventMode]];
             [LASharedActivator sendEventToListener:event];
@@ -1209,7 +1210,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     UIGraphicsEndImageContext();
 
     //return image
-    return image;    
+    return image;
 }
 
 %new
@@ -1230,15 +1231,15 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             NSDebug(@"escKeyDown -> handleCmdEsc");
             [self handleCmdEsc:nil];
         }
-        else if (controlEnabled) { 
+        else if (enabled) {
             NSDebug(@"escKeyDown -> ui_esc");
-            [self ui_esc]; 
+            [self ui_esc];
         }
     }
 }
 
 %new
-- (void)tabKeyDown { 
+- (void)tabKeyDown {
     [self handleKeyStatus:1];
 }
 
@@ -1249,10 +1250,10 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)cmdKeyDown {
-    if (enabled && keySheetEnabled) discoverabilityTimer = [NSTimer scheduledTimerWithTimeInterval:DISCOVERABILITY_DELAY 
-                                                                                            target:self 
-                                                                                          selector:@selector(showDiscoverability) 
-                                                                                          userInfo:nil 
+    if (enabled && keySheetEnabled) discoverabilityTimer = [NSTimer scheduledTimerWithTimeInterval:DISCOVERABILITY_DELAY
+                                                                                            target:self
+                                                                                          selector:@selector(showDiscoverability)
+                                                                                          userInfo:nil
                                                                                            repeats:NO];
     [self setCmdDown:[NSNull null]];
     [self handleKeyStatus:0];
@@ -1347,11 +1348,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 %new
-- (UIView *)discoverabilityLabelViewWithTitle:(NSString *)title 
-                                     shortcut:(NSString *)shortcut 
-                                     minWidth:(CGFloat)minWidth 
+- (UIView *)discoverabilityLabelViewWithTitle:(NSString *)title
+                                     shortcut:(NSString *)shortcut
+                                     minWidth:(CGFloat)minWidth
                                      maxWidth:(CGFloat)maxWidth {
-    
+
     CGFloat modifierWidth = DISCOVERABILITY_MODIFIER_WIDTH;
 
     CGSize size = [(title ? title: @"") sizeWithAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE]}];
@@ -1390,14 +1391,14 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         for (UIKeyCommand *kc in cmds) {
             CGSize size = [(kc.discoverabilityTitle ? kc.discoverabilityTitle: @"") sizeWithAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE]}];
             CGSize adjustedSize = CGSizeMake(ceilf(size.width), ceilf(size.height));
-            if (adjustedSize.width > maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP) adjustedSize = CGSizeMake(maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP, adjustedSize.height);      
+            if (adjustedSize.width > maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP) adjustedSize = CGSizeMake(maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP, adjustedSize.height);
             if (adjustedSize.width > max ) max = adjustedSize.width;
         }
     } else {
         for (UIKeyCommand *kc in cmds) {
             CGSize size = [@"" sizeWithAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE]}];
             CGSize adjustedSize = CGSizeMake(ceilf(size.width), ceilf(size.height));
-            if (adjustedSize.width > maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP) adjustedSize = CGSizeMake(maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP, adjustedSize.height);      
+            if (adjustedSize.width > maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP) adjustedSize = CGSizeMake(maxWidth - modifierWidth - DISCOVERABILITY_MODIFIER_GAP, adjustedSize.height);
             if (adjustedSize.width > max ) max = adjustedSize.width;
         }
     }
@@ -1427,13 +1428,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         for (int i = 0; i < commands.count; i++) {
             UIKeyCommand *kc = commands[i];
             if ([self iOS9]) {
-                if (!kc.discoverabilityTitle && 
-                    kc.modifierFlags == UIKeyModifierCommand && 
+                if (!kc.discoverabilityTitle &&
+                    kc.modifierFlags == UIKeyModifierCommand &&
                     ([kc.input isEqualToString:@"+"] || [kc.input.uppercaseString isEqualToString:@"-"] || [kc.input isEqualToString:@"0"])) {
                     [commands removeObject:kc];
                 }
             } else {
-                if (kc.modifierFlags == UIKeyModifierCommand && 
+                if (kc.modifierFlags == UIKeyModifierCommand &&
                     ([kc.input isEqualToString:@"+"] || [kc.input.uppercaseString isEqualToString:@"-"] || [kc.input isEqualToString:@"0"])) {
                     [commands removeObject:kc];
                 }
@@ -1481,9 +1482,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             if ([self iPhonePlus] && ls) {
                 blurEffectView.transform = CGAffineTransformMakeRotation(DegreesToRadians(0));
             }
-            else if (ls && ![self iPad] || 
-                (ls && [self iPad] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"])) 
-                blurEffectView.transform = orient == UIInterfaceOrientationLandscapeLeft ? 
+            else if (ls && ![self iPad] ||
+                (ls && [self iPad] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]))
+                blurEffectView.transform = orient == UIInterfaceOrientationLandscapeLeft ?
                                                 CGAffineTransformMakeRotation(DegreesToRadians(270)) :
                                                 CGAffineTransformMakeRotation(DegreesToRadians(90));
             else if (orient == UIInterfaceOrientationPortraitUpsideDown && ![self iPad]) {
@@ -1505,10 +1506,10 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
                     blurEffectView.frame = CGRectInset(blurEffectView.frame, DISCOVERABILITY_LS_Y_DECREASE, 0.0f);
                     discoverabilityScrollView = [[UIScrollView alloc] initWithFrame:[self iPad] ? blurEffectView.frame : ([self iPhonePlus] ?
-                                                                                    CGRectMake(0, 0, 
+                                                                                    CGRectMake(0, 0,
                                                                                                 blurEffectView.frame.size.width,
                                                                                                 blurEffectView.frame.size.height) :
-                                                                                     CGRectMake(0, 0, 
+                                                                                     CGRectMake(0, 0,
                                                                                                 blurEffectView.frame.size.height,
                                                                                                 blurEffectView.frame.size.width))];
                     discoverabilityScrollView.contentSize = CGSizeMake(discoverabilityScrollView.frame.size.width * pages, discoverabilityScrollView.frame.size.height);
@@ -1518,9 +1519,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     discoverabilityScrollView.userInteractionEnabled = NO;
                     NSUInteger idx = 0;
                     for (int i = 0; i < pages; i++) {
-                        UIView *page = [[UIView alloc] initWithFrame:CGRectMake(i * discoverabilityScrollView.frame.size.width, 
-                                                                                0, 
-                                                                                discoverabilityScrollView.frame.size.width, 
+                        UIView *page = [[UIView alloc] initWithFrame:CGRectMake(i * discoverabilityScrollView.frame.size.width,
+                                                                                0,
+                                                                                discoverabilityScrollView.frame.size.width,
                                                                                 discoverabilityScrollView.frame.size.height)];
                         for (int col = 0; col < 2; col++) {
                             for (int l = 0; l < iconsPerPage; l++) {
@@ -1532,7 +1533,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                                                                maxWidth:maxWLS/2 - 25];
                                 label.frame = CGRectMake(!col ? DISCOVERABILITY_INSET : DISCOVERABILITY_INSET + maxWLS/2 + 5,
                                                          DISCOVERABILITY_INSET + ((double)l * (DISCOVERABILITY_GAP + label.frame.size.height)),
-                                                         label.frame.size.width, 
+                                                         label.frame.size.width,
                                                          label.frame.size.height);
                                 [page addSubview:label];
                                 idx++;
@@ -1559,32 +1560,32 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     for (UIKeyCommand *kc in commands) {
                         UIView *l = [self discoverabilityLabelViewWithTitle:[self iOS9] ? kc.discoverabilityTitle : @""
                                                                    shortcut:[self modifierString:kc]
-                                                                   minWidth:minWidth 
+                                                                   minWidth:minWidth
                                                                    maxWidth:maxWLS];
                         [labels addObject:l];
                         if (l.frame.size.width > maxWidth) maxWidth = l.frame.size.width;
                     }
 
-                    blurEffectView.frame = [self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] ? CGRectMake(0, 0, 
+                    blurEffectView.frame = [self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] ? CGRectMake(0, 0,
                                                                     maxWidth + (DISCOVERABILITY_INSET * 2),
-                                                                     (((UIView *)labels[0]).frame.size.height * labels.count) + 
-                                                                     (DISCOVERABILITY_GAP * (labels.count - 1)) + 
-                                                                     (2 * DISCOVERABILITY_INSET)) : ([self iPhonePlus] ? 
+                                                                     (((UIView *)labels[0]).frame.size.height * labels.count) +
+                                                                     (DISCOVERABILITY_GAP * (labels.count - 1)) +
+                                                                     (2 * DISCOVERABILITY_INSET)) : ([self iPhonePlus] ?
                                                                      CGRectMake(0, 0,
                                                                         maxWidth + (DISCOVERABILITY_INSET * 2),
-                                                                        (((UIView *)labels[0]).frame.size.height * labels.count) + 
-                                                                        (DISCOVERABILITY_GAP * (labels.count - 1)) + 
-                                                                        (2 * DISCOVERABILITY_INSET)) : 
-                                                                     CGRectMake(0, 0, 
-                                                                        (((UIView *)labels[0]).frame.size.height * labels.count) + 
-                                                                        (DISCOVERABILITY_GAP * (labels.count - 1)) + 
+                                                                        (((UIView *)labels[0]).frame.size.height * labels.count) +
+                                                                        (DISCOVERABILITY_GAP * (labels.count - 1)) +
+                                                                        (2 * DISCOVERABILITY_INSET)) :
+                                                                     CGRectMake(0, 0,
+                                                                        (((UIView *)labels[0]).frame.size.height * labels.count) +
+                                                                        (DISCOVERABILITY_GAP * (labels.count - 1)) +
                                                                         (2 * DISCOVERABILITY_INSET),
                                                                         maxWidth + (DISCOVERABILITY_INSET * 2)));
                     NSUInteger index = 0;
                     for (UIView *label in labels) {
-                        label.frame = CGRectMake(DISCOVERABILITY_INSET, 
-                                                 DISCOVERABILITY_INSET + ((double)index * (DISCOVERABILITY_GAP + label.frame.size.height)), 
-                                                 label.frame.size.width, 
+                        label.frame = CGRectMake(DISCOVERABILITY_INSET,
+                                                 DISCOVERABILITY_INSET + ((double)index * (DISCOVERABILITY_GAP + label.frame.size.height)),
+                                                 label.frame.size.width,
                                                  label.frame.size.height);
                         [blurEffectView addSubview:label];
                         index++;
@@ -1599,12 +1600,12 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                                                            shortcut:@"Test"
                                                                            minWidth:maxWP
                                                                            maxWidth:maxWP];
-                    blurEffectView.frame = CGRectMake(0, 0, 
+                    blurEffectView.frame = CGRectMake(0, 0,
                                                       blurEffectView.frame.size.width,
-                                                      (testLabel.frame.size.height * iconsPerPage) + 
-                                                        (DISCOVERABILITY_GAP * (iconsPerPage - 1)) + 
+                                                      (testLabel.frame.size.height * iconsPerPage) +
+                                                        (DISCOVERABILITY_GAP * (iconsPerPage - 1)) +
                                                         (2 * DISCOVERABILITY_INSET));
-                    discoverabilityScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, 
+                    discoverabilityScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0,
                                                                                               blurEffectView.frame.size.width,
                                                                                               blurEffectView.frame.size.height)];
                     discoverabilityScrollView.contentSize = CGSizeMake(discoverabilityScrollView.frame.size.width * pages, discoverabilityScrollView.frame.size.height);
@@ -1614,9 +1615,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     discoverabilityScrollView.userInteractionEnabled = NO;
                     NSUInteger idx = 0;
                     for (int i = 0; i < pages; i++) {
-                        UIView *page = [[UIView alloc] initWithFrame:CGRectMake(i * discoverabilityScrollView.frame.size.width, 
-                                                                                0, 
-                                                                                discoverabilityScrollView.frame.size.width, 
+                        UIView *page = [[UIView alloc] initWithFrame:CGRectMake(i * discoverabilityScrollView.frame.size.width,
+                                                                                0,
+                                                                                discoverabilityScrollView.frame.size.width,
                                                                                 discoverabilityScrollView.frame.size.height)];
                         for (int l = 0; l < iconsPerPage; l++) {
                             if (!cmdsLeft) break;
@@ -1627,7 +1628,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                                                            maxWidth:maxWP];
                             label.frame = CGRectMake(DISCOVERABILITY_INSET,
                                                      DISCOVERABILITY_INSET + ((double)l * (DISCOVERABILITY_GAP + label.frame.size.height)),
-                                                     label.frame.size.width, 
+                                                     label.frame.size.width,
                                                      label.frame.size.height);
                             [page addSubview:label];
                             idx++;
@@ -1650,19 +1651,19 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     for (UIKeyCommand *kc in commands) {
                         UIView *l = [self discoverabilityLabelViewWithTitle:[self iOS9] ? kc.discoverabilityTitle : @""
                                                                    shortcut:[self modifierString:kc]
-                                                                   minWidth:minWidth 
+                                                                   minWidth:minWidth
                                                                    maxWidth:maxWP];
                         [labels addObject:l];
                     }
-                    blurEffectView.frame = CGRectMake(0, 0, 
+                    blurEffectView.frame = CGRectMake(0, 0,
                                                       minWidth + (DISCOVERABILITY_INSET * 2),
-                                                      (((UIView *)labels[0]).frame.size.height * labels.count) + 
-                                                        (DISCOVERABILITY_GAP * (labels.count - 1)) + 
+                                                      (((UIView *)labels[0]).frame.size.height * labels.count) +
+                                                        (DISCOVERABILITY_GAP * (labels.count - 1)) +
                                                         (2 * DISCOVERABILITY_INSET));
                     NSUInteger index = 0;
                     for (UIView *label in labels) {
-                        label.frame = CGRectMake(DISCOVERABILITY_INSET, 
-                                                 DISCOVERABILITY_INSET + ((double)index * (DISCOVERABILITY_GAP + label.frame.size.height)), 
+                        label.frame = CGRectMake(DISCOVERABILITY_INSET,
+                                                 DISCOVERABILITY_INSET + ((double)index * (DISCOVERABILITY_GAP + label.frame.size.height)),
                                                  label.frame.size.width,
                                                  label.frame.size.height);
                         [blurEffectView addSubview:label];
@@ -1670,7 +1671,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     }
                 }
             }
-        
+
             blurEffectView.center = ((NSUInteger)[self maxIconsLS] == 6 || ([self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"])) ? CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds)) :
                                                                                           CGPointMake(CGRectGetMidX(contentFrame), CGRectGetMidY(contentFrame));
             NSDebug(@"\nLS: %i\nWINDOW: %@\nBOUNDS: %@\nCONTENT FRAME: %@\nBLUR FRAME: %@\nROTATION: %@", ls, NSStringFromCGRect(window.frame), NSStringFromCGRect(bounds), NSStringFromCGRect(contentFrame), NSStringFromCGRect(blurEffectView.frame), NSStringFromCGAffineTransform(blurEffectView.transform));
@@ -1708,21 +1709,21 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         activeApp = [[(SpringBoard *)[%c(SpringBoard) sharedApplication] _accessibilityFrontMostApplication] bundleIdentifier];
         if (!activeApp) activeApp = @"com.apple.springboard";
 
-        CFDictionaryKeyCallBacks keyCallbacks = {0, NULL, NULL, CFCopyDescription, CFEqual, NULL}; 
+        CFDictionaryKeyCallBacks keyCallbacks = {0, NULL, NULL, CFCopyDescription, CFEqual, NULL};
         CFDictionaryValueCallBacks valueCallbacks  = {0, NULL, NULL, CFCopyDescription, CFEqual};
-        CFMutableDictionaryRef dictionary = CFDictionaryCreateMutable(kCFAllocatorDefault, 1, 
+        CFMutableDictionaryRef dictionary = CFDictionaryCreateMutable(kCFAllocatorDefault, 1,
                                                                   &keyCallbacks, &valueCallbacks);
         CFDictionaryAddValue(dictionary, CFSTR("app"), (CFStringRef)activeApp);
-        
+
         CFStringRef notificationName = (CFStringRef)@"NewFrontAppNotification";
-        
+
         void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
         CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
         if(CFNotificationCenterGetDistributedCenter) {
-            CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(), 
-                                                 notificationName, 
-                                                 NULL, 
-                                                 dictionary, 
+            CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(),
+                                                 notificationName,
+                                                 NULL,
+                                                 dictionary,
                                                  YES);
         }
     }
@@ -1740,7 +1741,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
     if (enabled) {
         UIKeyCommand *cmdQ = [UIKeyCommand keyCommandWithInput:@"q"
-                                  modifierFlags:UIKeyModifierCommand 
+                                  modifierFlags:UIKeyModifierCommand
                                   action:@selector(handleCmdQ:)];
         [arr addObject:cmdQ];
 
@@ -1862,7 +1863,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [[[[%c(SBIconController) sharedInstance ] _currentFolderController] contentView] setCurrentPageIndex:page animated:YES];
 }
 
-%new 
+%new
 - (void)ui_leftKey {
     if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
         if (enabled && controlEnabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
@@ -1878,10 +1879,10 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 [slider setValue:slider.value-dec animated:YES];
                 [slider sendActionsForControlEvents:UIControlEventValueChanged];
                 if (!keyRepeatTimer) {
-                     waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-                                                                              target:self 
-                                                                            selector:@selector(keyRepeat:) 
-                                                                            userInfo:@{@"key": @"left"} 
+                     waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY
+                                                                              target:self
+                                                                            selector:@selector(keyRepeat:)
+                                                                            userInfo:@{@"key": @"left"}
                                                                              repeats:NO];
                     waitingForKeyRepeat = YES;
                 } else waitingForKeyRepeat = NO;
@@ -1902,13 +1903,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                                 scrollView.contentOffset.y);
                     }
                     if (newOffset.x <  0) newOffset.x = 0;
-                } 
+                }
                 if (!keyRepeatTimer) {
                     if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
-                     waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-                                                                              target:self 
-                                                                            selector:@selector(keyRepeat:) 
-                                                                            userInfo:@{@"key": @"left"} 
+                     waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY
+                                                                              target:self
+                                                                            selector:@selector(keyRepeat:)
+                                                                            userInfo:@{@"key": @"left"}
                                                                              repeats:NO];
                     waitingForKeyRepeat = YES;
                 } else waitingForKeyRepeat = NO;
@@ -1919,7 +1920,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             pageControl.currentPage--;
             [self pageChanged];
         }
-    } else if ([self iOS9]) {
+    } else if (enabled && [self iOS9]) {
         if (sbFolderOpened) {
             if (sbOpenedFolderSelectedCol > 0) {
 
@@ -1937,7 +1938,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X) + SBFOLDER_ICONS_X) {
                         sbOpenedFolderSelectedCol = ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] % SBFOLDER_ICONS_X) - 1;
                     }
-                    
+
                     [self scrollOpenedSBFolderToPage:sbOpenedFolderSelectedPage];
                     [self selectSBIconInOpenedFolder];
 
@@ -1951,7 +1952,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X)) {
                         sbOpenedFolderSelectedRow = 0;
                     }
-                    
+
                     [self scrollOpenedSBFolderToPage:sbOpenedFolderSelectedPage];
                     [self selectSBIconInOpenedFolder];
                 }
@@ -2010,7 +2011,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] < (sbSelectedRow * sbColumns) + sbColumns) {
                         sbSelectedColumn = ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] % sbColumns) - 1;
                     }
-                    
+
                     [self scrollSBToPage:sbSelectedPage];
                     [self selectSBIcon];
 
@@ -2024,7 +2025,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] < (sbSelectedRow * sbColumns)) {
                         sbSelectedRow = 0;
                     }
-                    
+
                     [self scrollSBToPage:sbSelectedPage];
                     [self selectSBIcon];
                 }
@@ -2057,10 +2058,10 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 [slider setValue:slider.value+inc animated:YES];
                 [slider sendActionsForControlEvents:UIControlEventValueChanged];
                 if (!keyRepeatTimer) {
-                     waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-                                                                              target:self 
-                                                                            selector:@selector(keyRepeat:) 
-                                                                            userInfo:@{@"key": @"right"} 
+                     waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY
+                                                                              target:self
+                                                                            selector:@selector(keyRepeat:)
+                                                                            userInfo:@{@"key": @"right"}
                                                                              repeats:NO];
                     waitingForKeyRepeat = YES;
                 } else waitingForKeyRepeat = NO;
@@ -2079,15 +2080,15 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                         newOffset = CGPointMake(scrollView.contentOffset.x + ((scrollView.frame.size.width) / 3),
                                                 scrollView.contentOffset.y);
                     }
-                    if (newOffset.x > (scrollView.contentSize.width - scrollView.frame.size.width)) 
+                    if (newOffset.x > (scrollView.contentSize.width - scrollView.frame.size.width))
                         newOffset.x = scrollView.contentSize.width - scrollView.frame.size.width;
                 }
                 if (!keyRepeatTimer) {
                     if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
-                     waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-                                                                              target:self 
-                                                                            selector:@selector(keyRepeat:) 
-                                                                            userInfo:@{@"key": @"right"} 
+                     waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY
+                                                                              target:self
+                                                                            selector:@selector(keyRepeat:)
+                                                                            userInfo:@{@"key": @"right"}
                                                                              repeats:NO];
                     waitingForKeyRepeat = YES;
                 } else waitingForKeyRepeat = NO;
@@ -2098,11 +2099,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             pageControl.currentPage++;
             [self pageChanged];
         }
-    } else if ([self iOS9] && sbFolderOpened) {
+    } else if (enabled && [self iOS9] && sbFolderOpened) {
 
         if (sbOpenedFolderSelectedCol < SBFOLDER_ICONS_X - 1) {
 
-            if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] > (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X) + sbOpenedFolderSelectedCol + 1) { 
+            if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] > (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X) + sbOpenedFolderSelectedCol + 1) {
 
                 sbOpenedFolderSelectedCol++;
 
@@ -2117,11 +2118,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 }
 
                 [self scrollOpenedSBFolderToPage:sbOpenedFolderSelectedPage];
-                [self selectSBIconInOpenedFolder];            
-            } 
-            
+                [self selectSBIconInOpenedFolder];
+            }
+
             else {
-                
+
                 sbOpenedFolderSelectedPage++;
                 sbOpenedFolderSelectedCol = 0;
                 if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X)) {
@@ -2129,7 +2130,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 }
 
                 [self scrollOpenedSBFolderToPage:sbOpenedFolderSelectedPage];
-                [self selectSBIconInOpenedFolder];            
+                [self selectSBIconInOpenedFolder];
             }
 
         } else {
@@ -2140,9 +2141,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X)) {
                     sbOpenedFolderSelectedRow = 0;
                 }
-                
+
                 [self scrollOpenedSBFolderToPage:sbOpenedFolderSelectedPage];
-                [self selectSBIconInOpenedFolder];            
+                [self selectSBIconInOpenedFolder];
 
             } else {
 
@@ -2151,13 +2152,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X)) {
                     sbOpenedFolderSelectedRow = 0;
                 }
-                
-                [self scrollOpenedSBFolderToPage:sbOpenedFolderSelectedPage];
-                [self selectSBIconInOpenedFolder];            
-            }
-        }   
 
-    } else if ([self iOS9]) {
+                [self scrollOpenedSBFolderToPage:sbOpenedFolderSelectedPage];
+                [self selectSBIconInOpenedFolder];
+            }
+        }
+
+    } else if (enabled && [self iOS9]) {
         if (!sbIconSelected) {
 
             if (sbDockIconSelected) {
@@ -2199,7 +2200,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         } else {
             if (sbSelectedColumn < sbColumns - 1) {
 
-                if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] > (sbSelectedRow * sbColumns) + sbSelectedColumn + 1) { 
+                if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] > (sbSelectedRow * sbColumns) + sbSelectedColumn + 1) {
 
                     sbSelectedColumn++;
 
@@ -2215,9 +2216,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
                     [self scrollSBToPage:sbSelectedPage];
                     [self selectSBIcon];
-                } 
+                }
                 else {
-                    
+
                     sbSelectedPage++;
                     sbSelectedColumn = 0;
                     if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] < (sbSelectedRow * sbColumns)) {
@@ -2236,7 +2237,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] < (sbSelectedRow * sbColumns)) {
                         sbSelectedRow = 0;
                     }
-                    
+
                     [self scrollSBToPage:sbSelectedPage];
                     [self selectSBIcon];
 
@@ -2247,11 +2248,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] < (sbSelectedRow * sbColumns)) {
                         sbSelectedRow = 0;
                     }
-                    
+
                     [self scrollSBToPage:sbSelectedPage];
                     [self selectSBIcon];
                 }
-            }             
+            }
         }
     }
 }
@@ -2302,7 +2303,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 [UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
                     @try { [selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES]; }
                     @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
-                    selectedCell.transform = CGAffineTransformConcat(selectedCell.transform, 
+                    selectedCell.transform = CGAffineTransformConcat(selectedCell.transform,
                                                                      CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
                 } completion:nil];
                 [UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
@@ -2311,7 +2312,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     selectedCell.selected = YES;
                 }];
             }
-            
+
             else if (collectionViewMode) {
                 if ([selectedCollectionView numberOfItemsInSection:selectedSection] > selectedRow + 1) {
                     if (selectedItem) {
@@ -2333,19 +2334,19 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 }
                 CGAffineTransform backupTransform = selectedItem.transform;
                 [UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
-                    @try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow 
-                                                                 inSection:selectedSection] 
-                                                          atScrollPosition:UICollectionViewScrollPositionCenteredVertically | UICollectionViewScrollPositionCenteredHorizontally 
-                                                                  animated:YES];    
+                    @try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow
+                                                                 inSection:selectedSection]
+                                                          atScrollPosition:UICollectionViewScrollPositionCenteredVertically | UICollectionViewScrollPositionCenteredHorizontally
+                                                                  animated:YES];
                     } @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
-                    selectedItem.transform = CGAffineTransformConcat(selectedItem.transform, 
+                    selectedItem.transform = CGAffineTransformConcat(selectedItem.transform,
                     CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
                 } completion:nil];
                 [UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
                     selectedItem.transform = backupTransform;
                 } completion:nil];
             }
-            
+
             else if (scrollViewMode) {
                 UIScrollView *scrollView = (UIScrollView *)[self selectedView];
                 CGPoint newOffset;
@@ -2355,7 +2356,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 if ([self cmdDown]) {
                     if ([topVC isKindOfClass:UINavigationController.class] && !((UINavigationController *)topVC).navigationBar.hidden) {
                         navBar = ((UINavigationController *)topVC).navigationBar.frame;
-                        newOffset = CGPointMake(scrollView.contentOffset.x, 
+                        newOffset = CGPointMake(scrollView.contentOffset.x,
                                                 scrollView.contentSize.height - scrollView.frame.size.height + (navBar.origin.y + navBar.size.height));
                     } else {
                         newOffset = CGPointMake(scrollView.contentOffset.x,
@@ -2374,31 +2375,31 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                             newOffset.y = (scrollView.contentSize.height - scrollView.frame.size.height) + (navBar.origin.y + navBar.size.height);
                         }
                     } else {
-                        if (newOffset.y > (scrollView.contentSize.height - scrollView.frame.size.height)) 
+                        if (newOffset.y > (scrollView.contentSize.height - scrollView.frame.size.height))
                             newOffset.y = scrollView.contentSize.height - scrollView.frame.size.height;
                     }
-                } 
+                }
                 [scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
             }
-            
+
             else {
                 UIView *scrollableView = [self findFirstScrollableView];
                 if (scrollableView) [self highlightView:scrollableView];
             }
-            
+
             if (tableViewMode || collectionViewMode || scrollViewMode) {
                 if (!keyRepeatTimer) {
                     if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
-                     waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-                                                                              target:self 
-                                                                            selector:@selector(keyRepeat:) 
-                                                                            userInfo:@{@"key": @"down"} 
+                     waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY
+                                                                              target:self
+                                                                            selector:@selector(keyRepeat:)
+                                                                            userInfo:@{@"key": @"down"}
                                                                              repeats:NO];
                     waitingForKeyRepeat = YES;
                 } else waitingForKeyRepeat = NO;
             }
         }
-    } else if ([self iOS9]) {
+    } else if (enabled && [self iOS9]) {
         if (sbFolderOpened) {
 
             if (sbOpenedFolderSelectedRow < SBFOLDER_ICONS_Y - 1 && [(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] >= SBFOLDER_ICONS_X * (sbOpenedFolderSelectedRow + 1) + sbOpenedFolderSelectedCol + 1) {
@@ -2480,7 +2481,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             if (fView) {
                 [fView removeFromSuperview];
                 fView = nil;
-            }       
+            }
             if (tableViewMode) {
                 if ([self cmdDown]) {
                     selectedRow = selectedSection = 0;
@@ -2509,7 +2510,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 [UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
                     @try { [selectedTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection] atScrollPosition:UITableViewScrollPositionMiddle animated:YES]; }
                     @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
-                    selectedCell.transform = CGAffineTransformConcat(selectedCell.transform, 
+                    selectedCell.transform = CGAffineTransformConcat(selectedCell.transform,
                                                                      CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
                 } completion:nil];
                 [UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
@@ -2518,7 +2519,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     selectedCell.selected = YES;
                 }];
             }
-            
+
             else if (collectionViewMode) {
                 if ((selectedRow - 1) >= 0) {
                     if (selectedItem) {
@@ -2540,19 +2541,19 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 }
                 CGAffineTransform backupTransform = selectedItem.transform;
                 [UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
-                    @try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow 
-                                                                 inSection:selectedSection] 
-                                                          atScrollPosition:UICollectionViewScrollPositionCenteredVertically | UICollectionViewScrollPositionCenteredHorizontally 
+                    @try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow
+                                                                 inSection:selectedSection]
+                                                          atScrollPosition:UICollectionViewScrollPositionCenteredVertically | UICollectionViewScrollPositionCenteredHorizontally
                                                                   animated:YES];
                     } @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
-                    selectedItem.transform = CGAffineTransformConcat(selectedItem.transform, 
+                    selectedItem.transform = CGAffineTransformConcat(selectedItem.transform,
                     CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
                 } completion:nil];
                 [UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
                     selectedItem.transform = backupTransform;
                 } completion:nil];
             }
-            
+
             else if (scrollViewMode) {
                 UIScrollView *scrollView = (UIScrollView *)[self selectedView];
                 CGPoint newOffset;
@@ -2581,28 +2582,28 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     } else {
                         if (newOffset.y < 0) newOffset.y = 0;
                     }
-                } 
+                }
                 [scrollView setContentOffset:newOffset animated:!keyRepeatTimer];
             }
-            
+
             else {
                 UIView *scrollableView = [self findFirstScrollableView];
                 if (scrollableView) [self highlightView:scrollableView];
             }
-            
+
             if (tableViewMode || collectionViewMode || scrollViewMode) {
                 if (!keyRepeatTimer) {
                     if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
-                     waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-                                                                              target:self 
-                                                                            selector:@selector(keyRepeat:) 
-                                                                            userInfo:@{@"key": @"up"} 
+                     waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY
+                                                                              target:self
+                                                                            selector:@selector(keyRepeat:)
+                                                                            userInfo:@{@"key": @"up"}
                                                                              repeats:NO];
                     waitingForKeyRepeat = YES;
                 } else waitingForKeyRepeat = NO;
-            }       
+            }
         }
-    } else if ([self iOS9]) {
+    } else if (enabled && [self iOS9]) {
         if (sbFolderOpened) {
 
             if (sbOpenedFolderSelectedRow > 0) {
@@ -2635,7 +2636,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 [self selectSBIcon];
             }
             else {
-                
+
                 BOOL ls = UIInterfaceOrientationIsLandscape((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation]);
                 if (ls) {
                     sbRows = [[%c(SBIconController) sharedInstance] maxRowCountForListInRootFolderWithInterfaceOrientation:0];
@@ -2731,7 +2732,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                         [ac dismissViewControllerAnimated:YES completion:^{
                                             [self performSelector:@selector(resetViews) withObject:0 afterDelay:ALERT_DISMISS_RESCAN_DELAY];
                                         }];
-                                        break;      
+                                        break;
                                     }
                                     idx++;
                                 }
@@ -2760,7 +2761,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                             }
                         } else if (actionSheetMode) {
                             if ([self actionSheet] && ((UIActionSheet *)[self actionSheet]).delegate) {
-                                [((UIActionSheet *)[self actionSheet]).delegate actionSheet:(UIActionSheet *)[self actionSheet] 
+                                [((UIActionSheet *)[self actionSheet]).delegate actionSheet:(UIActionSheet *)[self actionSheet]
                                                                                                   clickedButtonAtIndex:selectedRow];
                             }
                             NSDebug(@"ENTER ACTION SHEET: Dismissing actionSheetMode");
@@ -2773,7 +2774,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 } else {
                     //NSLog(@"Activating %@", ((UIView *)[self selectedView]).description);
                     //NSLog(@"Subviews: %@", ((UIView *)[self selectedView]).subviews.description);
-                    if ([[self selectedView] isKindOfClass:[UITextField class]] || 
+                    if ([[self selectedView] isKindOfClass:[UITextField class]] ||
                         [[self selectedView] isKindOfClass:[UITextView class]]) {
                         [[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
                     }
@@ -2791,7 +2792,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                             //else [[self selectedView] sendActionsForControlEvents:UIControlEventTouchUpInside];
                     } else {
                         // text controls
-                        if ([[self selectedView] isKindOfClass:[UITextField class]] || 
+                        if ([[self selectedView] isKindOfClass:[UITextField class]] ||
                             [[self selectedView] isKindOfClass:[UITextView class]]) {
                             if ([(UIView *)[self selectedView] isFirstResponder]) {
                                 [[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
@@ -2821,13 +2822,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                         UIStepper *stepper = (UIStepper *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex - 1];
                                         if (stepper.wraps && (stepper.value - stepper.stepValue) < stepper.minimumValue) stepper.value = stepper.maximumValue;
                                         else stepper.value -= stepper.stepValue;
-                                        [stepper sendActionsForControlEvents:UIControlEventValueChanged];   
+                                        [stepper sendActionsForControlEvents:UIControlEventValueChanged];
                                     }
                                 }
                                 // segmented control
                                 else if ([[self selectedView] isKindOfClass:[UISegmentedControl class]]) {
                                     if (!((UISegmentedControl *)[self selectedView]).momentary) {
-                                        ((UISegmentedControl *)[self selectedView]).selectedSegmentIndex = (((UISegmentedControl *)[self selectedView]).selectedSegmentIndex + 1) % 
+                                        ((UISegmentedControl *)[self selectedView]).selectedSegmentIndex = (((UISegmentedControl *)[self selectedView]).selectedSegmentIndex + 1) %
                                                                                                             ((UISegmentedControl *)[self selectedView]).numberOfSegments;
                                         [[self selectedView] sendActionsForControlEvents:UIControlEventValueChanged];
                                     }
@@ -2846,21 +2847,23 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 }
             }
         }
-    } else if (sbFolderOpened) {
-        [self activateBundleID:selectedSBIconInOpenedFolderBundleID];
-    } else if (sbFolderIconSelected) {
-        [sbIconOverlay removeFromSuperview];
-        [[[%c(SBIconController) sharedInstance ] _rootFolderController] pushFolder:selectedSBFolder animated:YES completion:^(BOOL completed){
-            sbFolderOpened = YES;
-            sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = sbOpenedFolderSelectedPage = 0;
-            [self selectSBIconInOpenedFolder];
-        }];
-    } 
-    else if (sbIconSelected || sbDockIconSelected) {
-        if (sbDockIconSelected) {
-            [[[[[%c(SBIconController) sharedInstance] rootFolder] dock] iconAtIndex:sbSelectedColumn] launchFromLocation:0 context:0];
-        } else {
-            [self activateBundleID:selectedSBIconBundleID];
+    } else if (enabled) {
+        if (sbFolderOpened) {
+            [self activateBundleID:selectedSBIconInOpenedFolderBundleID];
+        } else if (sbFolderIconSelected) {
+            [sbIconOverlay removeFromSuperview];
+            [[[%c(SBIconController) sharedInstance ] _rootFolderController] pushFolder:selectedSBFolder animated:YES completion:^(BOOL completed){
+                sbFolderOpened = YES;
+                sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = sbOpenedFolderSelectedPage = 0;
+                [self selectSBIconInOpenedFolder];
+            }];
+        }
+        else if (sbIconSelected || sbDockIconSelected) {
+            if (sbDockIconSelected) {
+                [[[[[%c(SBIconController) sharedInstance] rootFolder] dock] iconAtIndex:sbSelectedColumn] launchFromLocation:0 context:0];
+            } else {
+                [self activateBundleID:selectedSBIconBundleID];
+            }
         }
     }
 }
@@ -2897,7 +2900,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)ui_esc {
-    if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+    if (controlEnabled && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
         if (enabled && controlEnabled && [self isActive] && ![self switcherShown]) {
             if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
             if (fView) {
@@ -2946,11 +2949,18 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 }
             }
         }
-    } else if (sbFolderOpened) {
-        sbFolderOpened = NO;
-        [[[%c(SBIconController) sharedInstance ] _rootFolderController] popFolderAnimated:YES completion:^(BOOL completed) {
-            [sbIconView addSubview:sbIconOverlay];
-        }];
+    } else if ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+        if (sbFolderOpened) {
+            sbFolderOpened = NO;
+            [[[%c(SBIconController) sharedInstance ] _rootFolderController] popFolderAnimated:YES completion:^(BOOL completed) {
+                [sbIconView addSubview:sbIconOverlay];
+            }];
+        } else if (sbIconSelected) {
+            [sbIconOverlay removeFromSuperview];
+            sbIconSelected = NO;
+            selectedSBIcon = nil;
+            sbSelectedColumn = sbSelectedRow = 0;
+        }
     }
 }
 
@@ -2960,10 +2970,10 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (enabled && controlEnabled && [self shiftDown] && ![self cmdDown] && ![self switcherShown]) {
             [self highlightView:PREV_VIEW animated:YES force:NO];
             if (!keyRepeatTimer) {
-                 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-                                                                          target:self 
-                                                                        selector:@selector(keyRepeat:) 
-                                                                        userInfo:@{@"key": @"tab"} 
+                 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY
+                                                                          target:self
+                                                                        selector:@selector(keyRepeat:)
+                                                                        userInfo:@{@"key": @"tab"}
                                                                          repeats:NO];
                 waitingForKeyRepeat = YES;
             } else waitingForKeyRepeat = NO;
@@ -2971,10 +2981,10 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             [self highlightView:NEXT_VIEW animated:YES force:NO];
             if (!keyRepeatTimer) {
                 if (waitingForKeyRepeat) [waitForKeyRepeatTimer invalidate];
-                 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY 
-                                                                          target:self 
-                                                                        selector:@selector(keyRepeat:) 
-                                                                        userInfo:@{@"key": @"tab"} 
+                 waitForKeyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:KEY_REPEAT_DELAY
+                                                                          target:self
+                                                                        selector:@selector(keyRepeat:)
+                                                                        userInfo:@{@"key": @"tab"}
                                                                          repeats:NO];
                 waitingForKeyRepeat = YES;
             } else waitingForKeyRepeat = NO;
@@ -2999,14 +3009,14 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"down"]) keySelector = @selector(ui_downKey);
     else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"left"]) keySelector = @selector(ui_leftKey);
     else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"right"]) keySelector = @selector(ui_rightKey);
-    keyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:(tableViewMode || 
+    keyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:(tableViewMode ||
                                                               collectionViewMode ||
                                                               sliderMode ||
-                                                              [(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"tab"]) 
-                                                              ? KEY_REPEAT_INTERVAL_SLOW : KEY_REPEAT_INTERVAL 
-                                                      target:self 
-                                                    selector:keySelector 
-                                                    userInfo:nil 
+                                                              [(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"tab"])
+                                                              ? KEY_REPEAT_INTERVAL_SLOW : KEY_REPEAT_INTERVAL
+                                                      target:self
+                                                    selector:keySelector
+                                                    userInfo:nil
                                                      repeats:YES];
 }
 
@@ -3019,7 +3029,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 - (void)highlightView:(UIView *)view {
     @synchronized(self) {
         selectedViewIndex = [(NSArray *)[self views] indexOfObject:view];
-        
+
         if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
         if (fView) {
             [fView removeFromSuperview];
@@ -3061,8 +3071,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 selectedItem.selected = YES;
                 selectedCollectionView = cView;
                 animView = selectedItem;
-                @try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection] 
-                                                      atScrollPosition:UICollectionViewScrollPositionTop 
+                @try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]
+                                                      atScrollPosition:UICollectionViewScrollPositionTop
                                                               animated:YES];
                 } @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
             }
@@ -3086,7 +3096,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             if (fView) {
                 [fView removeFromSuperview];
                 fView = nil;
-            }           
+            }
             if ([self views] && ((NSArray *)[self views]).count) {
                 if (next) {
                     do {
@@ -3100,7 +3110,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     } while ([(NSArray *)[self skipClasses] containsObject:NSStringFromClass(((UIView *)[(NSArray *)[self views] objectAtIndex:selectedViewIndex]).class)]);
                 }
                 if (((NSArray *)[self views]).count) {
-                    
+
                     //[[NSNotificationCenter defaultCenter] postNotificationName:@"ResignTextFieldsNotification" object:nil];
 
                     if (tableViewMode) selectedCell.selected = NO;
@@ -3143,8 +3153,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                             selectedItem.selected = YES;
                             selectedCollectionView = cView;
                             animView = selectedItem;
-                            @try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection] 
-                                                                  atScrollPosition:UICollectionViewScrollPositionTop 
+                            @try { [selectedCollectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:selectedRow inSection:selectedSection]
+                                                                  atScrollPosition:UICollectionViewScrollPositionTop
                                                                           animated:YES];
                             } @catch (NSException *e) { NSLog(@"Exception occured: %@", e); }
                         }
@@ -3159,11 +3169,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     NSDebug(@"VIEW %i: %@", selectedViewIndex, ((UIView *)[self selectedView]).description);
 
                     if (animated) {
-                        UIView *flashView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 
+                        UIView *flashView = [[UIView alloc] initWithFrame:CGRectMake(0, 0,
                                                                                      animView.frame.size.width,
                                                                                      animView.frame.size.height)];
                         flashView.backgroundColor = [UIColor whiteColor];
-                        flashView.layer.cornerRadius = (animView.layer.cornerRadius != 0.0f) ? 
+                        flashView.layer.cornerRadius = (animView.layer.cornerRadius != 0.0f) ?
                                                         animView.layer.cornerRadius : FLASH_VIEW_CORNER_RADIUS;
                         flashView.clipsToBounds = YES;
                         flashView.userInteractionEnabled = NO;
@@ -3179,9 +3189,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                         fView = flashView;
 
                         [UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
-                            animView.transform = CGAffineTransformConcat(animView.transform, 
+                            animView.transform = CGAffineTransformConcat(animView.transform,
                                                                          CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
-                            flashView.transform = CGAffineTransformConcat(flashView.transform, 
+                            flashView.transform = CGAffineTransformConcat(flashView.transform,
                                                                           CGAffineTransformMakeScale(MAGNIFY_FACTOR, MAGNIFY_FACTOR));
                         } completion:nil];
                         [UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
@@ -3236,9 +3246,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         sbOpenedFolderPages = [selectedSBFolder listCount];
         sbFolderIconSelected = YES;
     }
-    
+
     sbIconView = [[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] viewForIcon:selectedSBIcon] _iconImageView];
-    
+
     sbIconOverlay = [[UIView alloc] initWithFrame:CGRectMake(1, 1, sbIconView.frame.size.width - 2, sbIconView.frame.size.height - 2)];
     sbIconOverlay.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.35];
     sbIconOverlay.layer.cornerRadius = [[self sbIconCornerRadius] doubleValue];
@@ -3247,7 +3257,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
     CGAffineTransform backupTransform = sbIconView.transform;
     [UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
-        sbIconView.transform = CGAffineTransformConcat(sbIconView.transform, 
+        sbIconView.transform = CGAffineTransformConcat(sbIconView.transform,
                                                        CGAffineTransformMakeScale(SB_MAGNIFY_FACTOR, SB_MAGNIFY_FACTOR));
     } completion:nil];
     [UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
@@ -3282,7 +3292,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
         CGAffineTransform backupTransform = sbIconView.transform;
         [UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
-            sbIconView.transform = CGAffineTransformConcat(sbIconView.transform, 
+            sbIconView.transform = CGAffineTransformConcat(sbIconView.transform,
                                                            CGAffineTransformMakeScale(SB_MAGNIFY_FACTOR, SB_MAGNIFY_FACTOR));
         } completion:nil];
         [UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
@@ -3304,7 +3314,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     selectedSBIconInOpenedFolderBundleID = [[selectedSBIconInOpenedFolder application] bundleIdentifier];
 
     sbIconOpenedFolderView = [[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] viewForIcon:selectedSBIconInOpenedFolder] _iconImageView];
-    
+
     sbIconOpenedFolderOverlay = [[UIView alloc] initWithFrame:CGRectMake(1, 1, sbIconOpenedFolderView.frame.size.width - 2, sbIconOpenedFolderView.frame.size.height - 2)];
     sbIconOpenedFolderOverlay.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.35];
     sbIconOpenedFolderOverlay.layer.cornerRadius = 13.0f;
@@ -3313,7 +3323,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
     CGAffineTransform backupTransform = sbIconOpenedFolderView.transform;
     [UIView animateWithDuration:HIGHLIGHT_DURATION delay:0 options:0 animations:^{
-        sbIconOpenedFolderView.transform = CGAffineTransformConcat(sbIconView.transform, 
+        sbIconOpenedFolderView.transform = CGAffineTransformConcat(sbIconView.transform,
                                                        CGAffineTransformMakeScale(SB_MAGNIFY_FACTOR, SB_MAGNIFY_FACTOR));
     } completion:nil];
     [UIView animateWithDuration:HIGHLIGHT_DURATION delay:HIGHLIGHT_DURATION options:0 animations:^{
@@ -3355,8 +3365,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         return @[[UIApplication sharedApplication].keyWindow.rootViewController.presentedViewController.view];
     }
     NSArray *rootViews = ((UIWindow *)[UIWindow keyWindow]).subviews;
-    if (rootViews && 
-        rootViews.count && 
+    if (rootViews &&
+        rootViews.count &&
         [[rootViews objectAtIndex:0] isMemberOfClass:[%c(UILayoutContainerView) class]] && rootViews.count == 1) {
         rootViews = ((UIView *)[rootViews objectAtIndex:0]).subviews;
     }
@@ -3385,8 +3395,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 - (NSArray *)filterViews:(NSArray *)views {
     NSMutableArray *filteredViews = [NSMutableArray new];
     for (UIView *view in views) {
-        if ([view isKindOfClass:[UIControl class]] || 
-            [view isKindOfClass:[UITextView class]] || 
+        if ([view isKindOfClass:[UIControl class]] ||
+            [view isKindOfClass:[UITextView class]] ||
             [view isKindOfClass:[UIScrollView class]]) {
             if (![(NSArray *)[self blockedClasses] containsObject:NSStringFromClass(view.class)]) {
                 if ([view isKindOfClass:[UIButton class]] && !((UIButton *)view).userInteractionEnabled) continue;
@@ -3447,7 +3457,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             tabBarButtons++;
         }
     }
-    if (processedViews.count >= 2 && 
+    if (processedViews.count >= 2 &&
         [NSStringFromClass(((UIView *)processedViews[0]).class) isEqualToString:@"SPUISearchTableView"] &&
         [((UIView *)processedViews[1]) isKindOfClass:[UIScrollView class]]) {
         [processedViews exchangeObjectAtIndex:0 withObjectAtIndex:1];
@@ -3475,7 +3485,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     if (fView) {
             [fView removeFromSuperview];
             fView = nil;
-    }   
+    }
     [self setSelectedView:nil];
     /*if (enabled && controlEnabled &&
         ((NSArray *)[self views]).count && [(UIView *)((NSArray *)[self views])[0] isKindOfClass:UIScrollView.class])
@@ -3517,8 +3527,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 - (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)orientation {
     %orig();
 
-    if (sbIconSelected || sbDockIconSelected) { 
-     
+    if (sbIconSelected || sbDockIconSelected) {
+
         BOOL ls = UIInterfaceOrientationIsLandscape((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation]);
         if (ls) {
             sbRows = [[%c(SBIconController) sharedInstance] maxRowCountForListInRootFolderWithInterfaceOrientation:0];
@@ -3571,7 +3581,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     %orig();
     if (action.title && [action valueForKey:@"handler"]) {
         if (![[UIApplication sharedApplication] alertActions]) [[UIApplication sharedApplication] setAlertActions:[NSMutableArray array]];
-        [(NSMutableArray *)[[UIApplication sharedApplication] alertActions] addObject:@{@"title": action.title, 
+        [(NSMutableArray *)[[UIApplication sharedApplication] alertActions] addObject:@{@"title": action.title,
                                                                                         @"handler": [[action valueForKey:@"handler"] copy]}];
         NSDebug(@"ADD ACTION: %@", action.title);
     }
@@ -3585,7 +3595,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 + (id)actionWithTitle:(NSString *)title style:(UIAlertActionStyle)style handler:(void (^)(UIAlertAction *action))handler {
     if (title && handler) {
         if (![[UIApplication sharedApplication] alertActions]) [[UIApplication sharedApplication] setAlertActions:[NSMutableArray array]];
-        [(NSMutableArray *)[[UIApplication sharedApplication] alertActions] addObject:@{@"title": title, 
+        [(NSMutableArray *)[[UIApplication sharedApplication] alertActions] addObject:@{@"title": title,
                                                                                         @"handler": [handler copy]}];
         NSDebug(@"NEW ACTION: \"%@\"", title);
     }

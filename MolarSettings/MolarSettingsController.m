@@ -121,7 +121,8 @@
         selectedCell = [tableView cellForRowAtIndexPath:indexPath];
     }
     //CFPreferencesSetMultiple((CFDictionaryRef)settings, nil, (CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
-    CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    //CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    CFPreferencesAppSynchronize((CFStringRef)kBundleID);
     
     CFStringRef notificationName = (CFStringRef)kNotificationName;
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), notificationName, NULL, NULL, YES);
@@ -241,7 +242,8 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 }
 
 - (void)saveShortcut {
-    CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    //CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    CFPreferencesAppSynchronize((CFStringRef)kBundleID);
     NSMutableArray *shortcuts = [NSMutableArray arrayWithArray:(NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue((CFStringRef)kShortcutsKey, (CFStringRef)kBundleID))];
     if (!shortcuts) shortcuts = [NSMutableArray new];
     
@@ -257,7 +259,8 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
     [shortcuts setObject:shortcut atIndexedSubscript:shortcutIndex.intValue];
     
     CFPreferencesSetValue((CFStringRef)kShortcutsKey, (CFArrayRef)shortcuts, (CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
-    CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    //CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    CFPreferencesAppSynchronize((CFStringRef)kBundleID);
     
     CFStringRef notificationName = (CFStringRef)kNotificationName;
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), notificationName, NULL, NULL, YES);
@@ -353,7 +356,8 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
     if ((self = [super initWithStyle:style])) {
         self.tableView.delegate = self;
         
-        CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+        //CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+        CFPreferencesAppSynchronize((CFStringRef)kBundleID);
         shortcuts = [NSMutableArray arrayWithArray:(NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue((CFStringRef)kShortcutsKey, (CFStringRef)kBundleID))];
         
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadTable) name:@"de.hoenig.molar-preferencesChanged-nc" object:nil];
@@ -368,7 +372,8 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 }
 
 - (void)reloadTable {
-    CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    //CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    CFPreferencesAppSynchronize((CFStringRef)kBundleID);
     shortcuts = [NSMutableArray arrayWithArray:(NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue((CFStringRef)kShortcutsKey, (CFStringRef)kBundleID))];
     [self.tableView reloadData];
 }
@@ -469,7 +474,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     if (section == 0) return 1;
-    else if (section == 1) return 4;
+    else if (section == 1) return 3;
     else if (section == 2) return 2;
     else if (section == 3) return 10;
     else if (section == 4) return 1;
@@ -510,7 +515,8 @@ static void sendReloadNotification() {
 }
 
 - (void)reloadTable {
-    CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    //CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    CFPreferencesAppSynchronize((CFStringRef)kBundleID);
     [self reload];
     [self reloadSpecifiers];
 }
