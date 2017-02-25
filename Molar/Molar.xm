@@ -14,6 +14,7 @@
 #import <SpringBoard/SBApplication.h>
 #import <SpringBoard/SBFolder.h>
 #import <SpringBoard/SBFolderView.h>
+#import <assert.h>
 
 #define DegreesToRadians(x) ((x) * M_PI / 180.0)
 #define SWITCHER_HEIGHT 140
@@ -60,6 +61,8 @@
 #define DISCOVERABILITY_FONT_SIZE 20.0
 #define DISCOVERABILITY_LS_Y_DECREASE 16.0
 #define ALERT_DISMISS_RESCAN_DELAY 1.0
+
+#define MOLAR_DISCOVERABILITY_TITLE @"__MOLAR__"
 
 #define SBFOLDER_ICONS_X 3
 #define SBFOLDER_ICONS_Y 3
@@ -402,12 +405,19 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (BOOL)iOS9 {
-    return [UIKeyCommand respondsToSelector:@selector(keyCommandWithInput:modifierFlags:action:discoverabilityTitle:)];
+    //return [UIKeyCommand respondsToSelector:@selector(keyCommandWithInput:modifierFlags:action:discoverabilityTitle:)];
+    return [[[UIDevice currentDevice] systemVersion] hasPrefix:@"9"];
+}
+
+%new
+- (BOOL)iOS10 {
+    return [[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"];
 }
 
 %new
 - (BOOL)iPhonePlus {
-    return CGSizeEqualToSize([UIScreen mainScreen].bounds.size, CGSizeMake(736, 414)) || CGSizeEqualToSize([UIScreen mainScreen].bounds.size, CGSizeMake(414, 736));
+    return CGSizeEqualToSize([UIScreen mainScreen].bounds.size, CGSizeMake(736, 414)) || 
+           CGSizeEqualToSize([UIScreen mainScreen].bounds.size, CGSizeMake(414, 736));
 }
 
 %new
@@ -538,7 +548,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     CGRect bounds = [[UIScreen mainScreen] bounds];
     //NSLog(@"Bounds: %@", NSStringFromCGRect(bounds));
 
-    if (![self switcherShown] && !discoverabilityShown && enabled && switcherEnabled && !([self iPad] && [self iOS9])) {
+    if (![self switcherShown] && !discoverabilityShown && enabled && switcherEnabled && !([self iPad] && ([self iOS9] || [self iOS10]))) {
 
         NSArray *apps = (NSArray *)[(SpringBoard *)[%c(SpringBoard) sharedApplication] _accessibilityRunningApplications];
 
@@ -1051,7 +1061,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         }];
     }
     else if (enabled && ![self switcherShown] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
-        if ([self iOS9]) {
+        if (([self iOS9] || [self iOS10])) {
             %c(SBDisplayItem);
             [[%c(SBApplicationController) sharedInstance] applicationService:nil suspendApplicationWithBundleIdentifier:[self activeAppUserApplication]];
             %c(FBApplicationProcess);
@@ -1078,11 +1088,10 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)handleCmdShiftH:(UIKeyCommand *)keyCommand {
     [self stopDiscoverabilityTimer];
-    if (sbFolderOpened) {
+    if (sbFolderOpened && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
         sbFolderOpened = NO;
         [sbIconView addSubview:sbIconOverlay];
     }
-    //[[%c(SBUIController) sharedInstance] clickedMenuButton];
     LAEvent *event = [LAEvent eventWithName:@"MolarHomeButton" mode:[LASharedActivator currentEventMode]];
     [LASharedActivator assignEvent:event toListenerWithName:@"libactivator.system.homebutton"];
     [LASharedActivator sendEventToListener:event];
@@ -1092,7 +1101,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)handleCmdShiftP:(UIKeyCommand *)keyCommand {
     [self stopDiscoverabilityTimer];
-    //[[%c(SBUserAgent) sharedUserAgent] lockAndDimDevice];
     LAEvent *event = [LAEvent eventWithName:@"MolarSleepButton" mode:[LASharedActivator currentEventMode]];
     [LASharedActivator assignEvent:event toListenerWithName:@"libactivator.system.sleepbutton"];
     [LASharedActivator sendEventToListener:event];
@@ -1299,7 +1307,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)recursivelyFindKeyCommands:(UIViewController *)vc {
+    if (!vc) return;
     if ([vc respondsToSelector:@selector(keyCommands)]) {
+        if (!vc.keyCommands) return;
         [allKeyCommands addObjectsFromArray:vc.keyCommands];
     }
     // Handling UITabBarController
@@ -1316,6 +1326,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     else if ([vc respondsToSelector:@selector(presentedViewController)] && vc.presentedViewController) {
         UIViewController *presentedViewController = vc.presentedViewController;
         [self recursivelyFindKeyCommands:presentedViewController];
+    }
+    // Handling split view controllers
+    else if ([vc isKindOfClass:[UISplitViewController class]]) {
+        UISplitViewController *splitViewController = (UISplitViewController *)vc;
+        for (UIViewController *svc in splitViewController.viewControllers) {
+            [self recursivelyFindKeyCommands:svc];
+        }
     }
     // Handling UIViewController's added as subviews to some other views.
     else {
@@ -1387,7 +1404,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 - (NSNumber *)minimumWidthForKeyCommands:(NSArray *)cmds maxWidth:(CGFloat)maxWidth {
     CGFloat modifierWidth = DISCOVERABILITY_MODIFIER_WIDTH;
     CGFloat max = 0.0;
-    if ([self iOS9]) {
+    if (([self iOS9] || [self iOS10])) {
         for (UIKeyCommand *kc in cmds) {
             CGSize size = [(kc.discoverabilityTitle ? kc.discoverabilityTitle: @"") sizeWithAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE]}];
             CGSize adjustedSize = CGSizeMake(ceilf(size.width), ceilf(size.height));
@@ -1413,42 +1430,39 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)showDiscoverability {
+
     discoverabilityTimer = nil;
-    if (enabled && [self isActive] && ![self switcherShown] && !([self iPad] && [self iOS9])) {
+    if (enabled && [self isActive] && ![self switcherShown] && !([self iPad] && ([self iOS9] || [self iOS10]))) {
 
         int addedKeyCommands = 13 + customShortcuts.count;
         allKeyCommands = [NSMutableArray array];
         [self recursivelyFindKeyCommands:self.keyWindow.rootViewController];
-        NSMutableArray *commands = allKeyCommands;
+        NSMutableArray *commands = [NSMutableArray array];
+        [commands addObjectsFromArray:allKeyCommands];
         NSMutableArray *selfCommands = [NSMutableArray arrayWithArray:self.keyCommands];
-        [selfCommands removeObjectsInRange:NSMakeRange(self.keyCommands.count - 1 - addedKeyCommands, addedKeyCommands)];
+        //[selfCommands removeObjectsInRange:NSMakeRange(self.keyCommands.count - 1 - addedKeyCommands, addedKeyCommands)];
         for (UIKeyCommand *kc in selfCommands) {
             if (![commands containsObject:kc]) [commands addObject:kc];
         }
         for (int i = 0; i < commands.count; i++) {
             UIKeyCommand *kc = commands[i];
-            if ([self iOS9]) {
+            if ([self iOS9] || [self iOS10]) {
                 if (!kc.discoverabilityTitle &&
                     kc.modifierFlags == UIKeyModifierCommand &&
                     ([kc.input isEqualToString:@"+"] || [kc.input.uppercaseString isEqualToString:@"-"] || [kc.input isEqualToString:@"0"])) {
-                    [commands removeObject:kc];
-                }
-            } else {
-                if (kc.modifierFlags == UIKeyModifierCommand &&
-                    ([kc.input isEqualToString:@"+"] || [kc.input.uppercaseString isEqualToString:@"-"] || [kc.input isEqualToString:@"0"])) {
-                    [commands removeObject:kc];
+                        [commands removeObjectAtIndex:i];
                 }
             }
+            if ([((UIKeyCommand *)commands[i]).discoverabilityTitle isEqualToString:MOLAR_DISCOVERABILITY_TITLE]) [commands removeObjectAtIndex:i];
         }
         for (int i = 0; i < commands.count; i++) {
             UIKeyCommand *kc = commands[i];
-            if ([self iOS9]) {
+            if (kc && ([self iOS9] || [self iOS10])) {
                 if (!kc.discoverabilityTitle && [[self modifierString:kc] isEqualToString:@"⌘ -"]) [commands removeObjectAtIndex:i];
             } else {
                 if ([[self modifierString:kc] isEqualToString:@"⌘ -"]) [commands removeObjectAtIndex:i];
             }
         }
-
         if (commands.count) {
 
             //BOOL ls = UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation);
@@ -1527,7 +1541,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                             for (int l = 0; l < iconsPerPage; l++) {
                                 if (!cmdsLeft) break;
                                 UIKeyCommand *kc = commands[idx];
-                                UIView *label = [self discoverabilityLabelViewWithTitle:[self iOS9] ? kc.discoverabilityTitle : @""
+                                UIView *label = [self discoverabilityLabelViewWithTitle:([self iOS9] || [self iOS10]) ? kc.discoverabilityTitle : @""
                                                                                shortcut:[self modifierString:kc]
                                                                                minWidth:maxWLS/2 - 25
                                                                                maxWidth:maxWLS/2 - 25];
@@ -1558,7 +1572,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     CGFloat maxWidth = 0;
                     CGFloat minWidth = ((NSNumber *)[self minimumWidthForKeyCommands:commands maxWidth:maxWLS]).floatValue;
                     for (UIKeyCommand *kc in commands) {
-                        UIView *l = [self discoverabilityLabelViewWithTitle:[self iOS9] ? kc.discoverabilityTitle : @""
+                        UIView *l = [self discoverabilityLabelViewWithTitle:([self iOS9] || [self iOS10]) ? kc.discoverabilityTitle : @""
                                                                    shortcut:[self modifierString:kc]
                                                                    minWidth:minWidth
                                                                    maxWidth:maxWLS];
@@ -1622,7 +1636,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                         for (int l = 0; l < iconsPerPage; l++) {
                             if (!cmdsLeft) break;
                             UIKeyCommand *kc = commands[idx];
-                            UIView *label = [self discoverabilityLabelViewWithTitle:[self iOS9] ? kc.discoverabilityTitle : @""
+                            UIView *label = [self discoverabilityLabelViewWithTitle:([self iOS9] || [self iOS10]) ? kc.discoverabilityTitle : @""
                                                                            shortcut:[self modifierString:kc]
                                                                            minWidth:maxWP
                                                                            maxWidth:maxWP];
@@ -1649,7 +1663,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     NSMutableArray *labels = [NSMutableArray array];
                     CGFloat minWidth = ((NSNumber *)[self minimumWidthForKeyCommands:commands maxWidth:maxWP]).floatValue;
                     for (UIKeyCommand *kc in commands) {
-                        UIView *l = [self discoverabilityLabelViewWithTitle:[self iOS9] ? kc.discoverabilityTitle : @""
+                        UIView *l = [self discoverabilityLabelViewWithTitle:([self iOS9] || [self iOS10]) ? kc.discoverabilityTitle : @""
                                                                    shortcut:[self modifierString:kc]
                                                                    minWidth:minWidth
                                                                    maxWidth:maxWP];
@@ -1818,6 +1832,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             UIKeyCommand *customCommand = [UIKeyCommand keyCommandWithInput:input
                                                               modifierFlags:((NSNumber *)[self modifierFlagsForShortcut:shortcut]).intValue
                                                                      action:@selector(handleCustomShortcut:)];
+            customCommand.discoverabilityTitle = MOLAR_DISCOVERABILITY_TITLE;
             [arr addObject:customCommand];
         }
     }
@@ -1920,7 +1935,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             pageControl.currentPage--;
             [self pageChanged];
         }
-    } else if (enabled && [self iOS9]) {
+    } else if (enabled && !switcherShown && ([self iOS9] || [self iOS10])) {
         if (sbFolderOpened) {
             if (sbOpenedFolderSelectedCol > 0) {
 
@@ -2099,7 +2114,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             pageControl.currentPage++;
             [self pageChanged];
         }
-    } else if (enabled && [self iOS9] && sbFolderOpened) {
+    } else if (enabled && !switcherShown && ([self iOS9] || [self iOS10]) && sbFolderOpened) {
 
         if (sbOpenedFolderSelectedCol < SBFOLDER_ICONS_X - 1) {
 
@@ -2158,7 +2173,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             }
         }
 
-    } else if (enabled && [self iOS9]) {
+    } else if (enabled && !switcherShown && ([self iOS9] || [self iOS10])) {
         if (!sbIconSelected) {
 
             if (sbDockIconSelected) {
@@ -2399,7 +2414,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 } else waitingForKeyRepeat = NO;
             }
         }
-    } else if (enabled && [self iOS9]) {
+    } else if (enabled && !switcherShown && ([self iOS9] || [self iOS10])) {
         if (sbFolderOpened) {
 
             if (sbOpenedFolderSelectedRow < SBFOLDER_ICONS_Y - 1 && [(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] >= SBFOLDER_ICONS_X * (sbOpenedFolderSelectedRow + 1) + sbOpenedFolderSelectedCol + 1) {
@@ -2603,7 +2618,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 } else waitingForKeyRepeat = NO;
             }
         }
-    } else if (enabled && [self iOS9]) {
+    } else if (enabled && !switcherShown && ([self iOS9] || [self iOS10])) {
         if (sbFolderOpened) {
 
             if (sbOpenedFolderSelectedRow > 0) {
@@ -2852,11 +2867,19 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             [self activateBundleID:selectedSBIconInOpenedFolderBundleID];
         } else if (sbFolderIconSelected) {
             [sbIconOverlay removeFromSuperview];
-            [[[%c(SBIconController) sharedInstance ] _rootFolderController] pushFolder:selectedSBFolder animated:YES completion:^(BOOL completed){
-                sbFolderOpened = YES;
-                sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = sbOpenedFolderSelectedPage = 0;
-                [self selectSBIconInOpenedFolder];
-            }];
+            if ([self iOS9]) {
+                [[[%c(SBIconController) sharedInstance ] _rootFolderController] pushFolder:selectedSBFolder animated:YES completion:^(BOOL completed){
+                    sbFolderOpened = YES;
+                    sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = sbOpenedFolderSelectedPage = 0;
+                    [self selectSBIconInOpenedFolder];
+                }];
+            } else if ([self iOS10]) {
+                [[%c(SBIconController) sharedInstance ] openFolderIcon:selectedSBIcon animated:YES withCompletion:^(BOOL completed){
+                    sbFolderOpened = YES;
+                    sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = sbOpenedFolderSelectedPage = 0;
+                    [self selectSBIconInOpenedFolder];
+                }];
+            }
         }
         else if (sbIconSelected || sbDockIconSelected) {
             if (sbDockIconSelected) {
@@ -2952,6 +2975,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     } else if ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
         if (sbFolderOpened) {
             sbFolderOpened = NO;
+            sbOpenedFolderSelectedPage = sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = 0;
             [[[%c(SBIconController) sharedInstance ] _rootFolderController] popFolderAnimated:YES completion:^(BOOL completed) {
                 [sbIconView addSubview:sbIconOverlay];
             }];
@@ -3230,7 +3254,10 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     sbIconSelected = YES;
     sbDockIconSelected = NO;
 
-    if (sbIconOverlay) [sbIconOverlay removeFromSuperview];
+    if (sbIconOverlay) {
+        [sbIconOverlay removeFromSuperview];
+        sbIconOverlay = nil;
+    }
 
     selectedSBIcon = [(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] objectAtIndex:(sbSelectedRow * sbColumns) + sbSelectedColumn];
     if ([selectedSBIcon isKindOfClass:[%c(SBApplicationIcon) class]]) {
