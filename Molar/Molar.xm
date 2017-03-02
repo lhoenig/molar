@@ -14,7 +14,6 @@
 #import <SpringBoard/SBApplication.h>
 #import <SpringBoard/SBFolder.h>
 #import <SpringBoard/SBFolderView.h>
-#import <assert.h>
 
 #define DegreesToRadians(x) ((x) * M_PI / 180.0)
 #define SWITCHER_HEIGHT 140
@@ -70,7 +69,7 @@
 #define NEXT_VIEW 1
 #define PREV_VIEW 0
 
-#define DEBUG 0
+#define DEBUG 1
 
 #if DEBUG == 0
 #define NSDebug(...)
@@ -1823,6 +1822,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
         CFPreferencesAppSynchronize(CFSTR("de.hoenig.molar"));
         customShortcuts = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcuts"), CFSTR("de.hoenig.molar")));
+        NSArray *shortcutNames = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcutNames"), CFSTR("de.hoenig.molar")));
         for (NSDictionary *shortcut in customShortcuts) {
             NSString *input = [shortcut objectForKey:@"input"];
             if ([input isEqualToString:@"⏎"]) input = @"\n";
@@ -1832,7 +1832,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             UIKeyCommand *customCommand = [UIKeyCommand keyCommandWithInput:input
                                                               modifierFlags:((NSNumber *)[self modifierFlagsForShortcut:shortcut]).intValue
                                                                      action:@selector(handleCustomShortcut:)];
-            customCommand.discoverabilityTitle = MOLAR_DISCOVERABILITY_TITLE;
+            NSString *activatorTitle = (shortcutNames && shortcutNames.count >= [customShortcuts indexOfObject:shortcut] + 1) ?  [shortcutNames objectAtIndex:[customShortcuts indexOfObject:shortcut]] : nil;
+            customCommand.discoverabilityTitle = activatorTitle ? activatorTitle : @"";
             [arr addObject:customCommand];
         }
     }
@@ -2282,7 +2283,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)ui_downKey {
+    NSDebug([NSString stringWithFormat:@"enabled: %i ce: %i aaua: %@ ia: %i", enabled, controlEnabled, [self activeAppUserApplication], [self isActive]]);
     if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+        NSDebug(@"AYYYYYYY LMAOOOOO");
         if (enabled && controlEnabled && [self isActive]) {
             [self stopDiscoverabilityTimer];
             if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];

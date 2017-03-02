@@ -21,6 +21,7 @@
 #define kBundleID @"de.hoenig.molar"
 #define kPrefsFile @"/var/mobile/Library/Preferences/de.hoenig.molar.plist"
 #define kShortcutsKey @"shortcuts"
+#define kShortcutNamesKey @"shortcutNames"
 
 #define CMD_KEY     0xe3
 #define CMD_KEY_2   0xe7
@@ -245,7 +246,9 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
     //CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
     CFPreferencesAppSynchronize((CFStringRef)kBundleID);
     NSMutableArray *shortcuts = [NSMutableArray arrayWithArray:(NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue((CFStringRef)kShortcutsKey, (CFStringRef)kBundleID))];
+    NSMutableArray *shortcutNames = [NSMutableArray arrayWithArray:(NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue((CFStringRef)kShortcutNamesKey, (CFStringRef)kBundleID))];
     if (!shortcuts) shortcuts = [NSMutableArray new];
+    if (!shortcutNames) shortcutNames = [NSMutableArray new];
     
     NSString *shortcutKey = [@"shortcut-" stringByAppendingFormat:@"%@", [[NSUUID UUID] UUIDString]];
     NSString *eventName = [kBundleID stringByAppendingFormat:@".%@", shortcutKey];
@@ -258,7 +261,13 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
                                @"eventName": eventName};
     [shortcuts setObject:shortcut atIndexedSubscript:shortcutIndex.intValue];
     
+    if ([[LAActivator sharedInstance] assignedListenerNameForEvent:[LAEvent eventWithName:eventName]]) {
+        NSString *shortcutName = [[LAActivator sharedInstance] localizedTitleForListenerName:[[LAActivator sharedInstance] assignedListenerNameForEvent:[LAEvent eventWithName:eventName]]];
+        [shortcutNames setObject:shortcutName atIndexedSubscript:shortcutIndex.intValue];
+    }
+    
     CFPreferencesSetValue((CFStringRef)kShortcutsKey, (CFArrayRef)shortcuts, (CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    CFPreferencesSetValue((CFStringRef)kShortcutNamesKey, (CFArrayRef)shortcutNames, (CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
     //CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
     CFPreferencesAppSynchronize((CFStringRef)kBundleID);
     
@@ -371,10 +380,27 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
     self.title = @"Shortcuts";
 }
 
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self reloadTable];
+}
+
 - (void)reloadTable {
     //CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
     CFPreferencesAppSynchronize((CFStringRef)kBundleID);
     shortcuts = [NSMutableArray arrayWithArray:(NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue((CFStringRef)kShortcutsKey, (CFStringRef)kBundleID))];
+    NSMutableArray *shortcutNames = [NSMutableArray arrayWithArray:(NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue((CFStringRef)kShortcutNamesKey, (CFStringRef)kBundleID))];
+    shortcutNames = [NSMutableArray new];
+    
+    for (int i = 0; i < shortcuts.count; i++) {
+        if ([[LAActivator sharedInstance] assignedListenerNameForEvent:[LAEvent eventWithName:[shortcuts[i] objectForKey:@"eventName"]]]) {
+            NSString *shortcutName = [[LAActivator sharedInstance] localizedTitleForListenerName:[[LAActivator sharedInstance] assignedListenerNameForEvent:[LAEvent eventWithName:[shortcuts[i] objectForKey:@"eventName"]]]];
+            [shortcutNames setObject:shortcutName atIndexedSubscript:i];
+        }
+    }
+    
+    CFPreferencesSetValue((CFStringRef)kShortcutNamesKey, (CFArrayRef)shortcutNames, (CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    
     [self.tableView reloadData];
 }
 
