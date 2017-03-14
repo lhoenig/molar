@@ -86,6 +86,20 @@ Hold Cmd: Open Key Sheet
 			<key>defaults</key>
 			<string>de.hoenig.molar</string>
 			<key>key</key>
+			<string>launcherEnabled</string>
+			<key>label</key>
+			<string>Launcher</string>
+			<key>PostNotification</key>
+			<string>de.hoenig.molar-preferencesChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>de.hoenig.molar</string>
+			<key>key</key>
 			<string>keySheetEnabled</string>
 			<key>label</key>
 			<string>Key Sheet</string>
