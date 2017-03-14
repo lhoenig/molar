@@ -581,7 +581,7 @@
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Molar/**";
 				iOSOpenDevBuildPackageOnAnyBuild = NO;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = 172.20.10.1;
+				iOSOpenDevDevice = 192.168.178.69;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
@@ -610,7 +610,7 @@
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Molar/**";
 				iOSOpenDevBuildPackageOnAnyBuild = NO;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = 172.20.10.1;
+				iOSOpenDevDevice = 192.168.178.69;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;

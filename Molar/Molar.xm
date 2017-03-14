@@ -61,10 +61,8 @@
 #define DISCOVERABILITY_LS_Y_DECREASE 16.0
 #define ALERT_DISMISS_RESCAN_DELAY 1.0
 
-#define MOLAR_DISCOVERABILITY_TITLE @"__MOLAR__"
-
-#define SBFOLDER_ICONS_X 3
-#define SBFOLDER_ICONS_Y 3
+#define SBFOLDER_ICONS_DEFAULT_X 3
+#define SBFOLDER_ICONS_DEFAULT_Y 3
 
 #define NEXT_VIEW 1
 #define PREV_VIEW 0
@@ -144,7 +142,9 @@ int sbRows,
     sbOpenedFolderSelectedPage,
     sbOpenedFolderSelectedRow,
     sbOpenedFolderSelectedCol,
-    sbOpenedFolderPages;
+    sbOpenedFolderPages,
+    sbOpenedFolderRows,
+    sbOpenedFolderCols;
 NSArray *sbDockIcons;
 UIView *sbIconView, *sbIconOpenedFolderView;
 SBFolder *selectedSBFolder;
@@ -457,7 +457,12 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBAppSwitcherModelDidChangeNotification" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveApp) name:@"SBDisplayDidLaunchNotification" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateActiveAppProperty:) name:@"UpdateActiveAppUserApplicationNotification" object:nil];
-
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(updateSBLayoutVars) name:@"UIApplicationDidChangeStatusBarOrientationNotification" object:nil];
+    
+    //[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reactToSBFolderChange) name:@"SBIconOpenFolderChangedNotification" object:nil]; 
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reactToSBFolderChange) name:@"FBDisplayLayoutTransitionDidEndNotification" object:nil];
+    if ([self iOS9]) [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reactToSBFolderChange) name:@"SBSignificantAnimationDidEndNotification" object:nil];
+    
     // switcher
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(dismissAppSwitcher) name:@"HideSwitcherNotificationLocalNotification" object:nil];
 }
@@ -927,6 +932,16 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 %new
+- (id)activatorKeyCommands {
+    return objc_getAssociatedObject(self, @selector(activatorKeyCommands));
+}
+
+%new
+- (void)setActivatorKeyCommands:(id)value {
+    objc_setAssociatedObject(self, @selector(activatorKeyCommands), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
 - (void)activateBundleID:(NSString *)bundleID {
     SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
     SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
@@ -1090,6 +1105,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     if (sbFolderOpened && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
         sbFolderOpened = NO;
         [sbIconView addSubview:sbIconOverlay];
+    } else if (sbIconSelected) {
+            [sbIconOverlay removeFromSuperview];
+            sbIconSelected = NO;
+            selectedSBIcon = nil;
+            sbSelectedColumn = sbSelectedRow = 0;  
     }
     LAEvent *event = [LAEvent eventWithName:@"MolarHomeButton" mode:[LASharedActivator currentEventMode]];
     [LASharedActivator assignEvent:event toListenerWithName:@"libactivator.system.homebutton"];
@@ -1433,14 +1453,16 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     discoverabilityTimer = nil;
     if (enabled && [self isActive] && ![self switcherShown] && !([self iPad] && ([self iOS9] || [self iOS10]))) {
 
-        int addedKeyCommands = 13 + customShortcuts.count;
+        //int addedKeyCommands = 13 + customShortcuts.count;
         allKeyCommands = [NSMutableArray array];
         [self recursivelyFindKeyCommands:self.keyWindow.rootViewController];
         NSMutableArray *commands = [NSMutableArray array];
         [commands addObjectsFromArray:allKeyCommands];
         NSMutableArray *selfCommands = [NSMutableArray arrayWithArray:self.keyCommands];
+        //[commands removeObjectsInArray:selfCommands];
         //[selfCommands removeObjectsInRange:NSMakeRange(self.keyCommands.count - 1 - addedKeyCommands, addedKeyCommands)];
-        for (UIKeyCommand *kc in selfCommands) {
+        //for (UIKeyCommand *kc in (NSMutableArray *)[self activatorKeyCommands]) {
+        for (UIKeyCommand *kc in (NSMutableArray *)[self activatorKeyCommands]) {
             if (![commands containsObject:kc]) [commands addObject:kc];
         }
         for (int i = 0; i < commands.count; i++) {
@@ -1452,7 +1474,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                         [commands removeObjectAtIndex:i];
                 }
             }
-            if ([((UIKeyCommand *)commands[i]).discoverabilityTitle isEqualToString:MOLAR_DISCOVERABILITY_TITLE]) [commands removeObjectAtIndex:i];
         }
         for (int i = 0; i < commands.count; i++) {
             UIKeyCommand *kc = commands[i];
@@ -1823,6 +1844,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         CFPreferencesAppSynchronize(CFSTR("de.hoenig.molar"));
         customShortcuts = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcuts"), CFSTR("de.hoenig.molar")));
         NSArray *shortcutNames = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcutNames"), CFSTR("de.hoenig.molar")));
+        NSMutableArray *activatorCmds = [NSMutableArray array];
         for (NSDictionary *shortcut in customShortcuts) {
             NSString *input = [shortcut objectForKey:@"input"];
             if ([input isEqualToString:@"⏎"]) input = @"\n";
@@ -1834,11 +1856,16 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                                                      action:@selector(handleCustomShortcut:)];
             NSString *activatorTitle = (shortcutNames && shortcutNames.count >= [customShortcuts indexOfObject:shortcut] + 1) ?  [shortcutNames objectAtIndex:[customShortcuts indexOfObject:shortcut]] : nil;
             customCommand.discoverabilityTitle = activatorTitle ? activatorTitle : @"";
-            [arr addObject:customCommand];
+            if (![activatorTitle isEqualToString:@"NOLISTENER"]) {
+                [activatorCmds addObject:customCommand];
+                [arr addObject:customCommand];
+            }
+            [self setActivatorKeyCommands:activatorCmds];
         }
     }
 
     if (![self hidSetup]) {
+        NSDebug(@"------------ SETUP HID ---------");
         setupHID();
         [self addMolarObservers];
         [self setHidSetup:[NSNull null]];
@@ -1877,6 +1904,36 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)scrollOpenedSBFolderToPage:(int)page {
     [[[[%c(SBIconController) sharedInstance ] _currentFolderController] contentView] setCurrentPageIndex:page animated:YES];
+}
+
+%new
+- (void)reactToSBFolderChange {
+    NSDebug(@"REACT TO");
+    if ([[%c(SBIconController) sharedInstance] hasOpenFolder]) {
+        NSDebug(@"OF 1");
+        if (!sbFolderOpened) {
+            NSDebug(@"OF 2");
+            if ([self iOS9]) {
+                sbFolderOpened = YES;
+                selectedSBFolder = [[%c(SBIconController) sharedInstance] openFolder];
+                sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = sbOpenedFolderSelectedPage = 0;
+                sbOpenedFolderRows = sbOpenedFolderCols = (int)sqrt([[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:0 inFolder:selectedSBFolder createIfNecessary:YES] model] maxNumberOfIcons]);
+                [self selectSBIconInOpenedFolder];
+            } else if ([self iOS10]) {
+                sbFolderOpened = YES;
+                selectedSBFolder = [[%c(SBIconController) sharedInstance] openFolder];
+                sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = sbOpenedFolderSelectedPage = 0;
+                sbOpenedFolderRows = sbOpenedFolderCols = (int)sqrt([[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:0 inFolder:selectedSBFolder createIfNecessary:YES] model] maxNumberOfIcons]);
+                [self selectSBIconInOpenedFolder];
+            }
+        }
+    } else {
+        if (sbFolderOpened) {
+            NSDebug(@"OF 3");
+            sbFolderOpened = NO;
+            [sbIconView addSubview:sbIconOverlay];
+        }
+    }
 }
 
 %new
@@ -1947,12 +2004,12 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 if (sbOpenedFolderSelectedPage > 0) {
 
                     sbOpenedFolderSelectedPage--;
-                    sbOpenedFolderSelectedCol = SBFOLDER_ICONS_X - 1;
-                    if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X)) {
-                        sbOpenedFolderSelectedRow = (int)ceil((double)[(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] / (double)SBFOLDER_ICONS_X) - 1;
+                    sbOpenedFolderSelectedCol = sbOpenedFolderCols - 1;
+                    if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * sbOpenedFolderCols)) {
+                        sbOpenedFolderSelectedRow = (int)ceil((double)[(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] / (double)sbOpenedFolderCols) - 1;
                     }
-                    if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X) + SBFOLDER_ICONS_X) {
-                        sbOpenedFolderSelectedCol = ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] % SBFOLDER_ICONS_X) - 1;
+                    if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * sbOpenedFolderCols) + sbOpenedFolderCols) {
+                        sbOpenedFolderSelectedCol = ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] % sbOpenedFolderCols) - 1;
                     }
 
                     [self scrollOpenedSBFolderToPage:sbOpenedFolderSelectedPage];
@@ -1961,11 +2018,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 } else {
 
                     sbOpenedFolderSelectedPage = sbOpenedFolderPages - 1;
-                    sbOpenedFolderSelectedCol = SBFOLDER_ICONS_X - 1;
-                    if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X) + SBFOLDER_ICONS_X) {
-                        sbOpenedFolderSelectedCol = ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] % SBFOLDER_ICONS_X) - 1;
+                    sbOpenedFolderSelectedCol = sbOpenedFolderCols - 1;
+                    if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * sbOpenedFolderCols) + sbOpenedFolderCols) {
+                        sbOpenedFolderSelectedCol = ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] % sbOpenedFolderCols) - 1;
                     }
-                    if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X)) {
+                    if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * sbOpenedFolderCols)) {
                         sbOpenedFolderSelectedRow = 0;
                     }
 
@@ -2117,9 +2174,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         }
     } else if (enabled && !switcherShown && ([self iOS9] || [self iOS10]) && sbFolderOpened) {
 
-        if (sbOpenedFolderSelectedCol < SBFOLDER_ICONS_X - 1) {
+        if (sbOpenedFolderSelectedCol < sbOpenedFolderCols - 1) {
 
-            if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] > (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X) + sbOpenedFolderSelectedCol + 1) {
+            if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] > (sbOpenedFolderSelectedRow * sbOpenedFolderCols) + sbOpenedFolderSelectedCol + 1) {
 
                 sbOpenedFolderSelectedCol++;
 
@@ -2129,7 +2186,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
                 sbOpenedFolderSelectedPage = 0;
                 sbOpenedFolderSelectedCol = 0;
-                if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X)) {
+                if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * sbOpenedFolderCols)) {
                     sbOpenedFolderSelectedRow = 0;
                 }
 
@@ -2141,8 +2198,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
                 sbOpenedFolderSelectedPage++;
                 sbOpenedFolderSelectedCol = 0;
-                if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X)) {
-                    sbOpenedFolderSelectedRow = (int)ceil((double)[(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] / (double)SBFOLDER_ICONS_X) - 1;
+                if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * sbOpenedFolderCols)) {
+                    sbOpenedFolderSelectedRow = (int)ceil((double)[(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] / (double)sbOpenedFolderCols) - 1;
                 }
 
                 [self scrollOpenedSBFolderToPage:sbOpenedFolderSelectedPage];
@@ -2154,7 +2211,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
                 sbOpenedFolderSelectedPage++;
                 sbOpenedFolderSelectedCol = 0;
-                if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X)) {
+                if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * sbOpenedFolderCols)) {
                     sbOpenedFolderSelectedRow = 0;
                 }
 
@@ -2165,7 +2222,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
                 sbOpenedFolderSelectedPage = 0;
                 sbOpenedFolderSelectedCol = 0;
-                if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X)) {
+                if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < (sbOpenedFolderSelectedRow * sbOpenedFolderCols)) {
                     sbOpenedFolderSelectedRow = 0;
                 }
 
@@ -2237,8 +2294,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
                     sbSelectedPage++;
                     sbSelectedColumn = 0;
-                    if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] < (sbSelectedRow * sbColumns)) {
-                        sbSelectedRow = (int)ceil((double)[(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] / (double)sbColumns) - 1;
+                    if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] < ((sbSelectedRow + 1) * sbColumns)) {
+                        sbSelectedRow = (int)floor((double)[(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] / (double)sbColumns) - 1;
+                        NSDebug(@"SEL ROW: %i", sbSelectedRow);
                     }
 
                     [self scrollSBToPage:sbSelectedPage];
@@ -2420,7 +2478,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     } else if (enabled && !switcherShown && ([self iOS9] || [self iOS10])) {
         if (sbFolderOpened) {
 
-            if (sbOpenedFolderSelectedRow < SBFOLDER_ICONS_Y - 1 && [(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] >= SBFOLDER_ICONS_X * (sbOpenedFolderSelectedRow + 1) + sbOpenedFolderSelectedCol + 1) {
+            if (sbOpenedFolderSelectedRow < sbOpenedFolderRows - 1 && [(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] >= sbOpenedFolderCols * (sbOpenedFolderSelectedRow + 1) + sbOpenedFolderSelectedCol + 1) {
                 sbOpenedFolderSelectedRow++;
                 [self selectSBIconInOpenedFolder];
             } else {
@@ -2628,8 +2686,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 sbOpenedFolderSelectedRow--;
                 [self selectSBIconInOpenedFolder];
             } else {
-                sbOpenedFolderSelectedRow = (int)ceil((double)[(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] / (double)SBFOLDER_ICONS_X) - 1;
-                if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] % SBFOLDER_ICONS_X < sbOpenedFolderSelectedCol + 1) sbOpenedFolderSelectedRow--;
+                sbOpenedFolderSelectedRow = (int)ceil((double)[(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] / (double)sbOpenedFolderCols) - 1;
+                if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] > sbOpenedFolderCols &&
+                    [(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < sbOpenedFolderCols * (sbOpenedFolderSelectedRow + 1) &&
+                    [(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] % sbOpenedFolderCols < sbOpenedFolderSelectedCol + 1) sbOpenedFolderSelectedRow--;
+                NSDebug(@"SEL ROW: %i", sbOpenedFolderSelectedRow);
                 [self selectSBIconInOpenedFolder];
             }
 
@@ -2871,15 +2932,17 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         } else if (sbFolderIconSelected) {
             [sbIconOverlay removeFromSuperview];
             if ([self iOS9]) {
-                [[[%c(SBIconController) sharedInstance ] _rootFolderController] pushFolder:selectedSBFolder animated:YES completion:^(BOOL completed){
-                    sbFolderOpened = YES;
+                sbFolderOpened = YES;
+                [[[%c(SBIconController) sharedInstance] _rootFolderController] pushFolder:selectedSBFolder animated:YES completion:^(BOOL completed){
                     sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = sbOpenedFolderSelectedPage = 0;
+                    sbOpenedFolderRows = sbOpenedFolderCols = (int)sqrt([[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:0 inFolder:selectedSBFolder createIfNecessary:YES] model] maxNumberOfIcons]);
                     [self selectSBIconInOpenedFolder];
                 }];
             } else if ([self iOS10]) {
-                [[%c(SBIconController) sharedInstance ] openFolderIcon:selectedSBIcon animated:YES withCompletion:^(BOOL completed){
-                    sbFolderOpened = YES;
+                sbFolderOpened = YES;
+                [[%c(SBIconController) sharedInstance] openFolderIcon:selectedSBIcon animated:YES withCompletion:^(BOOL completed){
                     sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = sbOpenedFolderSelectedPage = 0;
+                    sbOpenedFolderRows = sbOpenedFolderCols = (int)sqrt([[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:0 inFolder:selectedSBFolder createIfNecessary:YES] model] maxNumberOfIcons]);
                     [self selectSBIconInOpenedFolder];
                 }];
             }
@@ -3246,6 +3309,37 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 %new
+- (void)updateSBLayoutVars {
+    if (sbIconSelected || sbDockIconSelected) {
+
+        BOOL ls = UIInterfaceOrientationIsLandscape((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation]);
+        if (ls) {
+            sbRows = [[%c(SBIconController) sharedInstance] maxRowCountForListInRootFolderWithInterfaceOrientation:0];
+            sbColumns = [[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:0 inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] model] maxNumberOfIcons] /
+                        [[%c(SBIconController) sharedInstance] maxRowCountForListInRootFolderWithInterfaceOrientation:0];
+        } else {
+            sbRows = [[%c(SBIconController) sharedInstance] maxRowCountForListInRootFolderWithInterfaceOrientation:1];
+            sbColumns = [[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:0 inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] model] maxNumberOfIcons] /
+                        [[%c(SBIconController) sharedInstance] maxRowCountForListInRootFolderWithInterfaceOrientation:1];
+        }
+        sbDockIcons = (NSArray *)[[[[%c(SBIconController) sharedInstance] rootFolder] dock] icons];
+        sbDockIconCount = sbDockIcons.count;
+
+        sbPages = [(SBFolder *)[[%c(SBIconController) sharedInstance] rootFolder] listCount];
+
+        NSDebug(@"R: %i C: %i D: %i", sbRows, sbColumns, sbDockIconCount);
+        if ([self iOS10]) {
+            sbSelectedColumn = sbSelectedRow = sbSelectedPage = 0;
+            sbIconSelected = YES;
+            sbDockIconSelected = NO;
+
+            [self scrollSBToPage:sbSelectedPage];
+            [self selectSBIcon];
+        }
+    }    
+}
+
+%new
 - (NSNumber *)sbIconCornerRadius {
     if ([self iPad]) return @17.0f;
     else return @13.0f;
@@ -3339,7 +3433,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
     if (sbIconOpenedFolderOverlay) [sbIconOpenedFolderOverlay removeFromSuperview];
 
-    selectedSBIconInOpenedFolder = (SBApplicationIcon *)[(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] objectAtIndex:(sbOpenedFolderSelectedRow * SBFOLDER_ICONS_X) + sbOpenedFolderSelectedCol];
+    selectedSBIconInOpenedFolder = (SBApplicationIcon *)[(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] objectAtIndex:(sbOpenedFolderSelectedRow * sbOpenedFolderCols) + sbOpenedFolderSelectedCol];
 
     selectedSBIconInOpenedFolderBundleID = [[selectedSBIconInOpenedFolder application] bundleIdentifier];
 
@@ -3553,10 +3647,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         //[self.view endEditing:NO];
     }
 }
-
-- (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)orientation {
-    %orig();
-
+/*
+%new
+- (void)updateSBIconState {
     if (sbIconSelected || sbDockIconSelected) {
 
         BOOL ls = UIInterfaceOrientationIsLandscape((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation]);
@@ -3582,9 +3675,15 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
         [[UIApplication sharedApplication] scrollSBToPage:sbSelectedPage];
         [[UIApplication sharedApplication] selectSBIcon];
-    }
+    }    
 }
 
+- (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)orientation {
+    %orig();
+
+    if ([[UIApplication sharedApplication] iOS9]) [self updateSBIconState];
+}
+*/
 %end
 
 

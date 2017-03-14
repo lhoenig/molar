@@ -389,13 +389,14 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
     //CFPreferencesSynchronize((CFStringRef)kBundleID, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
     CFPreferencesAppSynchronize((CFStringRef)kBundleID);
     shortcuts = [NSMutableArray arrayWithArray:(NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue((CFStringRef)kShortcutsKey, (CFStringRef)kBundleID))];
-    NSMutableArray *shortcutNames = [NSMutableArray arrayWithArray:(NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue((CFStringRef)kShortcutNamesKey, (CFStringRef)kBundleID))];
-    shortcutNames = [NSMutableArray new];
+    NSMutableArray *shortcutNames = [NSMutableArray arrayWithCapacity:shortcuts.count];
     
     for (int i = 0; i < shortcuts.count; i++) {
         if ([[LAActivator sharedInstance] assignedListenerNameForEvent:[LAEvent eventWithName:[shortcuts[i] objectForKey:@"eventName"]]]) {
             NSString *shortcutName = [[LAActivator sharedInstance] localizedTitleForListenerName:[[LAActivator sharedInstance] assignedListenerNameForEvent:[LAEvent eventWithName:[shortcuts[i] objectForKey:@"eventName"]]]];
-            [shortcutNames setObject:shortcutName atIndexedSubscript:i];
+            [shortcutNames insertObject:(shortcutName ? ([shortcutName isEqualToString:@"No Title"] ? @"NOLISTENER" : shortcutName) : @"NOLISTENER") atIndex:i];
+        } else {
+            [shortcutNames insertObject:@"NOLISTENER" atIndex:i];
         }
     }
     
