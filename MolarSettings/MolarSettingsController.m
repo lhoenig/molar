@@ -509,7 +509,11 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 }
 
 - (BOOL)iOS9 {
-    return [UIKeyCommand respondsToSelector:@selector(keyCommandWithInput:modifierFlags:action:discoverabilityTitle:)];
+    return [[[UIDevice currentDevice] systemVersion] hasPrefix:@"9"];
+}
+
+- (BOOL)iOS10 {
+    return [[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"];
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
@@ -524,7 +528,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
-    if (indexPath.section == 3 && [self iPad] && [self iOS9]) {
+    if (indexPath.section == 3 && [self iPad] && ([self iOS9] || [self iOS10])) {
         if (indexPath.row == 0 || indexPath.row == 1) {
             ((UISwitch *)cell.accessoryView).on = NO;
             ((UISwitch *)cell.accessoryView).enabled = NO;
