@@ -67,7 +67,7 @@
 #define NEXT_VIEW 1
 #define PREV_VIEW 0
 
-#define DEBUG 1
+#define DEBUG 0
 
 #if DEBUG == 0
 #define NSDebug(...)
@@ -76,6 +76,8 @@
 #endif
 
 void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {}
+//static int BSXPCConnectionHasEntitlement(id connection, NSString *entitlement) {}
+
 
 BOOL darkMode,
      hideLabels,
@@ -151,31 +153,63 @@ SBFolder *selectedSBFolder;
 id selectedSBIcon;
 SBApplicationIcon *selectedSBIconInOpenedFolder;
 
+/*
+%hookf(static int, _BSXPCConnectionHasEntitlement, id connection, NSString *entitlement) {
+    NSDebug(@"ENT: %@", entitlement);
+    return true;
+}
+
+static int (*orig_BSXPCConnectionHasEntitlement)(id connection, NSString *entitlement);
+static int new_wa_BSXPCConnectionHasEntitlement(id connection, NSString *entitlement)
+{
+    NSLog(@"ENTITLEMENT: %@", entitlement);
+    return false;
+}
+*/
+
+static void postKeyEventNotification(int key, int down, int page) {
+    CFStringRef notificationName = (CFStringRef)(@"KeyEventNotification");
+
+    void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
+    CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
+    if (CFNotificationCenterGetDistributedCenter) {
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(),
+                                             notificationName,
+                                             NULL,
+                                             (__bridge CFDictionaryRef)(@{@"key": @(key), @"down": @(down), @"page": @(page)}),
+                                             YES);
+    }
+}
 
 %hookf(void, handle_event, void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {
-    //NSLog(@"handle_event : %d", IOHIDEventGetType(event));
+    //NSDebug(@"handle_event : %d", IOHIDEventGetType(event));
     if (service && event && IOHIDEventGetType(event) == kIOHIDEventTypeKeyboard) {
         int usagePage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsagePage);
         int usage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage);
         int down = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown);
-        if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
-        else if (usage == TAB_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyUp" object:nil];
-        else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown" object:nil];
-        else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY_2 && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp" object:nil];
-        else if (usage == ESC_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil userInfo:@{@"sender": activeApp}];
-        else if (usage == R_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RKeyDown" object:nil];
-        else if (usage == RIGHT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyDown" object:nil];
-        else if (usage == RIGHT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyUp" object:nil];
-        else if (usage == LEFT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"LeftKeyDown" object:nil];
-        else if (usage == LEFT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"LeftKeyUp" object:nil];
-        else if (usage == UP_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"UpKeyDown" object:nil];
-        else if (usage == UP_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"UpKeyUp" object:nil];
-        else if (usage == DOWN_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"DownKeyDown" object:nil];
-        else if (usage == DOWN_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"DownKeyUp" object:nil];
-        else if (usage == ENTER_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EnterKeyDown" object:nil];
-        else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyDown" object:nil];
-        else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyUp" object:nil];
-        else if (usagePage == 7 && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"GenericKeyDown" object:nil];
+        if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
+            postKeyEventNotification(usage, down, usagePage); 
+        } else {
+            NSDebug(@"DEF: %i, %i, %i", usage, down, usagePage);
+            if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
+            else if (usage == TAB_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyUp" object:nil];
+            else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown" object:nil];
+            else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY_2 && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp" object:nil];
+            else if (usage == ESC_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil userInfo:@{@"sender": activeApp}];
+            else if (usage == R_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RKeyDown" object:nil];
+            else if (usage == RIGHT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyDown" object:nil];
+            else if (usage == RIGHT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyUp" object:nil];
+            else if (usage == LEFT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"LeftKeyDown" object:nil];
+            else if (usage == LEFT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"LeftKeyUp" object:nil];
+            else if (usage == UP_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"UpKeyDown" object:nil];
+            else if (usage == UP_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"UpKeyUp" object:nil];
+            else if (usage == DOWN_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"DownKeyDown" object:nil];
+            else if (usage == DOWN_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"DownKeyUp" object:nil];
+            else if (usage == ENTER_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EnterKeyDown" object:nil];
+            else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyDown" object:nil];
+            else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyUp" object:nil];
+            else if (usagePage == 7 && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"GenericKeyDown" object:nil];
+        }
         NSDebug(@"page: %i  key: %i  down: %i", usagePage, usage, down);
     }
 }
@@ -207,8 +241,8 @@ static void loadPrefs() {
     controlEnabled = !cf_appControlEnabled ? YES : (cf_appControlEnabled == kCFBooleanTrue);
     keySheetEnabled = !cf_keySheetEnabled ? YES : (cf_keySheetEnabled == kCFBooleanTrue);
     launcherEnabled = !cf_launcherEnabled ? YES : (cf_launcherEnabled == kCFBooleanTrue);
-    darkMode = (cf_darkMode == kCFBooleanTrue);
-    hideLabels = (cf_hideLabels == kCFBooleanTrue);
+    darkMode = !cf_darkMode ? YES : (cf_darkMode == kCFBooleanTrue);
+    hideLabels = !cf_hideLabels ? YES : (cf_hideLabels == kCFBooleanTrue);
 
     customShortcuts = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcuts"), CFSTR("de.hoenig.molar")));
 
@@ -240,10 +274,38 @@ static void hideSwitcherByNotification(CFNotificationCenterRef center, void *obs
     [[NSNotificationCenter defaultCenter] postNotificationName:@"HideSwitcherNotificationLocalNotification" object:nil];
 }
 
+static void keyEventCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+    //NSDebug("KEY EVENT CALLBACK RECEIVED :)");
+    int usage = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"key"]).intValue;
+    int down = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"down"]).intValue;
+    int usagePage = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"page"]).intValue;
+    if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
+    else if (usage == TAB_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyUp" object:nil];
+    else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown" object:nil];
+    else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY_2 && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp" object:nil];
+    else if (usage == ESC_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil userInfo:@{@"sender": activeApp}];
+    else if (usage == R_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RKeyDown" object:nil];
+    else if (usage == RIGHT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyDown" object:nil];
+    else if (usage == RIGHT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyUp" object:nil];
+    else if (usage == LEFT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"LeftKeyDown" object:nil];
+    else if (usage == LEFT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"LeftKeyUp" object:nil];
+    else if (usage == UP_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"UpKeyDown" object:nil];
+    else if (usage == UP_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"UpKeyUp" object:nil];
+    else if (usage == DOWN_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"DownKeyDown" object:nil];
+    else if (usage == DOWN_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"DownKeyUp" object:nil];
+    else if (usage == ENTER_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EnterKeyDown" object:nil];
+    else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyDown" object:nil];
+    else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyUp" object:nil];
+    else if (usagePage == 7 && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"GenericKeyDown" object:nil];
+}
+
 static void setupHID() {
     IOHIDEventSystemClientRef ioHIDEventSystem = IOHIDEventSystemClientCreate(kCFAllocatorDefault);
     IOHIDEventSystemClientScheduleWithRunLoop(ioHIDEventSystem, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
     IOHIDEventSystemClientRegisterEventCallback(ioHIDEventSystem, (IOHIDEventSystemClientEventCallback)handle_event, NULL, NULL);
+    //IOHIDEventSystemClientScheduleWithRunLoop(ioHIDEventSystem, CFRunLoopGetMain(), kCFRunLoopDefaultMode);
+    //IOHIDEventSystemRef system = IOHIDEventSystemCreate(NULL);
+    //IOHIDEventSystemOpen(system, handle_event, NULL, NULL, NULL);
 }
 
 static void postDistributedNotification(NSString *notificationNameNSString) {
@@ -261,6 +323,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 %ctor {
+    /*if ([[[NSProcessInfo processInfo] processName] isEqualToString:@"assertiond"]) {
+        dlopen("/System/Library/PrivateFrameworks/XPCObjects.framework/XPCObjects", RTLD_LAZY);
+        void *xpcFunction = MSFindSymbol(NULL, "_BSXPCConnectionHasEntitlement");
+        MSHookFunction(xpcFunction, (void *)new_wa_BSXPCConnectionHasEntitlement, (void **)&orig_BSXPCConnectionHasEntitlement);
+    } else {*/
     discoverabilityTimer = nil;
     waitForKeyRepeatTimer = nil;
     keyRepeatTimer = nil;
@@ -319,13 +386,22 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                 NULL,
                                 CFNotificationSuspensionBehaviorCoalesce);
         }
+        if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
+            CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                        NULL,
+                                        (CFNotificationCallback)keyEventCallback,
+                                        CFSTR("KeyEventNotification"),
+                                        NULL,
+                                        CFNotificationSuspensionBehaviorCoalesce);            
+        }
     }
     dlclose(libHandle);
 
     switcherMode = numThreads = 0;
+    //}
 }
 
-
+/*
 %subclass HighlightThread : NSThread
 
 %new
@@ -389,10 +465,15 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 %end
-
+*/
 
 %hook UIApplication
-
+/*
+- (void)sendEvent:(UIEvent *)event {
+    %orig();
+    %log();
+}
+*/
 - (BOOL)canBecomeFirstResponder {
     return YES;
 }
@@ -1282,12 +1363,14 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                                                                           selector:@selector(showDiscoverability)
                                                                                           userInfo:nil
                                                                                            repeats:NO];
+    NSDebug(@"CMD KEY DOWN");
     [self setCmdDown:[NSNull null]];
     [self handleKeyStatus:0];
 }
 
 %new
 - (void)cmdKeyUp {
+    NSDebug(@"CMD KEY UP");
     if (discoverabilityTimer) [discoverabilityTimer invalidate];
     else if (discoverabilityShown) {
         [(UIWindow *)[self discoverabilityWindow] setHidden:YES];
@@ -1311,6 +1394,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)handleKeyStatus:(int)tabDown {
+    NSDebug(@"TAB DOWN: %i CMD DOWN: %i", tabDown, !([self cmdDown] == nil) );
     if (![self cmdDown]) {
         [self handleCmdEnter:nil];
     }
@@ -1327,39 +1411,43 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)recursivelyFindKeyCommands:(UIViewController *)vc {
     if (!vc) return;
-    if ([vc respondsToSelector:@selector(keyCommands)]) {
-        if (!vc.keyCommands) return;
-        [allKeyCommands addObjectsFromArray:vc.keyCommands];
+    if (vc && [vc respondsToSelector:@selector(keyCommands)]) {
+        if (vc.keyCommands) [allKeyCommands addObjectsFromArray:vc.keyCommands];
     }
     // Handling UITabBarController
-    if ([vc isKindOfClass:[UITabBarController class]]) {
+    if (vc && [vc isKindOfClass:[UITabBarController class]]) {
         UITabBarController *tabBarController = (UITabBarController *)vc;
-        [self recursivelyFindKeyCommands:tabBarController.selectedViewController];
+        if (!(vc == tabBarController.selectedViewController))
+            [self recursivelyFindKeyCommands:tabBarController.selectedViewController];
     }
     // Handling UINavigationController
-    else if ([vc isKindOfClass:[UINavigationController class]]) {
+    else if (vc && [vc isKindOfClass:[UINavigationController class]]) {
         UINavigationController *navigationController = (UINavigationController *)vc;
-        [self recursivelyFindKeyCommands:navigationController.visibleViewController];
+        if (!(vc == navigationController.visibleViewController))
+            [self recursivelyFindKeyCommands:navigationController.visibleViewController];
     }
     // Handling Modal views
-    else if ([vc respondsToSelector:@selector(presentedViewController)] && vc.presentedViewController) {
+    else if (vc && [vc respondsToSelector:@selector(presentedViewController)] && vc.presentedViewController) {
         UIViewController *presentedViewController = vc.presentedViewController;
-        [self recursivelyFindKeyCommands:presentedViewController];
+        if (!(vc == presentedViewController))
+            if (presentedViewController) [self recursivelyFindKeyCommands:presentedViewController];
     }
     // Handling split view controllers
-    else if ([vc isKindOfClass:[UISplitViewController class]]) {
+    else if (vc && [vc isKindOfClass:[UISplitViewController class]]) {
         UISplitViewController *splitViewController = (UISplitViewController *)vc;
         for (UIViewController *svc in splitViewController.viewControllers) {
-            [self recursivelyFindKeyCommands:svc];
+            if (!(vc == svc))
+                [self recursivelyFindKeyCommands:svc];
         }
     }
     // Handling UIViewController's added as subviews to some other views.
     else {
-        if ([vc respondsToSelector:@selector(view)]) {
+        if (vc && [vc respondsToSelector:@selector(view)]) {
             for (UIView *view in [vc.view subviews]) {
                 id subViewController = [view nextResponder];
                 if (subViewController && [subViewController isKindOfClass:[UIResponder class]]) {
-                    [self recursivelyFindKeyCommands:subViewController];
+                    if (!(vc == subViewController))
+                        [self recursivelyFindKeyCommands:subViewController];
                 }
             }
         }
@@ -1449,10 +1537,10 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)showDiscoverability {
-
+    NSDebug(@"SHOW DISC 1");
     discoverabilityTimer = nil;
     if (enabled && [self isActive] && ![self switcherShown] && !([self iPad] && ([self iOS9] || [self iOS10]))) {
-
+        
         //int addedKeyCommands = 13 + customShortcuts.count;
         allKeyCommands = [NSMutableArray array];
         [self recursivelyFindKeyCommands:self.keyWindow.rootViewController];
@@ -1483,6 +1571,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 if ([[self modifierString:kc] isEqualToString:@"⌘ -"]) [commands removeObjectAtIndex:i];
             }
         }
+        NSDebug(@"SHOW DISC 2: %i", commands.count);
         if (commands.count) {
 
             //BOOL ls = UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation);
@@ -1847,7 +1936,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         NSMutableArray *activatorCmds = [NSMutableArray array];
         for (NSDictionary *shortcut in customShortcuts) {
             NSString *input = [shortcut objectForKey:@"input"];
-            if ([input isEqualToString:@"⏎"]) input = @"\n";
+            if ([input isEqualToString:@"⏎"]) input = @"\r";
             else if ([input isEqualToString:@"⇥"]) input = @"\t";
             else if ([input isEqualToString:@"⌫"]) input = @"\b";
             else if ([input isEqualToString:@"␣"]) input = @" ";
@@ -1865,7 +1954,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     }
 
     if (![self hidSetup]) {
-        NSDebug(@"------------ SETUP HID ---------");
         setupHID();
         [self addMolarObservers];
         [self setHidSetup:[NSNull null]];
@@ -2353,10 +2441,14 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             }
             if (tableViewMode) {
                 if ([self cmdDown]) {
+                    if (selectedCell) {
+                        selectedCell.selected = NO;
+                    }
                     selectedSection = [selectedTableView numberOfSections] - 1;
                     selectedRow = [selectedTableView numberOfRowsInSection:selectedSection] - 1;
                     UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
                     selectedCell = cell;
+                    selectedCell.selected = YES;
                 } else if ([selectedTableView numberOfRowsInSection:selectedSection] > selectedRow + 1) {
                     if (selectedCell) {
                         selectedCell.selected = NO;
@@ -2560,6 +2652,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             }
             if (tableViewMode) {
                 if ([self cmdDown]) {
+                    if (selectedCell) {
+                        selectedCell.selected = NO;
+                    }
                     selectedRow = selectedSection = 0;
                     UITableViewCell *cell = [selectedTableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
                     cell.selected = YES;

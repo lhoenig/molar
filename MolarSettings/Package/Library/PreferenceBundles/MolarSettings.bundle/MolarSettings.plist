@@ -112,6 +112,38 @@ Hold Cmd: Open Key Sheet
 			<key>isStaticText</key>
 			<true/>
 			<key>label</key>
+			<string>Keyboard</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>defaults</key>
+			<string>de.hoenig.molar</string>
+			<key>default</key>
+			<string>en</string>
+			<key>key</key>
+			<string>keyboardLayout</string>
+			<key>label</key>
+			<string>Layout</string>
+			<key>validValues</key>
+			<array>
+				<string>en</string>
+				<string>de</string>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>English (US)</string>
+				<string>German</string>
+			</array>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>isStaticText</key>
+			<true/>
+			<key>label</key>
 			<string>Appearance</string>
 		</dict>
 		<dict>

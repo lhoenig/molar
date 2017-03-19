@@ -41,6 +41,7 @@
 @property(readonly, retain) UITransitionView *view;	// G=0x318ac5bc; converted property
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath;
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath;
 
 + (BOOL)displaysButtonBar;	// 0x318a8498
 - (id)initForContentSize:(CGSize)contentSize;	// 0x318aa35c
