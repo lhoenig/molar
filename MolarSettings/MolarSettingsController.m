@@ -528,8 +528,8 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEven
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
-    if (indexPath.section == 3 && [self iPad] && ([self iOS9] || [self iOS10])) {
-        if (indexPath.row == 0 || indexPath.row == 1) {
+    if (indexPath.section == 1 && [self iPad] && ([self iOS9] || [self iOS10])) {
+        if (indexPath.row == 0 || indexPath.row == 3) {
             ((UISwitch *)cell.accessoryView).on = NO;
             ((UISwitch *)cell.accessoryView).enabled = NO;
         }
