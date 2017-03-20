@@ -153,19 +153,6 @@ SBFolder *selectedSBFolder;
 id selectedSBIcon;
 SBApplicationIcon *selectedSBIconInOpenedFolder;
 
-/*
-%hookf(static int, _BSXPCConnectionHasEntitlement, id connection, NSString *entitlement) {
-    NSDebug(@"ENT: %@", entitlement);
-    return true;
-}
-
-static int (*orig_BSXPCConnectionHasEntitlement)(id connection, NSString *entitlement);
-static int new_wa_BSXPCConnectionHasEntitlement(id connection, NSString *entitlement)
-{
-    NSLog(@"ENTITLEMENT: %@", entitlement);
-    return false;
-}
-*/
 
 static void postKeyEventNotification(int key, int down, int page) {
     CFStringRef notificationName = (CFStringRef)(@"KeyEventNotification");
@@ -173,11 +160,20 @@ static void postKeyEventNotification(int key, int down, int page) {
     void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
     CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
     if (CFNotificationCenterGetDistributedCenter) {
-        CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(),
+        int k = key;
+        int d = down;
+        int p = page;
+        NSDictionary *userInfo = @{@"key": [NSNumber numberWithInt:k], 
+                                   @"down": [NSNumber numberWithInt:d], 
+                                   @"page": [NSNumber numberWithInt:p]};
+        CFDictionaryRef cfDict = (__bridge CFDictionaryRef)userInfo;
+        if (cfDict) {
+            CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(),
                                              notificationName,
                                              NULL,
-                                             (__bridge CFDictionaryRef)(@{@"key": @(key), @"down": @(down), @"page": @(page)}),
+                                             cfDict,
                                              YES);
+        }
     }
 }
 
@@ -188,9 +184,8 @@ static void postKeyEventNotification(int key, int down, int page) {
         int usage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage);
         int down = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown);
         if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
-            postKeyEventNotification(usage, down, usagePage); 
+            postKeyEventNotification(usage, down, usagePage);
         } else {
-            NSDebug(@"DEF: %i, %i, %i", usage, down, usagePage);
             if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
             else if (usage == TAB_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyUp" object:nil];
             else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown" object:nil];
@@ -216,7 +211,6 @@ static void postKeyEventNotification(int key, int down, int page) {
 
 static void loadPrefs() {
     CFPreferencesAppSynchronize(CFSTR("de.hoenig.molar"));
-
     CFPropertyListRef cf_enabled =            CFPreferencesCopyAppValue(CFSTR("enabled"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_appSwitcherEnabled = CFPreferencesCopyAppValue(CFSTR("appSwitcherEnabled"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_appControlEnabled =  CFPreferencesCopyAppValue(CFSTR("appControlEnabled"), CFSTR("de.hoenig.molar"));
@@ -244,9 +238,38 @@ static void loadPrefs() {
     darkMode = !cf_darkMode ? YES : (cf_darkMode == kCFBooleanTrue);
     hideLabels = !cf_hideLabels ? YES : (cf_hideLabels == kCFBooleanTrue);
 
+    //NSDebug(@"NSUD CE: %i", [[[[NSUserDefaults standardUserDefaults] persistentDomainForName:@"de.hoenig.molar"] objectForKey:@"appControlEnabled"] boolValue]);
+
     customShortcuts = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcuts"), CFSTR("de.hoenig.molar")));
 
     [[NSNotificationCenter defaultCenter] postNotificationName:@"ReloadShortcutsNotification" object:nil];
+    
+    if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"]) {
+        NSString *notificationNameNSString = @"SpringBoardGotPrefsChangedNotification";
+        CFStringRef notificationName = (CFStringRef)notificationNameNSString;
+
+        void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
+        CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
+        if (CFNotificationCenterGetDistributedCenter) {
+            NSDictionary *settings = @{@"enabled": [NSNumber numberWithInt:enabled], 
+                                       @"controlEnabled": [NSNumber numberWithInt:controlEnabled]};
+            CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(),
+                                                 notificationName,
+                                                 NULL,
+                                                 (__bridge CFDictionaryRef)settings,
+                                                 YES);
+        }
+    } else {
+        void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
+        CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
+        if (CFNotificationCenterGetDistributedCenter) {
+            CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(),
+                                                 CFSTR("UserAppSBPrefsRequestNotification"),
+                                                 NULL,
+                                                 NULL,
+                                                 YES);
+    }
+    }
 }
 
 static void updateActiveAppUserApplication(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
@@ -272,6 +295,28 @@ static void updateDiscoverabilityNotShown(CFNotificationCenterRef center, void *
 
 static void hideSwitcherByNotification(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
     [[NSNotificationCenter defaultCenter] postNotificationName:@"HideSwitcherNotificationLocalNotification" object:nil];
+}
+
+static void reloadPrefsUserApp(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+    enabled = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"enabled"]).boolValue;
+    controlEnabled = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"controlEnabled"]).boolValue;
+}
+
+static void postPrefsToUserAppsNotification(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+    NSString *notificationNameNSString = @"SpringBoardGotPrefsChangedNotification";
+    CFStringRef notificationName = (CFStringRef)notificationNameNSString;
+
+    void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
+    CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
+    if (CFNotificationCenterGetDistributedCenter) {
+        NSDictionary *settings = @{@"enabled": [NSNumber numberWithInt:enabled], 
+                                   @"controlEnabled": [NSNumber numberWithInt:controlEnabled]};
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(),
+                                             notificationName,
+                                             NULL,
+                                             (__bridge CFDictionaryRef)settings,
+                                             YES);
+    }
 }
 
 static void keyEventCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
@@ -332,14 +377,15 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     waitForKeyRepeatTimer = nil;
     keyRepeatTimer = nil;
     loadPrefs();
-
-    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
+    if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"]) {
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
                                     NULL,
                                     (CFNotificationCallback)loadPrefs,
                                     CFSTR("de.hoenig.molar-preferencesChanged"),
                                     NULL,
-                                    CFNotificationSuspensionBehaviorCoalesce);
-
+                                    CFNotificationSuspensionBehaviorDeliverImmediately);    
+    }
+    
     void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
     CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
     if (CFNotificationCenterGetDistributedCenter) {
@@ -385,6 +431,19 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                 CFSTR("HideSwitcherNotification"),
                                 NULL,
                                 CFNotificationSuspensionBehaviorCoalesce);
+            CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                NULL,
+                                (CFNotificationCallback)postPrefsToUserAppsNotification,
+                                CFSTR("UserAppSBPrefsRequestNotification"),
+                                NULL,
+                                CFNotificationSuspensionBehaviorCoalesce);
+        } else {
+            CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                        NULL,
+                                        (CFNotificationCallback)reloadPrefsUserApp,
+                                        CFSTR("SpringBoardGotPrefsChangedNotification"),
+                                        NULL,
+                                        CFNotificationSuspensionBehaviorCoalesce);
         }
         if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
             CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
@@ -485,7 +544,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (BOOL)iOS9 {
-    //return [UIKeyCommand respondsToSelector:@selector(keyCommandWithInput:modifierFlags:action:discoverabilityTitle:)];
     return [[[UIDevice currentDevice] systemVersion] hasPrefix:@"9"];
 }
 
@@ -1363,14 +1421,12 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                                                                           selector:@selector(showDiscoverability)
                                                                                           userInfo:nil
                                                                                            repeats:NO];
-    NSDebug(@"CMD KEY DOWN");
     [self setCmdDown:[NSNull null]];
     [self handleKeyStatus:0];
 }
 
 %new
 - (void)cmdKeyUp {
-    NSDebug(@"CMD KEY UP");
     if (discoverabilityTimer) [discoverabilityTimer invalidate];
     else if (discoverabilityShown) {
         [(UIWindow *)[self discoverabilityWindow] setHidden:YES];
@@ -1394,7 +1450,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)handleKeyStatus:(int)tabDown {
-    NSDebug(@"TAB DOWN: %i CMD DOWN: %i", tabDown, !([self cmdDown] == nil) );
     if (![self cmdDown]) {
         [self handleCmdEnter:nil];
     }
@@ -1439,6 +1494,18 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             if (!(vc == svc))
                 [self recursivelyFindKeyCommands:svc];
         }
+    }
+    else if (vc && [vc respondsToSelector:@selector(viewControllers)] && [vc viewControllers] && [vc viewControllers].count > 0) {
+        for (UIViewController *svc in [vc viewControllers]) {
+            if (!(vc == svc))
+                [self recursivelyFindKeyCommands:svc];
+        }   
+    }
+    else if (vc && [vc respondsToSelector:@selector(childViewControllers)] && [vc childViewControllers] && [vc childViewControllers].count > 0) {
+        for (UIViewController *cvc in [vc childViewControllers]) {
+            if (!(vc == cvc))
+                [self recursivelyFindKeyCommands:cvc];
+        }   
     }
     // Handling UIViewController's added as subviews to some other views.
     else {
@@ -1537,19 +1604,16 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)showDiscoverability {
-    NSDebug(@"SHOW DISC 1");
+    
     discoverabilityTimer = nil;
     if (enabled && [self isActive] && ![self switcherShown] && !([self iPad] && ([self iOS9] || [self iOS10]))) {
         
-        //int addedKeyCommands = 13 + customShortcuts.count;
         allKeyCommands = [NSMutableArray array];
         [self recursivelyFindKeyCommands:self.keyWindow.rootViewController];
         NSMutableArray *commands = [NSMutableArray array];
         [commands addObjectsFromArray:allKeyCommands];
         NSMutableArray *selfCommands = [NSMutableArray arrayWithArray:self.keyCommands];
-        //[commands removeObjectsInArray:selfCommands];
-        //[selfCommands removeObjectsInRange:NSMakeRange(self.keyCommands.count - 1 - addedKeyCommands, addedKeyCommands)];
-        //for (UIKeyCommand *kc in (NSMutableArray *)[self activatorKeyCommands]) {
+        
         for (UIKeyCommand *kc in (NSMutableArray *)[self activatorKeyCommands]) {
             if (![commands containsObject:kc]) [commands addObject:kc];
         }
@@ -1571,7 +1635,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 if ([[self modifierString:kc] isEqualToString:@"⌘ -"]) [commands removeObjectAtIndex:i];
             }
         }
-        NSDebug(@"SHOW DISC 2: %i", commands.count);
         if (commands.count) {
 
             //BOOL ls = UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].keyWindow.rootViewController.interfaceOrientation);
@@ -1602,8 +1665,10 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
             [self setDiscoverabilityWindow:window];
 
-            if ([self iPhonePlus] && ls) {
+            if ([self iPhonePlus] && ls && [self iOS9]) {
                 blurEffectView.transform = CGAffineTransformMakeRotation(DegreesToRadians(0));
+            } else if ([self iPhonePlus] && ls && [self iOS10]) {
+                blurEffectView.transform = CGAffineTransformMakeRotation(DegreesToRadians(90));
             }
             else if (ls && ![self iPad] ||
                 (ls && [self iPad] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]))
@@ -1954,7 +2019,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     }
 
     if (![self hidSetup]) {
-        setupHID();
+        if (![[NSBundle mainBundle].bundleIdentifier isEqualToString:@"com.apple.Preferences"]) {
+            setupHID();
+        }
         [self addMolarObservers];
         [self setHidSetup:[NSNull null]];
     }
@@ -1996,11 +2063,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)reactToSBFolderChange {
-    NSDebug(@"REACT TO");
     if ([[%c(SBIconController) sharedInstance] hasOpenFolder]) {
-        NSDebug(@"OF 1");
         if (!sbFolderOpened) {
-            NSDebug(@"OF 2");
             if ([self iOS9]) {
                 sbFolderOpened = YES;
                 selectedSBFolder = [[%c(SBIconController) sharedInstance] openFolder];
@@ -2017,7 +2081,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         }
     } else {
         if (sbFolderOpened) {
-            NSDebug(@"OF 3");
             sbFolderOpened = NO;
             [sbIconView addSubview:sbIconOverlay];
         }
@@ -2145,8 +2208,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 sbDockIconCount = sbDockIcons.count;
 
                 sbPages = [(SBFolder *)[[%c(SBIconController) sharedInstance] rootFolder] listCount];
-
-                NSDebug(@"R: %i C: %i D: %i", sbRows, sbColumns, sbDockIconCount);
 
                 sbSelectedColumn = sbSelectedRow = sbSelectedPage = 0;
                 sbIconSelected = YES;
@@ -2348,8 +2409,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
                 sbPages = [(SBFolder *)[[%c(SBIconController) sharedInstance] rootFolder] listCount];
 
-                NSDebug(@"R: %i C: %i D: %i", sbRows, sbColumns, sbDockIconCount);
-
                 sbSelectedColumn = sbSelectedRow = sbSelectedPage = 0;
                 sbIconSelected = YES;
                 sbDockIconSelected = NO;
@@ -2384,7 +2443,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     sbSelectedColumn = 0;
                     if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] < ((sbSelectedRow + 1) * sbColumns)) {
                         sbSelectedRow = (int)floor((double)[(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] / (double)sbColumns) - 1;
-                        NSDebug(@"SEL ROW: %i", sbSelectedRow);
                     }
 
                     [self scrollSBToPage:sbSelectedPage];
@@ -2429,9 +2487,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)ui_downKey {
-    NSDebug([NSString stringWithFormat:@"enabled: %i ce: %i aaua: %@ ia: %i", enabled, controlEnabled, [self activeAppUserApplication], [self isActive]]);
     if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
-        NSDebug(@"AYYYYYYY LMAOOOOO");
         if (enabled && controlEnabled && [self isActive]) {
             [self stopDiscoverabilityTimer];
             if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
@@ -2611,8 +2667,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
                 sbPages = [(SBFolder *)[[%c(SBIconController) sharedInstance] rootFolder] listCount];
 
-                NSDebug(@"R: %i C: %i D: %i", sbRows, sbColumns, sbDockIconCount);
-
                 sbSelectedColumn = sbSelectedRow = sbSelectedPage = 0;
                 sbIconSelected = YES;
                 sbDockIconSelected = NO;
@@ -2785,7 +2839,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] > sbOpenedFolderCols &&
                     [(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] < sbOpenedFolderCols * (sbOpenedFolderSelectedRow + 1) &&
                     [(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] % sbOpenedFolderCols < sbOpenedFolderSelectedCol + 1) sbOpenedFolderSelectedRow--;
-                NSDebug(@"SEL ROW: %i", sbOpenedFolderSelectedRow);
                 [self selectSBIconInOpenedFolder];
             }
 
@@ -2825,8 +2878,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 sbDockIconCount = sbDockIcons.count;
 
                 sbPages = [(SBFolder *)[[%c(SBIconController) sharedInstance] rootFolder] listCount];
-
-                NSDebug(@"R: %i C: %i D: %i", sbRows, sbColumns, sbDockIconCount);
 
                 sbSelectedColumn = sbSelectedRow = sbSelectedPage = 0;
                 sbIconSelected = YES;
@@ -3422,7 +3473,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
         sbPages = [(SBFolder *)[[%c(SBIconController) sharedInstance] rootFolder] listCount];
 
-        NSDebug(@"R: %i C: %i D: %i", sbRows, sbColumns, sbDockIconCount);
         if ([self iOS10]) {
             sbSelectedColumn = sbSelectedRow = sbSelectedPage = 0;
             sbIconSelected = YES;
@@ -3483,8 +3533,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         sbIconView.transform = backupTransform;
     } completion:^(BOOL completed){
     }];
-
-    NSDebug(@"%@", selectedSBIconBundleID);
 }
 
 %new
@@ -3518,8 +3566,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             sbIconView.transform = backupTransform;
         } completion:^(BOOL completed){
         }];
-
-        NSDebug(@"%@", selectedSBIconBundleID);
     }
 }
 
@@ -3549,9 +3595,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         sbIconOpenedFolderView.transform = backupTransform;
     } completion:^(BOOL completed){
     }];
-
-    NSDebug(@"%@", selectedSBIconInOpenedFolderBundleID);
-
 }
 
 %new
