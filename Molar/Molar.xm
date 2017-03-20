@@ -76,7 +76,6 @@
 #endif
 
 void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {}
-//static int BSXPCConnectionHasEntitlement(id connection, NSString *entitlement) {}
 
 
 BOOL darkMode,
@@ -367,11 +366,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 %ctor {
-    /*if ([[[NSProcessInfo processInfo] processName] isEqualToString:@"assertiond"]) {
-        dlopen("/System/Library/PrivateFrameworks/XPCObjects.framework/XPCObjects", RTLD_LAZY);
-        void *xpcFunction = MSFindSymbol(NULL, "_BSXPCConnectionHasEntitlement");
-        MSHookFunction(xpcFunction, (void *)new_wa_BSXPCConnectionHasEntitlement, (void **)&orig_BSXPCConnectionHasEntitlement);
-    } else {*/
     discoverabilityTimer = nil;
     waitForKeyRepeatTimer = nil;
     keyRepeatTimer = nil;
@@ -458,7 +452,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     dlclose(libHandle);
 
     switcherMode = numThreads = 0;
-    //}
 }
 
 /*
@@ -744,7 +737,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 CGRect contentFrame = CGRectMake(0, 0, ls ? [UIScreen mainScreen].bounds.size.height : [UIScreen mainScreen].bounds.size.width,
                                                        ls ? [UIScreen mainScreen].bounds.size.width : [UIScreen mainScreen].bounds.size.height);
 
-                ///UIWindow *window = [[UIWindow alloc] initWithFrame:(((NSUInteger)[self maxIconsLS] == 6) || [self iPad]) ? contentFrame : bounds];
                 UIWindow *window = [[UIWindow alloc] initWithFrame:contentFrame];
                 window.windowLevel = UIWindowLevelAlert;
 
