@@ -300,6 +300,7 @@ static void hideSwitcherByNotification(CFNotificationCenterRef center, void *obs
 static void reloadPrefsUserApp(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
     enabled = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"enabled"]).boolValue;
     controlEnabled = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"controlEnabled"]).boolValue;
+    darkMode = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"darkMode"]).boolValue;
 }
 
 static void postPrefsToUserAppsNotification(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
@@ -310,7 +311,8 @@ static void postPrefsToUserAppsNotification(CFNotificationCenterRef center, void
     CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
     if (CFNotificationCenterGetDistributedCenter) {
         NSDictionary *settings = @{@"enabled": [NSNumber numberWithInt:enabled], 
-                                   @"controlEnabled": [NSNumber numberWithInt:controlEnabled]};
+                                   @"controlEnabled": [NSNumber numberWithInt:controlEnabled],
+                                   @"darkMode": [NSNumber numberWithInt:darkMode]};
         CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(),
                                              notificationName,
                                              NULL,
@@ -348,9 +350,6 @@ static void setupHID() {
     IOHIDEventSystemClientRef ioHIDEventSystem = IOHIDEventSystemClientCreate(kCFAllocatorDefault);
     IOHIDEventSystemClientScheduleWithRunLoop(ioHIDEventSystem, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
     IOHIDEventSystemClientRegisterEventCallback(ioHIDEventSystem, (IOHIDEventSystemClientEventCallback)handle_event, NULL, NULL);
-    //IOHIDEventSystemClientScheduleWithRunLoop(ioHIDEventSystem, CFRunLoopGetMain(), kCFRunLoopDefaultMode);
-    //IOHIDEventSystemRef system = IOHIDEventSystemCreate(NULL);
-    //IOHIDEventSystemOpen(system, handle_event, NULL, NULL, NULL);
 }
 
 static void postDistributedNotification(NSString *notificationNameNSString) {
@@ -377,13 +376,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     waitForKeyRepeatTimer = nil;
     keyRepeatTimer = nil;
     loadPrefs();
-    if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"]) {
+    if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"] || [[[UIDevice currentDevice] systemVersion] hasPrefix:@"9"]) {
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
                                     NULL,
                                     (CFNotificationCallback)loadPrefs,
                                     CFSTR("de.hoenig.molar-preferencesChanged"),
                                     NULL,
-                                    CFNotificationSuspensionBehaviorDeliverImmediately);    
+                                    CFNotificationSuspensionBehaviorCoalesce);
     }
     
     void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
@@ -431,13 +430,15 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                 CFSTR("HideSwitcherNotification"),
                                 NULL,
                                 CFNotificationSuspensionBehaviorCoalesce);
-            CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+            if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
+                CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
                                 NULL,
                                 (CFNotificationCallback)postPrefsToUserAppsNotification,
                                 CFSTR("UserAppSBPrefsRequestNotification"),
                                 NULL,
                                 CFNotificationSuspensionBehaviorCoalesce);
-        } else {
+            }
+        } else if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
             CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
                                         NULL,
                                         (CFNotificationCallback)reloadPrefsUserApp,
@@ -1668,7 +1669,10 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             if ([self iPhonePlus] && ls && [self iOS9]) {
                 blurEffectView.transform = CGAffineTransformMakeRotation(DegreesToRadians(0));
             } else if ([self iPhonePlus] && ls && [self iOS10]) {
-                blurEffectView.transform = CGAffineTransformMakeRotation(DegreesToRadians(90));
+                if ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"])
+                    blurEffectView.transform = CGAffineTransformMakeRotation(DegreesToRadians(90));
+                else
+                    blurEffectView.transform = CGAffineTransformMakeRotation(DegreesToRadians(90));
             }
             else if (ls && ![self iPad] ||
                 (ls && [self iPad] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]))
@@ -1693,7 +1697,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                                                            maxWidth:maxWP];
 
                     blurEffectView.frame = CGRectInset(blurEffectView.frame, DISCOVERABILITY_LS_Y_DECREASE, 0.0f);
-                    discoverabilityScrollView = [[UIScrollView alloc] initWithFrame:[self iPad] ? blurEffectView.frame : ([self iPhonePlus] ?
+                    discoverabilityScrollView = [[UIScrollView alloc] initWithFrame:[self iPad] ? blurEffectView.frame : (([self iPhonePlus] && [self iOS9]) ?
                                                                                     CGRectMake(0, 0,
                                                                                                 blurEffectView.frame.size.width,
                                                                                                 blurEffectView.frame.size.height) :
@@ -1758,7 +1762,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                                                     maxWidth + (DISCOVERABILITY_INSET * 2),
                                                                      (((UIView *)labels[0]).frame.size.height * labels.count) +
                                                                      (DISCOVERABILITY_GAP * (labels.count - 1)) +
-                                                                     (2 * DISCOVERABILITY_INSET)) : ([self iPhonePlus] ?
+                                                                     (2 * DISCOVERABILITY_INSET)) : (([self iPhonePlus] && [self iOS9]) ?
                                                                      CGRectMake(0, 0,
                                                                         maxWidth + (DISCOVERABILITY_INSET * 2),
                                                                         (((UIView *)labels[0]).frame.size.height * labels.count) +
@@ -1860,7 +1864,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 }
             }
 
-            blurEffectView.center = ((NSUInteger)[self maxIconsLS] == 6 || ([self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"])) ? CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds)) :
+            blurEffectView.center = (((NSUInteger)[self maxIconsLS] == 6 && [self iOS9]) || ([self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"])) ? CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds)) :
                                                                                           CGPointMake(CGRectGetMidX(contentFrame), CGRectGetMidY(contentFrame));
             NSDebug(@"\nLS: %i\nWINDOW: %@\nBOUNDS: %@\nCONTENT FRAME: %@\nBLUR FRAME: %@\nROTATION: %@", ls, NSStringFromCGRect(window.frame), NSStringFromCGRect(bounds), NSStringFromCGRect(contentFrame), NSStringFromCGRect(blurEffectView.frame), NSStringFromCGAffineTransform(blurEffectView.transform));
 
@@ -2019,7 +2023,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     }
 
     if (![self hidSetup]) {
-        if (![[NSBundle mainBundle].bundleIdentifier isEqualToString:@"com.apple.Preferences"]) {
+        if (([self iOS10] && ![[NSBundle mainBundle].bundleIdentifier isEqualToString:@"com.apple.Preferences"]) || [self iOS9]) {
             setupHID();
         }
         [self addMolarObservers];
