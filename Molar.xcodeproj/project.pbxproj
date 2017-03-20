@@ -47,6 +47,7 @@
 		807B4F861CA332A90009CFE1 /* Molar.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Molar.plist; path = Package/Library/MobileSubstrate/DynamicLibraries/Molar.plist; sourceTree = "<group>"; };
 		807B4F8A1CA332F00009CFE1 /* IOKit */ = {isa = PBXFileReference; lastKnownFileType = folder; path = IOKit; sourceTree = "<group>"; };
 		808716981CBE8BE9000CDC92 /* Preferences.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Preferences.framework; path = ../PrivateFrameworks/Preferences.framework; sourceTree = "<group>"; };
+		808D65651E79EAAB0013D490 /* Entitlements.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Entitlements.plist; path = Molar/Entitlements.plist; sourceTree = "<group>"; };
 		80A3F47F1C416DF5001D4F51 /* IOKit.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = IOKit.tbd; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit.tbd; sourceTree = DEVELOPER_DIR; };
 		80B172C51CA33B4300F60552 /* MolarSettings.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MolarSettings.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		80B172CD1CA33B4300F60552 /* control */ = {isa = PBXFileReference; lastKnownFileType = text; name = control; path = Package/DEBIAN/control; sourceTree = "<group>"; };
@@ -101,6 +102,7 @@
 		374F11BE1C21C6320070747D = {
 			isa = PBXGroup;
 			children = (
+				808D65651E79EAAB0013D490 /* Entitlements.plist */,
 				807B4F731CA332A90009CFE1 /* Molar */,
 				80B172C91CA33B4300F60552 /* MolarSettings */,
 				374F11CB1C21C6320070747D /* Frameworks */,
@@ -563,6 +565,7 @@
 		807B4F881CA332A90009CFE1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Molar/Entitlements.plist;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -579,9 +582,9 @@
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Molar/**";
-				iOSOpenDevBuildPackageOnAnyBuild = NO;
+				iOSOpenDevBuildPackageOnAnyBuild = YES;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = 192.168.178.69;
+				iOSOpenDevDevice = 172.20.10.7;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
@@ -592,6 +595,7 @@
 		807B4F891CA332A90009CFE1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Molar/Entitlements.plist;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
@@ -608,9 +612,9 @@
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Molar/**";
-				iOSOpenDevBuildPackageOnAnyBuild = NO;
+				iOSOpenDevBuildPackageOnAnyBuild = YES;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = 192.168.178.69;
+				iOSOpenDevDevice = 172.20.10.7;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
