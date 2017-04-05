@@ -1,6 +1,6 @@
-AppSwitcher/AppSwitcher
-AppSwitcher/Package/Library/MobileSubstrate/DynamicLibraries/AppSwitcher.dylib
+Molar/Package/Library/MobileSubstrate/DynamicLibraries/Molar.dylib
+Molar/Package/Library/PreferenceBundles/Molar.bundle/MolarSettings
+MolarSettings/Package/Library/PreferenceBundles/MolarSettings.bundle/MolarSettings
 LatestBuild
 Packages/
 *.mm
-AppSwitcher.xcodeproj/xcuserdata/
