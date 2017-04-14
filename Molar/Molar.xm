@@ -14,6 +14,8 @@
 #import <SpringBoard/SBApplication.h>
 #import <SpringBoard/SBFolder.h>
 #import <SpringBoard/SBFolderView.h>
+#import <QuartzCore/QuartzCore.h>
+#import "PTFakeTouch.h"
 
 #define DegreesToRadians(x) ((x) * M_PI / 180.0)
 #define SWITCHER_HEIGHT 140
@@ -27,6 +29,8 @@
 #define SWITCHER_IOS9_MODE 1
 #define SWITCHER_IOS8_MODE 0
 
+#define CTRL_KEY    0xe0
+#define ALT_KEY     0xe2
 #define CMD_KEY     0xe3
 #define CMD_KEY_2   0xe7
 #define TAB_KEY     0x2b
@@ -60,6 +64,7 @@
 #define DISCOVERABILITY_FONT_SIZE 20.0
 #define DISCOVERABILITY_LS_Y_DECREASE 16.0
 #define ALERT_DISMISS_RESCAN_DELAY 1.0
+#define CURSOR_PIXEL_PER_SECOND 500.0
 
 #define SBFOLDER_ICONS_DEFAULT_X 3
 #define SBFOLDER_ICONS_DEFAULT_Y 3
@@ -67,7 +72,7 @@
 #define NEXT_VIEW 1
 #define PREV_VIEW 0
 
-#define DEBUG 0
+#define DEBUG 1
 
 #if DEBUG == 0
 #define NSDebug(...)
@@ -97,10 +102,13 @@ BOOL darkMode,
      transformFinished,
      discoverabilityShown,
      switcherShown,
+     cursorShown,
      sbIconSelected,
      sbDockIconSelected,
      sbFolderIconSelected,
-     sbFolderOpened;
+     sbFolderOpened,
+     draggingPossible,
+     draggingStarted;
 
 NSString *launcherApp1,
          *launcherApp2,
@@ -152,6 +160,8 @@ SBFolder *selectedSBFolder;
 id selectedSBIcon;
 SBApplicationIcon *selectedSBIconInOpenedFolder;
 
+CGPoint cursorPosition;
+NSInteger pointID;
 
 static void postKeyEventNotification(int key, int down, int page) {
     CFStringRef notificationName = (CFStringRef)(@"KeyEventNotification");
@@ -162,7 +172,7 @@ static void postKeyEventNotification(int key, int down, int page) {
         int k = key;
         int d = down;
         int p = page;
-        NSDictionary *userInfo = @{@"key": [NSNumber numberWithInt:k], 
+        NSDictionary *userInfo = @{@"key": [NSNumber numberWithInt:k],
                                    @"down": [NSNumber numberWithInt:d], 
                                    @"page": [NSNumber numberWithInt:p]};
         CFDictionaryRef cfDict = (__bridge CFDictionaryRef)userInfo;
@@ -186,6 +196,10 @@ static void postKeyEventNotification(int key, int down, int page) {
             postKeyEventNotification(usage, down, usagePage);
         } else {
             if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
+            else if (usage == CTRL_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"CtrlKeyDown" object:nil];
+            else if (usage == CTRL_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"CtrlKeyUp" object:nil];
+            else if (usage == ALT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"AltKeyDown" object:nil];
+            else if (usage == ALT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"AltKeyUp" object:nil];
             else if (usage == TAB_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyUp" object:nil];
             else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown" object:nil];
             else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY_2 && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp" object:nil];
@@ -326,6 +340,10 @@ static void keyEventCallback(CFNotificationCenterRef center, void *observer, CFS
     int down = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"down"]).intValue;
     int usagePage = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"page"]).intValue;
     if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
+    else if (usage == CTRL_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"CtrlKeyDown" object:nil];
+    else if (usage == CTRL_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"CtrlKeyUp" object:nil];
+    else if (usage == ALT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"AltKeyDown" object:nil];
+    else if (usage == ALT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"AltKeyUp" object:nil];
     else if (usage == TAB_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyUp" object:nil];
     else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown" object:nil];
     else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY_2 && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp" object:nil];
@@ -452,7 +470,82 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     dlclose(libHandle);
 
     switcherMode = numThreads = 0;
+
+    cursorPosition = CGPointMake(-1, -1);
 }
+
+
+%subclass DraggingThread : NSThread
+
+%new
+- (void)setCursorView:(id)view {
+    objc_setAssociatedObject(self, @selector(cursorView), view, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (id)cursorView {
+    return objc_getAssociatedObject(self, @selector(cursorView));
+}
+
+%new
+- (void)setDur:(NSNumber *)duration {
+    objc_setAssociatedObject(self, @selector(duration), duration, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (NSNumber *)dur {
+    return (NSNumber *)objc_getAssociatedObject(self, @selector(duration));
+}
+
+%new
+- (void)setStartPoint:(CGPoint)startPoint {
+    NSValue *spValue = [NSValue valueWithCGPoint:startPoint];
+    objc_setAssociatedObject(self, @selector(startPoint), spValue, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (CGPoint)startPoint {
+    NSValue *spValue = (NSValue *)objc_getAssociatedObject(self, @selector(startPoint));
+    return spValue.CGPointValue;
+}
+
+%new
+- (void)setEndPoint:(CGPoint)endPoint {
+    NSValue *epValue = [NSValue valueWithCGPoint:endPoint];
+    objc_setAssociatedObject(self, @selector(endPoint), epValue, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (CGPoint)endPoint {
+    NSValue *epValue = (NSValue *)objc_getAssociatedObject(self, @selector(endPoint));
+    return epValue.CGPointValue;
+}
+
+- (void)main {
+    int deltaX = [self endPoint].x - [self startPoint].x;
+    int deltaY = [self endPoint].y - [self startPoint].y;
+    double sleepTime;
+    sleepTime = ((NSNumber *)[self dur]).doubleValue / sqrt(pow(deltaX, 2) + pow(deltaY, 2));
+    BOOL dXPositive = deltaX > 0;
+    BOOL dYPositive = deltaY > 0;
+    CGPoint start = [self startPoint];
+    
+    int xStep = !deltaX ? 0: (dXPositive ? 1 : -1);
+    int yStep = !deltaY ? 0: (dYPositive ? 1 : -1);
+    NSDebug(@"Starting DRAGGING with props: dur= %f  from= %@  to= %@", ((NSNumber *)[self dur]).doubleValue, NSStringFromCGPoint([self startPoint]), NSStringFromCGPoint([self endPoint]));
+    
+    while(![self isCancelled]) {
+        NSDebug(@"%f XXX", sleepTime/100.0);
+        //CGPoint intermediatePoint = CGPointMake(start.x + xStep,
+        //                                        start.y + yStep);
+        CGPoint intermediatePoint = [((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer) position];
+        [PTFakeMetaTouch fakeTouchId:pointID AtPoint:intermediatePoint withTouchPhase:UITouchPhaseMoved];
+        [NSThread sleepForTimeInterval:sleepTime/100.0];
+    }
+}
+
+%end
+
 
 /*
 %subclass HighlightThread : NSThread
@@ -554,6 +647,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)addMolarObservers {
+
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ctrlKeyDown) name:@"CtrlKeyDown" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ctrlKeyUp) name:@"CtrlKeyUp" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(altKeyDown) name:@"AltKeyDown" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(altKeyUp) name:@"AltKeyUp" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tabKeyDown) name:@"TabKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyDown) name:@"CmdKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyUp) name:@"CmdKeyUp" object:nil];
@@ -561,10 +659,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rightKeyDown) name:@"RightKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(leftKeyDown) name:@"LeftKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(genericKeyDown) name:@"GenericKeyDown" object:nil];
-
-    // shortcuts
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadShortcuts) name:@"ReloadShortcutsNotification" object:nil];
-
+    
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_tabDown) name:@"TabKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_tabUp) name:@"TabKeyUp" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(shiftKeyDown) name:@"ShiftKeyDown" object:nil];
@@ -579,6 +674,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_downKey) name:@"DownKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_downKeyUp) name:@"DownKeyUp" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_rKey) name:@"RKeyDown" object:nil];
+
+    // shortcuts
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadShortcuts) name:@"ReloadShortcutsNotification" object:nil];
 
     // app updates
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(resetViews) name:@"ViewDidAppearNotification" object:nil];
@@ -884,6 +982,16 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 %new
+- (id)draggingThread {
+    return objc_getAssociatedObject(self, @selector(draggingThread));
+}
+
+%new
+- (void)setDraggingThread:(id)value {
+    objc_setAssociatedObject(self, @selector(draggingThread), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
 - (id)switcherShown {
     return objc_getAssociatedObject(self, @selector(switcherShown));
 }
@@ -916,6 +1024,26 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (UIWindow *)discoverabilityWindow {
     return objc_getAssociatedObject(self, @selector(discoverabilityWindow));
+}
+
+%new
+- (void)setCursorWindow:(UIWindow *)value {
+    objc_setAssociatedObject(self, @selector(cursorWindow), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (UIWindow *)cursorWindow {
+    return objc_getAssociatedObject(self, @selector(cursorWindow));
+}
+
+%new
+- (void)setCursorView:(UIView *)value {
+    objc_setAssociatedObject(self, @selector(cursorView), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (UIView *)cursorView {
+    return objc_getAssociatedObject(self, @selector(cursorView));
 }
 
 %new
@@ -1003,6 +1131,25 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     return objc_getAssociatedObject(self, @selector(cmdDown));
 }
 
+%new
+- (void)setCtrlDown:(id)value {
+    objc_setAssociatedObject(self, @selector(ctrlDown), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (id)ctrlDown {
+    return objc_getAssociatedObject(self, @selector(ctrlDown));
+}
+
+%new
+- (void)setAltDown:(id)value {
+    objc_setAssociatedObject(self, @selector(altDown), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (id)altDown {
+    return objc_getAssociatedObject(self, @selector(altDown));
+}
 %new
 - (void)setShiftDown:(id)value {
     objc_setAssociatedObject(self, @selector(shiftDown), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -1429,6 +1576,116 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     discoverabilityTimer = nil;
     [self setCmdDown:nil];
     [self handleKeyStatus:0];
+}
+
+%new
+- (NSNumber *)cursorAnimationExists {
+    if ([((UIView*)[self cursorView]).layer animationForKey:@"left"]) return @YES;
+    if ([((UIView*)[self cursorView]).layer animationForKey:@"right"]) return @YES;
+    if ([((UIView*)[self cursorView]).layer animationForKey:@"up"]) return @YES;
+    if ([((UIView*)[self cursorView]).layer animationForKey:@"down"]) return @YES;
+    return NO;
+}
+
+%new
+- (void)ctrlKeyDown {
+    [self setCtrlDown:[NSNull null]];
+    NSDebug(@"CTRL DOWN");
+
+    if (enabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
+
+        if (![self cursorWindow]) {
+
+            UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
+            BOOL ls = UIInterfaceOrientationIsLandscape(orient);
+
+            CGRect bounds = [[UIScreen mainScreen] bounds];
+            CGRect contentFrame = CGRectMake(0, 0, ls ? bounds.size.height : bounds.size.width,
+                                                   ls ? bounds.size.width  : bounds.size.height);
+
+            if ([self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+                contentFrame = CGRectMake(contentFrame.origin.x, contentFrame.origin.y, contentFrame.size.height, contentFrame.size.width);
+            }
+
+            UIWindow *window = [[UIWindow alloc] initWithFrame:contentFrame];
+            window.windowLevel = UIWindowLevelAlert;
+            //window.backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.3];
+
+            UIView *cursorView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 40, 40)];
+            cursorView.layer.cornerRadius = 20;
+            cursorView.clipsToBounds = YES;
+            cursorView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.3];
+            cursorView.layer.borderColor = [UIColor whiteColor].CGColor;
+            cursorView.layer.borderWidth = 2.0f;
+            cursorView.layer.shadowRadius = 20;
+            cursorView.layer.shadowColor = [UIColor blackColor].CGColor;
+
+            if ([self iPhonePlus] && ls && [self iOS9]) {
+                cursorView.transform = CGAffineTransformMakeRotation(DegreesToRadians(0));
+            } else if ([self iPhonePlus] && ls && [self iOS10]) {
+                if ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"])
+                    cursorView.transform = CGAffineTransformMakeRotation(DegreesToRadians(90));
+                else
+                    cursorView.transform = CGAffineTransformMakeRotation(DegreesToRadians(90));
+            }
+            else if (ls && ![self iPad] ||
+                (ls && [self iPad] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]))
+                cursorView.transform = orient == UIInterfaceOrientationLandscapeLeft ?
+                                                CGAffineTransformMakeRotation(DegreesToRadians(270)) :
+                                                CGAffineTransformMakeRotation(DegreesToRadians(90));
+            else if (orient == UIInterfaceOrientationPortraitUpsideDown && ![self iPad]) {
+                cursorView.transform = CGAffineTransformMakeRotation(DegreesToRadians(180));
+            }
+            [self setCursorWindow:window];
+
+            [window addSubview:cursorView];
+            if (CGPointEqualToPoint(cursorPosition, CGPointMake(-1, -1))) {
+                cursorPosition = CGPointMake(CGRectGetMidX(contentFrame), CGRectGetMidY(contentFrame));
+            }
+            cursorView.center = cursorPosition;
+            [self setCursorView:cursorView];
+            [window makeKeyAndVisible];
+            cursorShown = YES;
+        } else {
+            [(UIWindow *)[self cursorWindow] setHidden:NO];
+            cursorShown = YES;
+        }
+    }
+}
+
+%new
+- (void)ctrlKeyUp {
+    [self setCtrlDown:nil];
+    NSDebug(@"CTRL UP");
+
+    if ([self cursorWindow]) {
+        [(UIWindow *)[self cursorWindow] setHidden:YES];
+        cursorShown = NO;
+    }
+}
+
+%new
+- (void)altKeyDown {
+    [self setAltDown:[NSNull null]];
+    pointID = [PTFakeMetaTouch getAvailablePointId];
+    [PTFakeMetaTouch fakeTouchId:pointID AtPoint:cursorPosition withTouchPhase:UITouchPhaseBegan];
+    draggingPossible = YES;
+    draggingStarted = NO;
+}
+
+%new
+- (void)altKeyUp {
+    [PTFakeMetaTouch fakeTouchId:pointID AtPoint:cursorPosition withTouchPhase:UITouchPhaseEnded];
+    draggingPossible = NO;
+    if (draggingStarted) {
+        [[self draggingThread] cancel];
+        draggingStarted = NO;
+    }
+}
+
+%new
+- (void)updateCursorPosition {
+    ((UIView *)[self cursorView]).center = cursorPosition;
 }
 
 %new
@@ -2085,7 +2342,57 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)ui_leftKey {
-    if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+    if (enabled && cursorShown && ![self switcherShown] && !discoverabilityShown) {
+
+        cursorPosition = [((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer) position];
+        NSLog(@"Cursor Pos: %@", NSStringFromCGPoint(cursorPosition));
+
+        if (cursorPosition.x >= 1) {
+
+            CGPoint animTarget = CGPointMake(0, cursorPosition.y);
+            NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+            double dist = (double)cursorPosition.x;
+            NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
+
+            //[CATransaction begin];
+            CABasicAnimation *animation = [CABasicAnimation animation];
+            animation.keyPath = @"position";
+            animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
+            animation.toValue = [NSValue valueWithCGPoint:animTarget];
+            animation.duration = dur;
+            animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+            animation.additive = ((NSNumber *)[self cursorAnimationExists]).boolValue;
+            ((UIView *)[self cursorView]).layer.position = animTarget;
+            [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"left"];
+            //[CATransaction commit];
+            
+            if ([self altDown]) {
+                if (draggingPossible && !draggingStarted) {
+                    DraggingThread *draggingThread = (DraggingThread *)[%c(DraggingThread) new];
+                    [draggingThread setDur:@(dur*1000.0)];
+                    [draggingThread setStartPoint:cursorPosition];
+                    [draggingThread setEndPoint:animTarget];
+                    [draggingThread setCursorView:[self cursorView]];
+                    [self setDraggingThread:draggingThread];
+                    [draggingThread start];
+                    draggingStarted = YES;
+                }
+                else if (draggingPossible && draggingStarted) {
+                    CGPoint oldEndPoint = [(DraggingThread *)[self draggingThread] endPoint];
+                    [[self draggingThread] cancel];
+                    CGPoint newEndPoint = CGPointMake(oldEndPoint.x + (animTarget.x - oldEndPoint.x), oldEndPoint.y + (animTarget.y - oldEndPoint.y));
+                    DraggingThread *draggingThread = (DraggingThread *)[%c(DraggingThread) new];
+                    [draggingThread setDur:@(dur*1000.0)];
+                    [draggingThread setStartPoint:cursorPosition];
+                    [draggingThread setEndPoint:newEndPoint];
+                    [draggingThread setCursorView:[self cursorView]];
+                    [self setDraggingThread:draggingThread];
+                    [draggingThread start];
+                }
+            }
+        }
+    }
+    else if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
         if (enabled && controlEnabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
             [self stopDiscoverabilityTimer];
             if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
@@ -2258,11 +2565,69 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     else [keyRepeatTimer invalidate];
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
+    
+    if ([((UIView *)[self cursorView]).layer animationForKey:@"left"]) {
+        [((UIView *)[self cursorView]).layer removeAnimationForKey:@"left"];
+        ((CALayer *)((UIView *)[self cursorView]).layer).position = 
+            ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
+        cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
+    }
 }
 
 %new
 - (void)ui_rightKey {
-    if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+    if (enabled && cursorShown && ![self switcherShown] && !discoverabilityShown) {
+        
+        cursorPosition = [((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer) position];
+        NSLog(@"Cursor Pos: %@", NSStringFromCGPoint(cursorPosition));
+
+        if (cursorPosition.x < ((UIWindow *)[self cursorWindow]).bounds.size.width) {
+            
+            CGPoint animTarget = CGPointMake(((UIWindow *)[self cursorWindow]).bounds.size.width, cursorPosition.y);
+            NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+
+            double dist = (double)((UIWindow *)[self cursorWindow]).bounds.size.width - (double)cursorPosition.x;
+            NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
+        
+            //[CATransaction begin];
+            CABasicAnimation *animation = [CABasicAnimation animation];
+            animation.keyPath = @"position";
+            animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
+            animation.toValue = [NSValue valueWithCGPoint:animTarget];
+            animation.duration = dur;
+            animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+            animation.additive = ((NSNumber *)[self cursorAnimationExists]).boolValue;
+            ((UIView *)[self cursorView]).layer.position = animTarget;
+            [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"right"];
+            //[CATransaction commit];
+
+            if ([self altDown]) {
+                if (draggingPossible && !draggingStarted) {
+                    DraggingThread *draggingThread = (DraggingThread *)[%c(DraggingThread) new];
+                    [draggingThread setDur:@(dur*1000.0)];
+                    [draggingThread setStartPoint:cursorPosition];
+                    [draggingThread setEndPoint:animTarget];
+                    [self setDraggingThread:draggingThread];
+                    [draggingThread setCursorView:[self cursorView]];
+                    [draggingThread start];
+                    draggingStarted = YES;
+                }
+                else if (draggingPossible && draggingStarted) {
+                    CGPoint oldEndPoint = [(DraggingThread *)[self draggingThread] endPoint];
+                    [[self draggingThread] cancel];
+                    CGPoint newEndPoint = CGPointMake(oldEndPoint.x + (animTarget.x - oldEndPoint.x), oldEndPoint.y + (animTarget.y - oldEndPoint.y));
+                    DraggingThread *draggingThread = (DraggingThread *)[%c(DraggingThread) new];
+                    [draggingThread setDur:@(dur*1000.0)];
+                    [draggingThread setStartPoint:cursorPosition];
+                    [draggingThread setEndPoint:newEndPoint];
+                    [draggingThread setCursorView:[self cursorView]];
+                    [self setDraggingThread:draggingThread];
+                    [draggingThread start];
+                }
+            }
+        }
+    }
+    else if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
         if (enabled && controlEnabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
             [self stopDiscoverabilityTimer];
             if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
@@ -2479,11 +2844,69 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     else [keyRepeatTimer invalidate];
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
+
+    if ([((UIView *)[self cursorView]).layer animationForKey:@"right"]) {
+        [((UIView *)[self cursorView]).layer removeAnimationForKey:@"right"];
+        ((CALayer *)((UIView *)[self cursorView]).layer).position = 
+            ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
+        cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
+    }
 }
 
 %new
 - (void)ui_downKey {
-    if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+    if (enabled && cursorShown && ![self switcherShown] && !discoverabilityShown) {
+        
+        cursorPosition = [((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer) position];
+        NSLog(@"Cursor Pos: %@", NSStringFromCGPoint(cursorPosition));
+        
+        if (cursorPosition.y < ((UIWindow *)[self cursorWindow]).bounds.size.height) {
+
+            CGPoint animTarget = CGPointMake(cursorPosition.x, ((UIWindow *)[self cursorWindow]).bounds.size.height);
+            NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+
+            double dist = ((UIWindow *)[self cursorWindow]).bounds.size.height - (double)cursorPosition.y;
+            NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
+
+            //[CATransaction begin];
+            CABasicAnimation *animation = [CABasicAnimation animation];
+            animation.keyPath = @"position";
+            animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
+            animation.toValue = [NSValue valueWithCGPoint:animTarget];
+            animation.duration = dur;
+            animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+            animation.additive = ((NSNumber *)[self cursorAnimationExists]).boolValue;
+            ((UIView *)[self cursorView]).layer.position = animTarget;
+            [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"down"];
+            //[CATransaction commit];
+
+            if ([self altDown]) {
+                if (draggingPossible && !draggingStarted) {
+                    DraggingThread *draggingThread = (DraggingThread *)[%c(DraggingThread) new];
+                    [draggingThread setDur:@(dur*1000.0)];
+                    [draggingThread setStartPoint:cursorPosition];
+                    [draggingThread setEndPoint:animTarget];
+                    [self setDraggingThread:draggingThread];
+                    [draggingThread setCursorView:[self cursorView]];
+                    [draggingThread start];
+                    draggingStarted = YES;
+                }
+                else if (draggingPossible && draggingStarted) {
+                    CGPoint oldEndPoint = [(DraggingThread *)[self draggingThread] endPoint];
+                    [[self draggingThread] cancel];
+                    CGPoint newEndPoint = CGPointMake(oldEndPoint.x + (animTarget.x - oldEndPoint.x), oldEndPoint.y + (animTarget.y - oldEndPoint.y));
+                    DraggingThread *draggingThread = (DraggingThread *)[%c(DraggingThread) new];
+                    [draggingThread setDur:@(dur*1000.0)];
+                    [draggingThread setStartPoint:cursorPosition];
+                    [draggingThread setEndPoint:newEndPoint];
+                    [self setDraggingThread:draggingThread];
+                    [draggingThread setCursorView:[self cursorView]];
+                    [draggingThread start];
+                }
+            }
+        }
+    }
+    else if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
         if (enabled && controlEnabled && [self isActive]) {
             [self stopDiscoverabilityTimer];
             if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
@@ -2688,11 +3111,69 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     else [keyRepeatTimer invalidate];
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
+
+    if ([((UIView *)[self cursorView]).layer animationForKey:@"down"]) {
+        [((UIView *)[self cursorView]).layer removeAnimationForKey:@"down"];
+        ((CALayer *)((UIView *)[self cursorView]).layer).position = 
+            ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
+        cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
+    }
 }
 
 %new
 - (void)ui_upKey {
-    if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+    if (enabled && cursorShown && ![self switcherShown] && !discoverabilityShown) {
+
+        cursorPosition = [((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer) position];
+        NSLog(@"Cursor Pos: %@", NSStringFromCGPoint(cursorPosition));
+
+        if (cursorPosition.y > 0) {
+            
+            CGPoint animTarget = CGPointMake(cursorPosition.x, 0);
+            NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+
+            double dist = cursorPosition.y;
+            NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
+
+            //[CATransaction begin];
+            CABasicAnimation *animation = [CABasicAnimation animation];
+            animation.keyPath = @"position";
+            animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
+            animation.toValue = [NSValue valueWithCGPoint:animTarget];
+            animation.duration = dur;
+            animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+            animation.additive = ((NSNumber *)[self cursorAnimationExists]).boolValue;
+            ((UIView *)[self cursorView]).layer.position = animTarget;
+            [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"up"];
+            //[CATransaction commit];
+
+            if ([self altDown]) {
+                if (draggingPossible && !draggingStarted) {
+                    DraggingThread *draggingThread = (DraggingThread *)[%c(DraggingThread) new];
+                    [draggingThread setDur:@(dur*1000.0)];
+                    [draggingThread setStartPoint:cursorPosition];
+                    [draggingThread setEndPoint:animTarget];
+                    [self setDraggingThread:draggingThread];
+                    [draggingThread setCursorView:[self cursorView]];
+                    [draggingThread start];
+                    draggingStarted = YES;
+                }
+                else if (draggingPossible && draggingStarted) {
+                    CGPoint oldEndPoint = [(DraggingThread *)[self draggingThread] endPoint];
+                    [[self draggingThread] cancel];
+                    CGPoint newEndPoint = CGPointMake(oldEndPoint.x + (animTarget.x - oldEndPoint.x), oldEndPoint.y + (animTarget.y - oldEndPoint.y));
+                    DraggingThread *draggingThread = (DraggingThread *)[%c(DraggingThread) new];
+                    [draggingThread setDur:@(dur*1000.0)];
+                    [draggingThread setStartPoint:cursorPosition];
+                    [draggingThread setEndPoint:newEndPoint];
+                    [self setDraggingThread:draggingThread];
+                    [draggingThread setCursorView:[self cursorView]];
+                    [draggingThread start];
+                }
+            }
+        }
+    }
+    else if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
         if (enabled && controlEnabled && [self isActive]) {
             [self stopDiscoverabilityTimer];
             if ([self flashViewThread]) [(NSThread *)[self flashViewThread] cancel];
@@ -2900,6 +3381,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     else [keyRepeatTimer invalidate];
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
+
+    if ([((UIView *)[self cursorView]).layer animationForKey:@"up"]) {
+        [((UIView *)[self cursorView]).layer removeAnimationForKey:@"up"];
+        ((CALayer *)((UIView *)[self cursorView]).layer).position = 
+            ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
+        cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
+    }
 }
 
 %new
@@ -3477,7 +3965,15 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             [self scrollSBToPage:sbSelectedPage];
             [self selectSBIcon];
         }
+    }
+    if (cursorShown) {
+        UIWindow *cursorWin = (UIWindow *)[self cursorWindow];
+        [cursorWin setHidden:YES];
+        cursorShown = NO;
     }    
+    [self setCursorWindow:nil];
+    cursorPosition = CGPointMake(CGRectGetMidX([UIScreen mainScreen].bounds),
+                                 CGRectGetMidY([UIScreen mainScreen].bounds));
 }
 
 %new
@@ -3812,7 +4308,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     }    
 }
 
-- (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)orientation {
+- (void)didFromInterfaceOrientation:(UIInterfaceOrientation)orientation {
     %orig();
 
     if ([[UIApplication sharedApplication] iOS9]) [self updateSBIconState];
