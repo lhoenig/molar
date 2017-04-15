@@ -64,7 +64,12 @@
 #define DISCOVERABILITY_FONT_SIZE 20.0
 #define DISCOVERABILITY_LS_Y_DECREASE 16.0
 #define ALERT_DISMISS_RESCAN_DELAY 1.0
+
 #define CURSOR_PIXEL_PER_SECOND 500.0
+#define CURSOR_DIR_UP 1 << 0
+#define CURSOR_DIR_DOWN 1 << 1
+#define CURSOR_DIR_LEFT 1 << 2
+#define CURSOR_DIR_RIGHT 1 << 3
 
 #define SBFOLDER_ICONS_DEFAULT_X 3
 #define SBFOLDER_ICONS_DEFAULT_Y 3
@@ -162,6 +167,7 @@ SBApplicationIcon *selectedSBIconInOpenedFolder;
 
 CGPoint cursorPosition;
 NSInteger pointID;
+unsigned int cursorDir;
 
 static void postKeyEventNotification(int key, int down, int page) {
     CFStringRef notificationName = (CFStringRef)(@"KeyEventNotification");
@@ -474,6 +480,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     cursorPosition = CGPointMake(-1, -1);
 }
 
+%subclass NoTouchWindow : UIWindow
+
+- (UIView *) hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    return nil;
+}
+
+%end
 
 %subclass DraggingThread : NSThread
 
@@ -1607,8 +1620,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 contentFrame = CGRectMake(contentFrame.origin.x, contentFrame.origin.y, contentFrame.size.height, contentFrame.size.width);
             }
 
-            UIWindow *window = [[UIWindow alloc] initWithFrame:contentFrame];
-            window.windowLevel = UIWindowLevelAlert;
+            NoTouchWindow *window = [[%c(NoTouchWindow) alloc] initWithFrame:contentFrame];
+            ((UIWindow *)window).windowLevel = UIWindowLevelAlert;
+            ((UIWindow *)window).userInteractionEnabled = YES;
             //window.backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.3];
 
             UIView *cursorView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 40, 40)];
@@ -1686,6 +1700,177 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)updateCursorPosition {
     ((UIView *)[self cursorView]).center = cursorPosition;
+}
+
+%new
+- (void)animateCursorInDirection:(unsigned int)dir {
+    
+    if (!dir) {
+        [((UIView *)[self cursorView]).layer removeAllAnimations];
+        ((CALayer *)((UIView *)[self cursorView]).layer).position =
+        ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
+        cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
+        return;
+    }
+    
+    if (dir == (CURSOR_DIR_UP | CURSOR_DIR_DOWN) ||
+        dir == (CURSOR_DIR_LEFT | CURSOR_DIR_RIGHT)) {
+        NSDebug(@"Opposite directions detected - doing nothing");
+        [((UIView *)[self cursorView]).layer removeAllAnimations];
+        ((CALayer *)((UIView *)[self cursorView]).layer).position =
+        ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
+        cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
+        return;
+    }
+
+    CGPoint animTarget;
+    double dist;
+    NSTimeInterval dur;
+
+    CABasicAnimation *animation = [CABasicAnimation animation];
+    animation.keyPath = @"position";
+    animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
+    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+    animation.additive = NO;
+    
+    if (dir == CURSOR_DIR_LEFT) {
+        animTarget = CGPointMake(0, cursorPosition.y);
+        NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+        dist = (double)cursorPosition.x;
+        dur = dist / CURSOR_PIXEL_PER_SECOND;
+        
+        CABasicAnimation *animation = [CABasicAnimation animation];
+        animation.keyPath = @"position";
+        animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
+        animation.toValue = [NSValue valueWithCGPoint:animTarget];
+        animation.duration = dur;
+        animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+        animation.additive = NO;
+        
+        ((UIView *)[self cursorView]).layer.position = animTarget;
+        [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"left"];
+    }
+    else if (dir == CURSOR_DIR_RIGHT) {
+        animTarget = CGPointMake(((UIWindow *)[self cursorWindow]).bounds.size.width, cursorPosition.y);
+        double dist = (double)((UIWindow *)[self cursorWindow]).bounds.size.width - (double)cursorPosition.x;
+        NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
+        NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+        
+        CABasicAnimation *animation = [CABasicAnimation animation];
+        animation.keyPath = @"position";
+        animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
+        animation.toValue = [NSValue valueWithCGPoint:animTarget];
+        animation.duration = dur;
+        animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+        animation.additive = NO;
+        ((UIView *)[self cursorView]).layer.position = animTarget;
+        [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"right"];
+
+    }
+    else if (dir == CURSOR_DIR_UP) {
+        animTarget = CGPointMake(cursorPosition.x, 0);
+        double dist = cursorPosition.y;
+        NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
+        NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+        
+        CABasicAnimation *animation = [CABasicAnimation animation];
+        animation.keyPath = @"position";
+        animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
+        animation.toValue = [NSValue valueWithCGPoint:animTarget];
+        animation.duration = dur;
+        animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+        animation.additive = NO;
+        ((UIView *)[self cursorView]).layer.position = animTarget;
+        [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"up"];
+    }
+    else if (dir == CURSOR_DIR_DOWN) {
+        animTarget = CGPointMake(cursorPosition.x, ((UIWindow *)[self cursorWindow]).bounds.size.height);
+        double dist = ((UIWindow *)[self cursorWindow]).bounds.size.height - (double)cursorPosition.y;
+        NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
+        NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+        
+        CABasicAnimation *animation = [CABasicAnimation animation];
+        animation.keyPath = @"position";
+        animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
+        animation.toValue = [NSValue valueWithCGPoint:animTarget];
+        animation.duration = dur;
+        animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+        animation.additive = NO;
+        ((UIView *)[self cursorView]).layer.position = animTarget;
+        [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"down"];
+    }
+    
+    else if (dir == (CURSOR_DIR_UP | CURSOR_DIR_LEFT)) {
+        
+        if (cursorPosition.y >= cursorPosition.x)
+            animTarget = CGPointMake(0, cursorPosition.y - cursorPosition.x);
+        else
+            animTarget = CGPointMake(cursorPosition.x - cursorPosition.y, 0);
+        
+        NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+        dist = (double)sqrt(pow(cursorPosition.x - animTarget.x, 2) + pow(cursorPosition.y - animTarget.y, 2));
+        dur = dist / CURSOR_PIXEL_PER_SECOND;
+        animation.toValue = [NSValue valueWithCGPoint:animTarget];
+        animation.duration = dur;
+
+        [((UIView *)[self cursorView]).layer removeAllAnimations];
+        ((UIView *)[self cursorView]).layer.position = animTarget;
+        [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"up-left"];
+
+    }
+    else if (dir == (CURSOR_DIR_UP | CURSOR_DIR_RIGHT)) {
+    
+        if (cursorPosition.y >= (((UIWindow *)[self cursorWindow]).bounds.size.width - cursorPosition.x))
+            animTarget = CGPointMake(((UIWindow *)[self cursorWindow]).bounds.size.width, cursorPosition.y - cursorPosition.x);
+        else
+            animTarget = CGPointMake(cursorPosition.x + cursorPosition.y, 0);
+            
+        NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+        dist = (double)sqrt(pow(cursorPosition.x - animTarget.x, 2) + pow(cursorPosition.y - animTarget.y, 2));
+        dur = dist / CURSOR_PIXEL_PER_SECOND;
+        animation.toValue = [NSValue valueWithCGPoint:animTarget];
+        animation.duration = dur;
+        
+        [((UIView *)[self cursorView]).layer removeAllAnimations];
+        ((UIView *)[self cursorView]).layer.position = animTarget;
+        [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"up-right"];
+
+        
+    }
+    else if (dir == (CURSOR_DIR_DOWN | CURSOR_DIR_LEFT)) {
+        
+        if (((UIWindow *)[self cursorWindow]).bounds.size.height - cursorPosition.y >= cursorPosition.x)
+            animTarget = CGPointMake(0, cursorPosition.y + cursorPosition.x);
+        else
+            animTarget = CGPointMake(cursorPosition.x - (((UIWindow *)[self cursorWindow]).bounds.size.height - cursorPosition.y), ((UIWindow *)[self cursorWindow]).bounds.size.height);
+                
+        NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+        dist = (double)sqrt(pow(cursorPosition.x - animTarget.x, 2) + pow(cursorPosition.y - animTarget.y, 2));
+        dur = dist / CURSOR_PIXEL_PER_SECOND;
+        animation.toValue = [NSValue valueWithCGPoint:animTarget];
+        animation.duration = dur;
+            
+        [((UIView *)[self cursorView]).layer removeAllAnimations];
+        ((UIView *)[self cursorView]).layer.position = animTarget;
+        [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"down-left"];
+    }
+    else if (dir == (CURSOR_DIR_DOWN | CURSOR_DIR_RIGHT)) {
+    
+        if (((UIWindow *)[self cursorWindow]).bounds.size.height - cursorPosition.y >= (((UIWindow *)[self cursorWindow]).bounds.size.width - cursorPosition.x))
+            animTarget = CGPointMake(((UIWindow *)[self cursorWindow]).bounds.size.width, cursorPosition.y + (((UIWindow *)[self cursorWindow]).bounds.size.width - cursorPosition.x));
+        else
+            animTarget = CGPointMake(cursorPosition.x + (((UIWindow *)[self cursorWindow]).bounds.size.height - cursorPosition.y), ((UIWindow *)[self cursorWindow]).bounds.size.height);
+        
+        NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+        dist = (double)sqrt(pow(cursorPosition.x - animTarget.x, 2) + pow(cursorPosition.y - animTarget.y, 2));
+        dur = dist / CURSOR_PIXEL_PER_SECOND;
+        animation.toValue = [NSValue valueWithCGPoint:animTarget];
+        animation.duration = dur;
+        
+        [((UIView *)[self cursorView]).layer removeAllAnimations];
+        ((UIView *)[self cursorView]).layer.position = animTarget;
+        [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"down-right"];
+    }
 }
 
 %new
@@ -2348,23 +2533,41 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         NSLog(@"Cursor Pos: %@", NSStringFromCGPoint(cursorPosition));
 
         if (cursorPosition.x >= 1) {
+            
+            CGPoint animTarget;
+            double dist;
+            NSTimeInterval dur;
+            
+            if (!((NSNumber *)[self cursorAnimationExists]).boolValue) {
+                
+                animTarget = CGPointMake(0, cursorPosition.y);
+                NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+                dist = (double)cursorPosition.x;
+                dur = dist / CURSOR_PIXEL_PER_SECOND;
+                
+                CABasicAnimation *animation = [CABasicAnimation animation];
+                animation.keyPath = @"position";
+                animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
+                animation.toValue = [NSValue valueWithCGPoint:animTarget];
+                animation.duration = dur;
+                animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+                animation.additive = NO;
 
-            CGPoint animTarget = CGPointMake(0, cursorPosition.y);
-            NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
-            double dist = (double)cursorPosition.x;
-            NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
+                ((UIView *)[self cursorView]).layer.position = animTarget;
+                [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"left"];
 
-            //[CATransaction begin];
-            CABasicAnimation *animation = [CABasicAnimation animation];
-            animation.keyPath = @"position";
-            animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
-            animation.toValue = [NSValue valueWithCGPoint:animTarget];
-            animation.duration = dur;
-            animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
-            animation.additive = ((NSNumber *)[self cursorAnimationExists]).boolValue;
-            ((UIView *)[self cursorView]).layer.position = animTarget;
-            [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"left"];
-            //[CATransaction commit];
+            } else {
+                
+                if ([((UIView*)[self cursorView]).layer animationForKey:@"up"]) {
+                    cursorDir = (CURSOR_DIR_LEFT | CURSOR_DIR_UP);
+                    [self animateCursorInDirection:cursorDir];
+                }
+                
+                else if ([((UIView*)[self cursorView]).layer animationForKey:@"down"]) {
+                    cursorDir = (CURSOR_DIR_LEFT | CURSOR_DIR_DOWN);
+                    [self animateCursorInDirection:cursorDir];
+                }
+            }
             
             if ([self altDown]) {
                 if (draggingPossible && !draggingStarted) {
@@ -2566,12 +2769,21 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
     
-    if ([((UIView *)[self cursorView]).layer animationForKey:@"left"]) {
+    if (cursorShown) {
+        ((CALayer *)((UIView *)[self cursorView]).layer).position =
+        ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
+        cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
+        
+        cursorDir &= ~(CURSOR_DIR_LEFT);
+        [self animateCursorInDirection:cursorDir];
+    }
+    
+    /*if ([((UIView *)[self cursorView]).layer animationForKey:@"left"]) {
         [((UIView *)[self cursorView]).layer removeAnimationForKey:@"left"];
         ((CALayer *)((UIView *)[self cursorView]).layer).position = 
             ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
         cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
-    }
+    }*/
 }
 
 %new
@@ -2583,24 +2795,42 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
         if (cursorPosition.x < ((UIWindow *)[self cursorWindow]).bounds.size.width) {
             
-            CGPoint animTarget = CGPointMake(((UIWindow *)[self cursorWindow]).bounds.size.width, cursorPosition.y);
-            NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+            CGPoint animTarget;
+            double dist;
+            NSTimeInterval dur;
+            
+            if (!((NSNumber *)[self cursorAnimationExists]).boolValue) {
 
-            double dist = (double)((UIWindow *)[self cursorWindow]).bounds.size.width - (double)cursorPosition.x;
-            NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
-        
-            //[CATransaction begin];
-            CABasicAnimation *animation = [CABasicAnimation animation];
-            animation.keyPath = @"position";
-            animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
-            animation.toValue = [NSValue valueWithCGPoint:animTarget];
-            animation.duration = dur;
-            animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
-            animation.additive = ((NSNumber *)[self cursorAnimationExists]).boolValue;
-            ((UIView *)[self cursorView]).layer.position = animTarget;
-            [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"right"];
-            //[CATransaction commit];
+                animTarget = CGPointMake(((UIWindow *)[self cursorWindow]).bounds.size.width, cursorPosition.y);
+                double dist = (double)((UIWindow *)[self cursorWindow]).bounds.size.width - (double)cursorPosition.x;
+                NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
+                NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
 
+                CABasicAnimation *animation = [CABasicAnimation animation];
+                animation.keyPath = @"position";
+                animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
+                animation.toValue = [NSValue valueWithCGPoint:animTarget];
+                animation.duration = dur;
+                animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+                animation.additive = NO;
+                
+                ((UIView *)[self cursorView]).layer.position = animTarget;
+                [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"right"];
+                
+            } else {
+                
+                if ([((UIView*)[self cursorView]).layer animationForKey:@"up"]) {
+                    cursorDir = (CURSOR_DIR_RIGHT | CURSOR_DIR_UP);
+                    [self animateCursorInDirection:cursorDir];
+                }
+                
+                else if ([((UIView*)[self cursorView]).layer animationForKey:@"down"]) {
+                    cursorDir = (CURSOR_DIR_RIGHT | CURSOR_DIR_DOWN);
+                    [self animateCursorInDirection:cursorDir];
+                }
+                
+            }
+            
             if ([self altDown]) {
                 if (draggingPossible && !draggingStarted) {
                     DraggingThread *draggingThread = (DraggingThread *)[%c(DraggingThread) new];
@@ -2845,12 +3075,21 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
 
-    if ([((UIView *)[self cursorView]).layer animationForKey:@"right"]) {
+    if (cursorShown) {
+        ((CALayer *)((UIView *)[self cursorView]).layer).position =
+        ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
+        cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
+        
+        cursorDir &= ~(CURSOR_DIR_RIGHT);
+        [self animateCursorInDirection:cursorDir];
+    }
+    
+    /*if ([((UIView *)[self cursorView]).layer animationForKey:@"right"]) {
         [((UIView *)[self cursorView]).layer removeAnimationForKey:@"right"];
         ((CALayer *)((UIView *)[self cursorView]).layer).position = 
             ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
         cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
-    }
+    }*/
 }
 
 %new
@@ -2862,23 +3101,41 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         
         if (cursorPosition.y < ((UIWindow *)[self cursorWindow]).bounds.size.height) {
 
-            CGPoint animTarget = CGPointMake(cursorPosition.x, ((UIWindow *)[self cursorWindow]).bounds.size.height);
-            NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+            CGPoint animTarget;
+            double dist;
+            NSTimeInterval dur;
 
-            double dist = ((UIWindow *)[self cursorWindow]).bounds.size.height - (double)cursorPosition.y;
-            NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
-
-            //[CATransaction begin];
-            CABasicAnimation *animation = [CABasicAnimation animation];
-            animation.keyPath = @"position";
-            animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
-            animation.toValue = [NSValue valueWithCGPoint:animTarget];
-            animation.duration = dur;
-            animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
-            animation.additive = ((NSNumber *)[self cursorAnimationExists]).boolValue;
-            ((UIView *)[self cursorView]).layer.position = animTarget;
-            [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"down"];
-            //[CATransaction commit];
+            if (!((NSNumber *)[self cursorAnimationExists]).boolValue) {
+            
+                animTarget = CGPointMake(cursorPosition.x, ((UIWindow *)[self cursorWindow]).bounds.size.height);
+                double dist = ((UIWindow *)[self cursorWindow]).bounds.size.height - (double)cursorPosition.y;
+                NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
+                NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+                
+                CABasicAnimation *animation = [CABasicAnimation animation];
+                animation.keyPath = @"position";
+                animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
+                animation.toValue = [NSValue valueWithCGPoint:animTarget];
+                animation.duration = dur;
+                animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+                animation.additive = NO;
+                
+                ((UIView *)[self cursorView]).layer.position = animTarget;
+                [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"down"];
+                
+            }
+            else {
+                
+                if ([((UIView*)[self cursorView]).layer animationForKey:@"left"]) {
+                    cursorDir = (CURSOR_DIR_DOWN | CURSOR_DIR_LEFT);
+                    [self animateCursorInDirection:cursorDir];
+                }
+                
+                else if ([((UIView*)[self cursorView]).layer animationForKey:@"right"]) {
+                    cursorDir = (CURSOR_DIR_DOWN | CURSOR_DIR_RIGHT);
+                    [self animateCursorInDirection:cursorDir];
+                }
+            }
 
             if ([self altDown]) {
                 if (draggingPossible && !draggingStarted) {
@@ -3112,12 +3369,21 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
 
-    if ([((UIView *)[self cursorView]).layer animationForKey:@"down"]) {
+    if (cursorShown) {
+        ((CALayer *)((UIView *)[self cursorView]).layer).position =
+        ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
+        cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
+        
+        cursorDir &= ~(CURSOR_DIR_DOWN);
+        [self animateCursorInDirection:cursorDir];
+    }
+    
+    /*if ([((UIView *)[self cursorView]).layer animationForKey:@"down"]) {
         [((UIView *)[self cursorView]).layer removeAnimationForKey:@"down"];
         ((CALayer *)((UIView *)[self cursorView]).layer).position = 
             ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
         cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
-    }
+    }*/
 }
 
 %new
@@ -3126,26 +3392,44 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
         cursorPosition = [((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer) position];
         NSLog(@"Cursor Pos: %@", NSStringFromCGPoint(cursorPosition));
-
+        
         if (cursorPosition.y > 0) {
             
-            CGPoint animTarget = CGPointMake(cursorPosition.x, 0);
-            NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
-
-            double dist = cursorPosition.y;
-            NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
-
-            //[CATransaction begin];
-            CABasicAnimation *animation = [CABasicAnimation animation];
-            animation.keyPath = @"position";
-            animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
-            animation.toValue = [NSValue valueWithCGPoint:animTarget];
-            animation.duration = dur;
-            animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
-            animation.additive = ((NSNumber *)[self cursorAnimationExists]).boolValue;
-            ((UIView *)[self cursorView]).layer.position = animTarget;
-            [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"up"];
-            //[CATransaction commit];
+            CGPoint animTarget;
+            double dist;
+            NSTimeInterval dur;
+            
+            if (!((NSNumber *)[self cursorAnimationExists]).boolValue) {
+                
+                animTarget = CGPointMake(cursorPosition.x, 0);
+                double dist = cursorPosition.y;
+                NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
+                NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+                
+                CABasicAnimation *animation = [CABasicAnimation animation];
+                animation.keyPath = @"position";
+                animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
+                animation.toValue = [NSValue valueWithCGPoint:animTarget];
+                animation.duration = dur;
+                animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+                animation.additive = NO;
+                
+                ((UIView *)[self cursorView]).layer.position = animTarget;
+                [((UIView *)[self cursorView]).layer addAnimation:animation forKey:@"up"];
+                
+            }
+            else {
+                
+                if ([((UIView*)[self cursorView]).layer animationForKey:@"left"]) {
+                    cursorDir = (CURSOR_DIR_UP | CURSOR_DIR_LEFT);
+                    [self animateCursorInDirection:cursorDir];
+                }
+                
+                else if ([((UIView*)[self cursorView]).layer animationForKey:@"right"]) {
+                    cursorDir = (CURSOR_DIR_UP | CURSOR_DIR_RIGHT);
+                    [self animateCursorInDirection:cursorDir];
+                }
+            }
 
             if ([self altDown]) {
                 if (draggingPossible && !draggingStarted) {
@@ -3382,12 +3666,21 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
 
-    if ([((UIView *)[self cursorView]).layer animationForKey:@"up"]) {
+    if (cursorShown) {
+        ((CALayer *)((UIView *)[self cursorView]).layer).position =
+        ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
+        cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
+        
+        cursorDir &= ~(CURSOR_DIR_UP);
+        [self animateCursorInDirection:cursorDir];
+    }
+    
+    /*if ([((UIView *)[self cursorView]).layer animationForKey:@"up"]) {
         [((UIView *)[self cursorView]).layer removeAnimationForKey:@"up"];
         ((CALayer *)((UIView *)[self cursorView]).layer).position = 
             ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
         cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
-    }
+    }*/
 }
 
 %new
