@@ -15,7 +15,12 @@
 #import <SpringBoard/SBFolder.h>
 #import <SpringBoard/SBFolderView.h>
 #import <QuartzCore/QuartzCore.h>
-#import "PTFakeTouch.h"
+#import "FixCategoryBug.h"
+#import "additions/IOHIDEvent+KIF.h"
+#import "additions/IOHIDEvent+KIF.m"
+#import "additions/UIApplication-KIFAdditions.h"
+#import "additions/UIEvent+KIFAdditions.h"
+#import "additions/UITouch-KIFAdditions.h"
 
 #define DegreesToRadians(x) ((x) * M_PI / 180.0)
 #define SWITCHER_HEIGHT 140
@@ -25,6 +30,7 @@
 #define CORNER_RADIUS 20
 #define CORNER_RADIUS_OVERLAY 10
 #define OVERLAY_SIZE 125
+#define CURSOR_RADIUS 20
 
 #define SWITCHER_IOS9_MODE 1
 #define SWITCHER_IOS8_MODE 0
@@ -71,6 +77,10 @@
 #define CURSOR_DIR_LEFT 1 << 2
 #define CURSOR_DIR_RIGHT 1 << 3
 #define DRAGGING_SLEEP_TIME 0.005
+#define CURSOR_MAX_OPACITY 1.0
+#define CURSOR_FADE_TIME 0.5
+#define CURSOR_FADE_DELAY 1.0
+#define FORCE_TOUCH_SLEEP_TIME 0.1
 
 #define SBFOLDER_ICONS_DEFAULT_X 3
 #define SBFOLDER_ICONS_DEFAULT_Y 3
@@ -169,6 +179,9 @@ SBApplicationIcon *selectedSBIconInOpenedFolder;
 CGPoint cursorPosition;
 NSInteger pointID;
 unsigned int cursorDir;
+NSTimer *forceTouchTimer;
+int currentForce;
+UITouch *currentTouch;
 
 static void postKeyEventNotification(int key, int down, int page) {
     CFStringRef notificationName = (CFStringRef)(@"KeyEventNotification");
@@ -195,6 +208,10 @@ static void postKeyEventNotification(int key, int down, int page) {
 
 %hookf(void, handle_event, void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {
     //NSDebug(@"handle_event : %d", IOHIDEventGetType(event));
+    /*if (service && event && IOHIDEventGetType(event) == kIOHIDEventTypeDigitizer) {
+        NSLog(@"Pressure: %f", IOHIDEventGetFloatValue(event, kIOHIDEventFieldDigitizerPressure));
+    }
+    else */
     if (service && event && IOHIDEventGetType(event) == kIOHIDEventTypeKeyboard) {
         int usagePage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsagePage);
         int usage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage);
@@ -489,6 +506,39 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %end
 
+%subclass PeekThread : NSThread
+
+- (void)main {
+    if (![self isCancelled]) {
+        UIApplication *app = [UIApplication sharedApplication];
+        dispatch_sync(dispatch_get_main_queue(), ^(void) {
+            [app beginForceTouchAtPoint:cursorPosition];
+        });
+        [NSThread sleepForTimeInterval:0.05];
+        dispatch_sync(dispatch_get_main_queue(), ^(void) {
+            [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:200.0];
+        });
+        [NSThread sleepForTimeInterval:0.05];
+        dispatch_sync(dispatch_get_main_queue(), ^(void) {
+            [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:300.0];
+        });
+        [NSThread sleepForTimeInterval:0.05];
+        dispatch_sync(dispatch_get_main_queue(), ^(void) {
+            [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:350.0];
+        });
+        [NSThread sleepForTimeInterval:0.05];
+        dispatch_sync(dispatch_get_main_queue(), ^(void) {
+            [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:400.0];
+        });
+        /*[NSThread sleepForTimeInterval:0.05];
+        dispatch_sync(dispatch_get_main_queue(), ^(void) {
+            [app endCurrentTouchAtPoint:cursorPosition];
+        });*/
+    }
+}
+
+%end
+
 /*
 %subclass HighlightThread : NSThread
 
@@ -559,7 +609,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 /*
 - (void)sendEvent:(UIEvent *)event {
     %orig();
-    %log();
+    if (event.type == UIEventTypeTouches) {
+        for (UITouch *t in event.allTouches) {
+            NSLog(@"Phase: %i  Force: %f isTap: %i hFU %i, nFU %i hid force: %f", t.phase, t.force, [t isTap], [t _hasForceUpdate], [t _needsForceUpdate], IOHIDEventGetFloatValue((IOHIDEventRef)[t _hidEvent], kIOHIDEventFieldDigitizerPressure));
+        }
+    }
 }
 */
 - (BOOL)canBecomeFirstResponder {
@@ -1554,8 +1608,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             ((UIWindow *)window).userInteractionEnabled = YES;
             //window.backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.3];
 
-            UIView *cursorView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 40, 40)];
-            cursorView.layer.cornerRadius = 20;
+            UIView *cursorView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, CURSOR_RADIUS * 2, CURSOR_RADIUS * 2)];
+            cursorView.layer.cornerRadius = CURSOR_RADIUS;
             cursorView.clipsToBounds = YES;
             cursorView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.3];
             cursorView.layer.borderColor = [UIColor whiteColor].CGColor;
@@ -1591,6 +1645,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             cursorShown = YES;
         } else {
             [(UIWindow *)[self cursorWindow] setHidden:NO];
+            ((UIView *)[self cursorView]).alpha = CURSOR_MAX_OPACITY;
             cursorShown = YES;
         }
     }
@@ -1599,7 +1654,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)ctrlKeyUp {
     [self setCtrlDown:nil];
-    NSDebug(@"CTRL UP");
 
     if ([self cursorWindow]) {
         [(UIWindow *)[self cursorWindow] setHidden:YES];
@@ -1610,29 +1664,62 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)altKeyDown {
     [self setAltDown:[NSNull null]];
-    pointID = [PTFakeMetaTouch getAvailablePointId];
-    [PTFakeMetaTouch fakeTouchId:pointID AtPoint:cursorPosition withTouchPhase:UITouchPhaseBegan];
-    draggingPossible = YES;
-    NSTimer *draggingTimer = [NSTimer scheduledTimerWithTimeInterval:DRAGGING_SLEEP_TIME target:self selector:@selector(draggingUpdate) userInfo:nil repeats:YES];
-    [self setDraggingTimer:draggingTimer];
-    draggingStarted = YES;
+    if (!cursorShown && [self cursorWindow] && [self isActive]) {
+        [(UIWindow *)[self cursorWindow] setHidden:NO];
+        ((UIView *)[self cursorView]).alpha = CURSOR_MAX_OPACITY;
+    }
+    if ([self shiftDown] && [self isActive]) {
+        //NSTimer *popTimer = [NSTimer scheduledTimerWithTimeInterval:2 target:self selector:@selector(popForceTouch) userInfo:nil repeats:NO];
+        //[PTFakeMetaTouch fake3DTouchId:pointID AtPoint:cursorPosition withTouchPhase:UITouchPhaseEnded andForce:400.0];
+        //[self simulateForceTouchAtPoint:cursorPosition withPointID:pointID];*/
+        PeekThread *peekThread = [%c(PeekThread) new];
+        [peekThread start];
+        /*[self beginForceTouchAtPoint:cursorPosition];
+        [self updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:200.0];
+        [self updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:300.0];
+        [self updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:350.0];
+        [self updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:399.0];*/
+        //[self endCurrentTouchAtPoint:cursorPosition];
+    } else {
+        [self beginTouchAtPoint:cursorPosition];
+        NSTimer *draggingTimer = [NSTimer scheduledTimerWithTimeInterval:DRAGGING_SLEEP_TIME target:self selector:@selector(draggingUpdate) userInfo:nil repeats:YES];
+        [self setDraggingTimer:draggingTimer];
+    }
 }
 
 %new
 - (void)altKeyUp {
     [self setAltDown:nil];
-    draggingPossible = NO;
-    if (draggingStarted) {
-        [[self draggingTimer] invalidate];
-        draggingStarted = NO;
+    if ([self isActive]) {
+        if (!cursorShown && [self cursorWindow]) {
+            NSTimer *cursorFadeoutTimer = [NSTimer scheduledTimerWithTimeInterval:CURSOR_FADE_DELAY target:self selector:@selector(fadeoutCursor) userInfo:nil repeats:NO];
+        }
+        if ([self draggingTimer]) {
+            [[self draggingTimer] invalidate];
+            [self setDraggingTimer:nil];
+        }
+        if ([self shiftDown]) {
+            [self endCurrentTouchAtPoint:cursorPosition];
+        } else {
+            [self endCurrentTouchAtPoint:cursorPosition];
+        }
     }
-    [PTFakeMetaTouch fakeTouchId:pointID AtPoint:cursorPosition withTouchPhase:UITouchPhaseEnded];
+}
+
+%new
+- (void)fadeoutCursor {
+    [UIView animateWithDuration:CURSOR_FADE_TIME animations:^{
+        ((UIView *)[self cursorView]).alpha = 0.0;
+    } completion:^(BOOL completed){
+        [(UIWindow *)[self cursorWindow] setHidden:YES];
+    }];
 }
 
 %new
 - (void)draggingUpdate {
     CGPoint intermediatePoint = [((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer) position];
-    [PTFakeMetaTouch fakeTouchId:pointID AtPoint:intermediatePoint withTouchPhase:cursorDir ? UITouchPhaseMoved : UITouchPhaseStationary];
+    [self updateCurrentTouchAtPoint:intermediatePoint withPhase:cursorDir ? UITouchPhaseMoved : UITouchPhaseStationary];
+    //[PTFakeMetaTouch fake3DTouchId:pointID AtPoint:intermediatePoint withTouchPhase:cursorDir ? UITouchPhaseMoved : UITouchPhaseStationary];
 }
 
 %new
@@ -1807,6 +1894,64 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)shiftKeyUp {
     [self setShiftDown:nil];
+}
+
+%new
+- (void)sendTouch:(UITouch *)touch {
+    if (!touch) return;
+    UIEvent *event = [[UIApplication sharedApplication] _touchesEvent];
+    [event _clearTouches];
+    [event kif_setEventWithTouches:@[touch]];
+    [event _addTouch:touch forDelayedDelivery:NO];
+    [[UIApplication sharedApplication] sendEvent:event];
+}
+
+%new
+- (void)beginTouchAtPoint:(CGPoint)loc {
+    // init touch
+    currentTouch = [[UITouch alloc] initAtPoint:loc inWindow:[UIApplication sharedApplication].keyWindow];
+    [currentTouch setLocationInWindow:loc];
+    [self sendTouch:currentTouch];
+}
+
+%new
+- (void)beginForceTouchAtPoint:(CGPoint)loc {
+    // init touch
+    currentTouch = [[UITouch alloc] initAtPoint:loc inWindow:[UIApplication sharedApplication].keyWindow withForce:0.0];
+    [currentTouch setLocationInWindow:loc];
+    IOHIDEventSetFloatValue((IOHIDEventRef)[currentTouch _hidEvent],
+                            kIOHIDEventFieldDigitizerPressure, 0.0);
+    [self sendTouch:currentTouch];
+}
+
+%new
+- (void)updateCurrentTouchAtPoint:(CGPoint)loc withPhase:(UITouchPhase)phase {
+    if (!currentTouch) return;
+    [currentTouch _setLocationInWindow:loc resetPrevious:NO];
+    [currentTouch setTimestamp:[[NSProcessInfo processInfo] systemUptime]];
+    [currentTouch setPhase:phase];
+    [self sendTouch:currentTouch];
+}
+
+%new
+- (void)updateCurrentForceTouchAtPoint:(CGPoint)loc withPhase:(UITouchPhase)phase andForce:(double)force {
+    if (!currentTouch) return;
+    [currentTouch _setLocationInWindow:loc resetPrevious:NO];
+    [currentTouch setTimestamp:[[NSProcessInfo processInfo] systemUptime]];
+    [currentTouch setPhase:phase];
+    [currentTouch _setPressure:force resetPrevious:YES];
+    IOHIDEventSetFloatValue((IOHIDEventRef)[currentTouch _hidEvent],
+                            kIOHIDEventFieldDigitizerPressure, force);
+    [self sendTouch:currentTouch];
+}
+
+%new
+- (void)endCurrentTouchAtPoint:(CGPoint)loc {
+    if (!currentTouch) return;
+    [currentTouch _setLocationInWindow:loc resetPrevious:NO];
+    [currentTouch setTimestamp:[[NSProcessInfo processInfo] systemUptime]];
+    [currentTouch setPhase:UITouchPhaseEnded];
+    [self sendTouch:currentTouch];
 }
 
 %new
