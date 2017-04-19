@@ -7,11 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		800C563F1E97DC7300FEC455 /* PTFakeTouch.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 800C563E1E97DC7300FEC455 /* PTFakeTouch.framework */; };
-		800C56421E97DCB100FEC455 /* PTFakeTouch.h in Headers */ = {isa = PBXBuildFile; fileRef = 800C56411E97DCB100FEC455 /* PTFakeTouch.h */; };
-		800C56471E97DCE400FEC455 /* FixCategoryBug.h in Headers */ = {isa = PBXBuildFile; fileRef = 800C56441E97DCE400FEC455 /* FixCategoryBug.h */; };
-		800C56481E97DCE400FEC455 /* PTFakeMetaTouch.h in Headers */ = {isa = PBXBuildFile; fileRef = 800C56451E97DCE400FEC455 /* PTFakeMetaTouch.h */; };
-		800C56491E97DCE400FEC455 /* PTFakeMetaTouch.m in Sources */ = {isa = PBXBuildFile; fileRef = 800C56461E97DCE400FEC455 /* PTFakeMetaTouch.m */; };
+		8078BDFF1EA7C288001C04A7 /* FixCategoryBug.h in Headers */ = {isa = PBXBuildFile; fileRef = 8078BDFE1EA7C288001C04A7 /* FixCategoryBug.h */; };
+		8078BE031EA7C78B001C04A7 /* UITouch-KIFAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = 8078BE011EA7C78B001C04A7 /* UITouch-KIFAdditions.m */; };
+		8078BE041EA7C78B001C04A7 /* UIEvent+KIFAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = 8078BE021EA7C78B001C04A7 /* UIEvent+KIFAdditions.m */; };
 		807B4F721CA332A90009CFE1 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 374F11CC1C21C6320070747D /* Foundation.framework */; };
 		807B4F831CA332A90009CFE1 /* Molar.mm in Sources */ = {isa = PBXBuildFile; fileRef = 807B4F821CA332A90009CFE1 /* Molar.mm */; };
 		807B4F8B1CA3348B0009CFE1 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222771C22302C004D8F68 /* CoreGraphics.framework */; };
@@ -39,15 +37,13 @@
 		37D222751C21E56E004D8F68 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		37D222771C22302C004D8F68 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		800BA7E61CA0517100FEE37C /* libapplist.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libapplist.dylib; path = ../../../../opt/theos/lib/libapplist.dylib; sourceTree = "<group>"; };
-		800C563E1E97DC7300FEC455 /* PTFakeTouch.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PTFakeTouch.framework; path = Molar/PTFakeTouch.framework; sourceTree = "<group>"; };
-		800C56411E97DCB100FEC455 /* PTFakeTouch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = PTFakeTouch.h; path = "../../Downloads/PTFakeTouch-master/PTFakeTouch/PTFakeTouch.h"; sourceTree = "<group>"; };
-		800C56431E97DCE400FEC455 /* addition */ = {isa = PBXFileReference; lastKnownFileType = folder; name = addition; path = "../../Downloads/PTFakeTouch-master/PTFakeTouch/addition"; sourceTree = "<group>"; };
-		800C56441E97DCE400FEC455 /* FixCategoryBug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FixCategoryBug.h; path = "../../Downloads/PTFakeTouch-master/PTFakeTouch/FixCategoryBug.h"; sourceTree = "<group>"; };
-		800C56451E97DCE400FEC455 /* PTFakeMetaTouch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = PTFakeMetaTouch.h; path = "../../Downloads/PTFakeTouch-master/PTFakeTouch/PTFakeMetaTouch.h"; sourceTree = "<group>"; };
-		800C56461E97DCE400FEC455 /* PTFakeMetaTouch.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = PTFakeMetaTouch.m; path = "../../Downloads/PTFakeTouch-master/PTFakeTouch/PTFakeMetaTouch.m"; sourceTree = "<group>"; };
 		804844F21D5DF0DA000FD6A0 /* SpringBoard */ = {isa = PBXFileReference; lastKnownFileType = folder; path = SpringBoard; sourceTree = "<group>"; };
 		807516341CA33D7100D19C0D /* libactivator */ = {isa = PBXFileReference; lastKnownFileType = folder; path = libactivator; sourceTree = "<group>"; };
 		807516381CA34A5500D19C0D /* PreferenceBundles */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PreferenceBundles; path = Package/Library/PreferenceBundles; sourceTree = "<group>"; };
+		8078BDFD1EA7BF92001C04A7 /* additions */ = {isa = PBXFileReference; lastKnownFileType = folder; path = additions; sourceTree = "<group>"; };
+		8078BDFE1EA7C288001C04A7 /* FixCategoryBug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FixCategoryBug.h; sourceTree = "<group>"; };
+		8078BE011EA7C78B001C04A7 /* UITouch-KIFAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITouch-KIFAdditions.m"; path = "Molar/additions/UITouch-KIFAdditions.m"; sourceTree = "<group>"; };
+		8078BE021EA7C78B001C04A7 /* UIEvent+KIFAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UIEvent+KIFAdditions.m"; path = "Molar/additions/UIEvent+KIFAdditions.m"; sourceTree = "<group>"; };
 		807B4F711CA332A90009CFE1 /* Molar.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = Molar.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		807B4F771CA332A90009CFE1 /* control */ = {isa = PBXFileReference; lastKnownFileType = text; name = control; path = Package/DEBIAN/control; sourceTree = "<group>"; };
 		807B4F791CA332A90009CFE1 /* PackageVersion.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PackageVersion.plist; sourceTree = "<group>"; };
@@ -82,7 +78,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				800C563F1E97DC7300FEC455 /* PTFakeTouch.framework in Frameworks */,
 				807B4F8F1CA334A80009CFE1 /* libactivator.dylib in Frameworks */,
 				807B4F901CA334AB0009CFE1 /* libapplist.dylib in Frameworks */,
 				807B4F911CA334AE0009CFE1 /* libsubstrate.dylib in Frameworks */,
@@ -114,12 +109,8 @@
 		374F11BE1C21C6320070747D = {
 			isa = PBXGroup;
 			children = (
-				800C56431E97DCE400FEC455 /* addition */,
-				800C56441E97DCE400FEC455 /* FixCategoryBug.h */,
-				800C56451E97DCE400FEC455 /* PTFakeMetaTouch.h */,
-				800C56461E97DCE400FEC455 /* PTFakeMetaTouch.m */,
-				800C56411E97DCB100FEC455 /* PTFakeTouch.h */,
-				800C563E1E97DC7300FEC455 /* PTFakeTouch.framework */,
+				8078BE011EA7C78B001C04A7 /* UITouch-KIFAdditions.m */,
+				8078BE021EA7C78B001C04A7 /* UIEvent+KIFAdditions.m */,
 				808D65651E79EAAB0013D490 /* Entitlements.plist */,
 				807B4F731CA332A90009CFE1 /* Molar */,
 				80B172C91CA33B4300F60552 /* MolarSettings */,
@@ -158,6 +149,8 @@
 		807B4F731CA332A90009CFE1 /* Molar */ = {
 			isa = PBXGroup;
 			children = (
+				8078BDFE1EA7C288001C04A7 /* FixCategoryBug.h */,
+				8078BDFD1EA7BF92001C04A7 /* additions */,
 				804844F21D5DF0DA000FD6A0 /* SpringBoard */,
 				807B4F8A1CA332F00009CFE1 /* IOKit */,
 				807B4F811CA332A90009CFE1 /* Molar.xm */,
@@ -357,9 +350,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				800C56481E97DCE400FEC455 /* PTFakeMetaTouch.h in Headers */,
-				800C56421E97DCB100FEC455 /* PTFakeTouch.h in Headers */,
-				800C56471E97DCE400FEC455 /* FixCategoryBug.h in Headers */,
+				8078BDFF1EA7C288001C04A7 /* FixCategoryBug.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -511,8 +502,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8078BE031EA7C78B001C04A7 /* UITouch-KIFAdditions.m in Sources */,
+				8078BE041EA7C78B001C04A7 /* UIEvent+KIFAdditions.m in Sources */,
 				807B4F831CA332A90009CFE1 /* Molar.mm in Sources */,
-				800C56491E97DCE400FEC455 /* PTFakeMetaTouch.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -606,6 +598,7 @@
 					"$(PROJECT_DIR)",
 					"$(PROJECT_DIR)/Molar",
 				);
+				OTHER_LDFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Molar/**";
 				iOSOpenDevBuildPackageOnAnyBuild = YES;
@@ -640,6 +633,7 @@
 					"$(PROJECT_DIR)",
 					"$(PROJECT_DIR)/Molar",
 				);
+				OTHER_LDFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Molar/**";
 				iOSOpenDevBuildPackageOnAnyBuild = YES;

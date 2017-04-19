@@ -6,6 +6,9 @@
 //  Copyright © 2016年 PugaTang. All rights reserved.
 //
 
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+
 typedef struct __IOHIDEvent *IOHIDEventRef;
 IOHIDEventRef kif_IOHIDEventWithTouches(NSArray *touches) CF_RETURNS_RETAINED;
 IOHIDEventRef kif_IOHIDEventWith3DTouches(NSArray *touches,

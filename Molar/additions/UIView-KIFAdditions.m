@@ -104,7 +104,7 @@ NS_INLINE BOOL StringsMatchExceptLineBreaks(NSString *expected, NSString *actual
             accessibilityValue = element.accessibilityValue;
         }
         @catch (NSException *exception) {
-            DLog(@"KIF: Unable to access accessibilityValue for element %@ because of exception: %@", element, exception.reason);
+            NSLog(@"KIF: Unable to access accessibilityValue for element %@ because of exception: %@", element, exception.reason);
         }
         
         if ([accessibilityValue isKindOfClass:[NSAttributedString class]]) {
