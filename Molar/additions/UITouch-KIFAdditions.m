@@ -52,15 +52,12 @@ typedef struct {
 
     [self setView:hitTestView];
     [self setPhase:UITouchPhaseBegan];
-    NSLog(@"initAtPoint setPhase 0");
     [self _setIsFirstTouchForView:YES];
     [self setIsTap:NO];
     [self setTimestamp:[[NSProcessInfo processInfo] systemUptime]];
     if ([self respondsToSelector:@selector(setGestureView:)]) {
         [self setGestureView:hitTestView];
     }
-    NSLog(@"Supports force: %i, force: %f", [self _supportsForce],
-          [self force]);
 
     // Starting with iOS 9, internal IOHIDEvent must be set for UITouch object
     NSOperatingSystemVersion iOS9 = {9, 0, 0};
@@ -93,7 +90,6 @@ typedef struct {
 
     [self setView:hitTestView];
     [self setPhase:UITouchPhaseBegan];
-    NSLog(@"initAtPoint setPhase 0");
     [self _setIsFirstTouchForView:YES];
     [self setIsTap:NO];
     [self setTimestamp:[[NSProcessInfo processInfo] systemUptime]];
@@ -105,8 +101,7 @@ typedef struct {
     if ([self respondsToSelector:@selector(setGestureView:)]) {
         [self setGestureView:hitTestView];
     }
-    NSLog(@"Supports force: %i, force: %f", [self _supportsForce],
-          [self force]);
+
     // Starting with iOS 9, internal IOHIDEvent must be set for UITouch object
     NSOperatingSystemVersion iOS9 = {9, 0, 0};
     if ([NSProcessInfo
