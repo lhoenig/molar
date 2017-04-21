@@ -48,7 +48,13 @@ Cmd-Shift-R: Reload Table
 Left, Right: Change Slider
 
 Hold Cmd: Open Key Sheet
-</string>
+
+Cursor
+Hold Ctrl: Show Cursor
+Arrow Keys: Move Cursor
+Alt: Tap at current Cursor position
+Hold Alt: Tap and Hold (to drag icons on the homescreenfor example)
+Shift-Alt: Force Touch</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -105,6 +111,112 @@ Hold Cmd: Open Key Sheet
 			<string>Key Sheet</string>
 			<key>PostNotification</key>
 			<string>de.hoenig.molar-preferencesChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>de.hoenig.molar</string>
+			<key>key</key>
+			<string>cursorEnabled</string>
+			<key>label</key>
+			<string>Cursor</string>
+			<key>PostNotification</key>
+			<string>de.hoenig.molar-preferencesChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>isStaticText</key>
+			<true/>
+			<key>label</key>
+			<string>Cursor Speed</string>
+		</dict>
+		<dict>
+			<key>isSegmented</key>
+			<false/>
+			<key>showValue</key>
+			<true/>
+			<key>max</key>
+			<integer>15</integer>
+			<key>min</key>
+			<integer>1</integer>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>default</key>
+			<integer>5</integer>
+			<key>defaults</key>
+			<string>de.hoenig.molar</string>
+			<key>key</key>
+			<string>cursorSpeed</string>
+			<key>PostNotification</key>
+			<string>de.hoenig.molar-preferencesChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>isStaticText</key>
+			<true/>
+			<key>label</key>
+			<string>Cursor Size</string>
+		</dict>
+		<dict>
+			<key>isSegmented</key>
+			<false/>
+			<key>showValue</key>
+			<true/>
+			<key>max</key>
+			<integer>80</integer>
+			<key>min</key>
+			<integer>12</integer>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>default</key>
+			<integer>40</integer>
+			<key>defaults</key>
+			<string>de.hoenig.molar</string>
+			<key>key</key>
+			<string>cursorSize</string>
+			<key>PostNotification</key>
+			<string>de.hoenig.molar-preferencesChanged</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>isStaticText</key>
+			<true/>
+			<key>label</key>
+			<string>Cursor Type</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>defaults</key>
+			<string>de.hoenig.molar</string>
+			<key>default</key>
+			<string>type2</string>
+			<key>key</key>
+			<string>cursorType</string>
+			<key>label</key>
+			<string>Cursor Type</string>
+			<key>PostNotification</key>
+			<string>de.hoenig.molar-preferencesChanged</string>
+			<key>validValues</key>
+			<array>
+				<string>type1</string>
+				<string>type2</string>
+				<string>type3</string>
+			</array>
+			<key>validTitles</key>
+			<array>
+				<string>Circle</string>
+				<string>Bordered Circle</string>
+				<string>Mouse Pointer</string>
+			</array>
 		</dict>
 		<dict>
 			<key>cell</key>

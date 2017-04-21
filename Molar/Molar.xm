@@ -30,7 +30,6 @@
 #define CORNER_RADIUS 20
 #define CORNER_RADIUS_OVERLAY 10
 #define OVERLAY_SIZE 125
-#define CURSOR_RADIUS 20
 
 #define SWITCHER_IOS9_MODE 1
 #define SWITCHER_IOS8_MODE 0
@@ -107,6 +106,7 @@ BOOL darkMode,
      controlEnabled,
      keySheetEnabled,
      launcherEnabled,
+     cursorEnabled,
      switcherOpenedInLandscape,
      sliderMode,
      tableViewMode,
@@ -176,6 +176,9 @@ SBFolder *selectedSBFolder;
 id selectedSBIcon;
 SBApplicationIcon *selectedSBIconInOpenedFolder;
 
+NSString *cursorType, *cachedCursorType;
+NSNumber *cursorSize, *cursorSpeed;
+NSNumber *cachedCursorSize;
 CGPoint cursorPosition;
 NSInteger pointID;
 unsigned int cursorDir;
@@ -253,6 +256,7 @@ static void loadPrefs() {
     CFPropertyListRef cf_appControlEnabled =  CFPreferencesCopyAppValue(CFSTR("appControlEnabled"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_keySheetEnabled =    CFPreferencesCopyAppValue(CFSTR("keySheetEnabled"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_launcherEnabled =    CFPreferencesCopyAppValue(CFSTR("launcherEnabled"), CFSTR("de.hoenig.molar"));
+    CFPropertyListRef cf_cursorEnabled =      CFPreferencesCopyAppValue(CFSTR("cursorEnabled"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_darkMode =           CFPreferencesCopyAppValue(CFSTR("darkMode"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_hideLabels =         CFPreferencesCopyAppValue(CFSTR("hideLabels"), CFSTR("de.hoenig.molar"));
 
@@ -267,16 +271,22 @@ static void loadPrefs() {
     launcherApp9 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp9"), CFSTR("de.hoenig.molar"));
     launcherApp0 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp0"), CFSTR("de.hoenig.molar"));
 
+    cursorType = (NSString *)CFPreferencesCopyAppValue(CFSTR("cursorType"), CFSTR("de.hoenig.molar"));
+    cursorSpeed = (__bridge NSNumber *)CFPreferencesCopyAppValue(CFSTR("cursorSpeed"), CFSTR("de.hoenig.molar"));
+    cursorSize = (__bridge NSNumber *)CFPreferencesCopyAppValue(CFSTR("cursorSize"), CFSTR("de.hoenig.molar"));
+    
     enabled = !cf_enabled ? YES : (cf_enabled == kCFBooleanTrue);
     switcherEnabled = !cf_appSwitcherEnabled ? YES : (cf_appSwitcherEnabled == kCFBooleanTrue);
     controlEnabled = !cf_appControlEnabled ? YES : (cf_appControlEnabled == kCFBooleanTrue);
     keySheetEnabled = !cf_keySheetEnabled ? YES : (cf_keySheetEnabled == kCFBooleanTrue);
     launcherEnabled = !cf_launcherEnabled ? YES : (cf_launcherEnabled == kCFBooleanTrue);
+    cursorEnabled = !cf_cursorEnabled ? YES : (cf_cursorEnabled == kCFBooleanTrue);
     darkMode = !cf_darkMode ? YES : (cf_darkMode == kCFBooleanTrue);
     hideLabels = !cf_hideLabels ? YES : (cf_hideLabels == kCFBooleanTrue);
 
-    //NSDebug(@"NSUD CE: %i", [[[[NSUserDefaults standardUserDefaults] persistentDomainForName:@"de.hoenig.molar"] objectForKey:@"appControlEnabled"] boolValue]);
-
+    //NSDebug(@"NSUD ct: %@", [[[NSUserDefaults standardUserDefaults] persistentDomainForName:@"de.hoenig.molar"] objectForKey:@"cursorType"]);
+    NSDebug(@"loadPrefs: enabled: %i", enabled);
+    
     customShortcuts = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcuts"), CFSTR("de.hoenig.molar")));
 
     [[NSNotificationCenter defaultCenter] postNotificationName:@"ReloadShortcutsNotification" object:nil];
@@ -289,7 +299,8 @@ static void loadPrefs() {
         CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
         if (CFNotificationCenterGetDistributedCenter) {
             NSDictionary *settings = @{@"enabled": [NSNumber numberWithInt:enabled], 
-                                       @"controlEnabled": [NSNumber numberWithInt:controlEnabled]};
+                                       @"controlEnabled": [NSNumber numberWithInt:controlEnabled],
+                                       @"darkMode": [NSNumber numberWithInt:darkMode]};
             CFNotificationCenterPostNotification(CFNotificationCenterGetDistributedCenter(),
                                                  notificationName,
                                                  NULL,
@@ -305,7 +316,7 @@ static void loadPrefs() {
                                                  NULL,
                                                  NULL,
                                                  YES);
-    }
+        }
     }
 }
 
@@ -466,7 +477,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                 CFSTR("HideSwitcherNotification"),
                                 NULL,
                                 CFNotificationSuspensionBehaviorCoalesce);
-            if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
+            if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"] ||
+                [[[UIDevice currentDevice] systemVersion] hasPrefix:@"9"]) {
                 CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
                                 NULL,
                                 (CFNotificationCallback)postPrefsToUserAppsNotification,
@@ -474,7 +486,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                 NULL,
                                 CFNotificationSuspensionBehaviorCoalesce);
             }
-        } else if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
+        } else { //if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
             CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
                                         NULL,
                                         (CFNotificationCallback)reloadPrefsUserApp,
@@ -496,6 +508,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     switcherMode = numThreads = 0;
 
     cursorPosition = CGPointMake(-1, -1);
+
+    cachedCursorSize = 0;
+    cachedCursorType = nil;
 }
 
 %subclass NoTouchWindow : UIWindow
@@ -779,7 +794,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     CGRect bounds = [[UIScreen mainScreen] bounds];
     //NSLog(@"Bounds: %@", NSStringFromCGRect(bounds));
 
-    if (![self switcherShown] && !discoverabilityShown && enabled && switcherEnabled && !([self iPad] && ([self iOS9] || [self iOS10]))) {
+    if (![self switcherShown] && !discoverabilityShown && enabled && switcherEnabled && !([self iPad] && ([self iOS9] || [self iOS10]))) {
 
         NSArray *apps = (NSArray *)[(SpringBoard *)[%c(SpringBoard) sharedApplication] _accessibilityRunningApplications];
 
@@ -1350,7 +1365,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         }];
     }
     else if (enabled && ![self switcherShown] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
-        if (([self iOS9] || [self iOS10])) {
+        if (([self iOS9] || [self iOS10])) {
             %c(SBDisplayItem);
             [[%c(SBApplicationController) sharedInstance] applicationService:nil suspendApplicationWithBundleIdentifier:[self activeAppUserApplication]];
             %c(FBApplicationProcess);
@@ -1588,10 +1603,12 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [self setCtrlDown:[NSNull null]];
     NSDebug(@"CTRL DOWN");
 
-    if (enabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
+    if (enabled && cursorEnabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
 
-        if (![self cursorWindow]) {
-
+        NSLog(@"cursor: %@ cached: %@", cursorType, cachedCursorType);
+        
+        if (![self cursorWindow] || cursorSize != cachedCursorSize || cursorType != cachedCursorType) {
+            NSLog(@"cursorType: %@", cursorType);
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
 
@@ -1608,15 +1625,28 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             ((UIWindow *)window).userInteractionEnabled = YES;
             //window.backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.3];
 
-            UIView *cursorView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, CURSOR_RADIUS * 2, CURSOR_RADIUS * 2)];
-            cursorView.layer.cornerRadius = CURSOR_RADIUS;
-            cursorView.clipsToBounds = YES;
-            cursorView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.3];
-            cursorView.layer.borderColor = [UIColor whiteColor].CGColor;
-            cursorView.layer.borderWidth = 2.0f;
-            cursorView.layer.shadowRadius = 20;
-            cursorView.layer.shadowColor = [UIColor blackColor].CGColor;
-
+            UIView *cursorView;
+            
+            if ([cursorType isEqualToString:@"type1"] ||
+                [cursorType isEqualToString:@"type2"]) {
+                cursorView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, cursorSize.floatValue, cursorSize.floatValue)];
+                cursorView.layer.cornerRadius = cursorSize.floatValue / 2;
+                cursorView.clipsToBounds = YES;
+                cursorView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.3];
+                if ([cursorType isEqualToString:@"type2"]) {
+                    cursorView.layer.borderColor = [UIColor whiteColor].CGColor;
+                    cursorView.layer.borderWidth = 2.0f;
+                    cursorView.layer.shadowRadius = cursorSize.floatValue / 2;
+                    cursorView.layer.shadowColor = [UIColor blackColor].CGColor;
+                }
+            } else if ([cursorType isEqualToString:@"type3"]) {
+                [cursorView = [UIView alloc] initWithFrame:CGRectMake(0, 0, cursorSize.floatValue, cursorSize.floatValue)];
+                UIImage *cursorImage = [UIImage imageWithContentsOfFile:@"/Library/PreferenceBundles/Molar.bundle/cursor.png"];
+                UIImageView *cursorImageView = [[UIImageView alloc] initWithImage:cursorImage];
+                cursorImageView.frame = CGRectMake(CGRectGetMidX(cursorView.frame), CGRectGetMidY(cursorView.frame), (cursorImage.size.width / cursorImage.size.height) * cursorSize.floatValue, cursorSize.floatValue);
+                [cursorView addSubview:cursorImageView];
+            }
+    
             if ([self iPhonePlus] && ls && [self iOS9]) {
                 cursorView.transform = CGAffineTransformMakeRotation(DegreesToRadians(0));
             } else if ([self iPhonePlus] && ls && [self iOS10]) {
@@ -1643,6 +1673,10 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             [self setCursorView:cursorView];
             [window makeKeyAndVisible];
             cursorShown = YES;
+            
+            cachedCursorSize = cursorSize;
+            cachedCursorType = cursorType;
+        
         } else {
             [(UIWindow *)[self cursorWindow] setHidden:NO];
             ((UIView *)[self cursorView]).alpha = CURSOR_MAX_OPACITY;
@@ -1664,26 +1698,19 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)altKeyDown {
     [self setAltDown:[NSNull null]];
-    if (!cursorShown && [self cursorWindow] && [self isActive]) {
-        [(UIWindow *)[self cursorWindow] setHidden:NO];
-        ((UIView *)[self cursorView]).alpha = CURSOR_MAX_OPACITY;
-    }
-    if ([self shiftDown] && [self isActive]) {
-        //NSTimer *popTimer = [NSTimer scheduledTimerWithTimeInterval:2 target:self selector:@selector(popForceTouch) userInfo:nil repeats:NO];
-        //[PTFakeMetaTouch fake3DTouchId:pointID AtPoint:cursorPosition withTouchPhase:UITouchPhaseEnded andForce:400.0];
-        //[self simulateForceTouchAtPoint:cursorPosition withPointID:pointID];*/
-        PeekThread *peekThread = [%c(PeekThread) new];
-        [peekThread start];
-        /*[self beginForceTouchAtPoint:cursorPosition];
-        [self updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:200.0];
-        [self updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:300.0];
-        [self updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:350.0];
-        [self updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:399.0];*/
-        //[self endCurrentTouchAtPoint:cursorPosition];
-    } else {
-        [self beginTouchAtPoint:cursorPosition];
-        NSTimer *draggingTimer = [NSTimer scheduledTimerWithTimeInterval:DRAGGING_SLEEP_TIME target:self selector:@selector(draggingUpdate) userInfo:nil repeats:YES];
-        [self setDraggingTimer:draggingTimer];
+    if (enabled && cursorEnabled) {
+        if (!cursorShown && [self cursorWindow] && [self isActive]) {
+            [(UIWindow *)[self cursorWindow] setHidden:NO];
+            ((UIView *)[self cursorView]).alpha = CURSOR_MAX_OPACITY;
+        }
+        if ([self shiftDown] && [self isActive]) {
+            PeekThread *peekThread = [%c(PeekThread) new];
+            [peekThread start];
+        } else if ([self isActive]) {
+            [self beginTouchAtPoint:cursorPosition];
+            NSTimer *draggingTimer = [NSTimer scheduledTimerWithTimeInterval:DRAGGING_SLEEP_TIME target:self selector:@selector(draggingUpdate) userInfo:nil repeats:YES];
+            [self setDraggingTimer:draggingTimer];
+        }
     }
 }
 
@@ -1764,7 +1791,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     if (dir == CURSOR_DIR_LEFT) {
         animTarget = CGPointMake(0, cursorPosition.y);
         dist = (double)cursorPosition.x;
-        dur = dist / CURSOR_PIXEL_PER_SECOND;
+        dur = dist / (cursorSpeed.floatValue * 100.0);
         //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
 
         single_dir = YES;
@@ -1773,7 +1800,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     else if (dir == CURSOR_DIR_RIGHT) {
         animTarget = CGPointMake(((UIWindow *)[self cursorWindow]).bounds.size.width, cursorPosition.y);
         dist = (double)((UIWindow *)[self cursorWindow]).bounds.size.width - (double)cursorPosition.x;
-        dur = dist / CURSOR_PIXEL_PER_SECOND;
+        dur = dist / (cursorSpeed.floatValue * 100.0);
         NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         
         single_dir = YES;
@@ -1782,7 +1809,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     else if (dir == CURSOR_DIR_UP) {
         animTarget = CGPointMake(cursorPosition.x, 0);
         dist = cursorPosition.y;
-        dur = dist / CURSOR_PIXEL_PER_SECOND;
+        dur = dist / (cursorSpeed.floatValue * 100.0);
         //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         
         single_dir = YES;
@@ -1791,7 +1818,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     else if (dir == CURSOR_DIR_DOWN) {
         animTarget = CGPointMake(cursorPosition.x, ((UIWindow *)[self cursorWindow]).bounds.size.height);
         dist = ((UIWindow *)[self cursorWindow]).bounds.size.height - (double)cursorPosition.y;
-        dur = dist / CURSOR_PIXEL_PER_SECOND;
+        dur = dist / (cursorSpeed.floatValue * 100.0);
         //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         
         single_dir = YES;
@@ -1822,7 +1849,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         
         //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         dist = (double)sqrt(pow(cursorPosition.x - animTarget.x, 2) + pow(cursorPosition.y - animTarget.y, 2));
-        dur = dist / CURSOR_PIXEL_PER_SECOND;
+        dur = dist / (cursorSpeed.floatValue * 100.0);
         animation.toValue = [NSValue valueWithCGPoint:animTarget];
         animation.duration = dur;
 
@@ -1840,7 +1867,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             
         //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         dist = (double)sqrt(pow(cursorPosition.x - animTarget.x, 2) + pow(cursorPosition.y - animTarget.y, 2));
-        dur = dist / CURSOR_PIXEL_PER_SECOND;
+        dur = dist / (cursorSpeed.floatValue * 100.0);
         animation.toValue = [NSValue valueWithCGPoint:animTarget];
         animation.duration = dur;
         
@@ -1859,7 +1886,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 
         //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         dist = (double)sqrt(pow(cursorPosition.x - animTarget.x, 2) + pow(cursorPosition.y - animTarget.y, 2));
-        dur = dist / CURSOR_PIXEL_PER_SECOND;
+        dur = dist / (cursorSpeed.floatValue * 100.0);
         animation.toValue = [NSValue valueWithCGPoint:animTarget];
         animation.duration = dur;
             
@@ -1876,7 +1903,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         
         //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         dist = (double)sqrt(pow(cursorPosition.x - animTarget.x, 2) + pow(cursorPosition.y - animTarget.y, 2));
-        dur = dist / CURSOR_PIXEL_PER_SECOND;
+        dur = dist / (cursorSpeed.floatValue * 100.0);
         animation.toValue = [NSValue valueWithCGPoint:animTarget];
         animation.duration = dur;
         
@@ -2429,6 +2456,17 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)updateActiveAppProperty:(NSNotification *)notification {
     [self setActiveAppUserApplication:[notification.userInfo objectForKey:@"app"]];
+    
+    if (cursorShown) {
+        if (![self isActive] && [self cursorWindow]) {
+            [(UIWindow *)[self cursorWindow] setHidden:YES];
+        }
+        else if ([self isActive]) {
+            if ([self cursorWindow]) {
+                [(UIWindow *)[self cursorWindow] setHidden:NO];
+            }
+        }
+    }
 }
 
 - (NSArray *)keyCommands {
@@ -2579,13 +2617,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 selectedSBFolder = [[%c(SBIconController) sharedInstance] openFolder];
                 sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = sbOpenedFolderSelectedPage = 0;
                 sbOpenedFolderRows = sbOpenedFolderCols = (int)sqrt([[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:0 inFolder:selectedSBFolder createIfNecessary:YES] model] maxNumberOfIcons]);
-                [self selectSBIconInOpenedFolder];
+                //[self selectSBIconInOpenedFolder];
             } else if ([self iOS10]) {
                 sbFolderOpened = YES;
                 selectedSBFolder = [[%c(SBIconController) sharedInstance] openFolder];
                 sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = sbOpenedFolderSelectedPage = 0;
                 sbOpenedFolderRows = sbOpenedFolderCols = (int)sqrt([[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:0 inFolder:selectedSBFolder createIfNecessary:YES] model] maxNumberOfIcons]);
-                [self selectSBIconInOpenedFolder];
+                //[self selectSBIconInOpenedFolder];
             }
         }
     } else {
@@ -2614,7 +2652,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 animTarget = CGPointMake(0, cursorPosition.y);
                 NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
                 dist = (double)cursorPosition.x;
-                dur = dist / CURSOR_PIXEL_PER_SECOND;
+                dur = dist / (cursorSpeed.floatValue * 100.0);
                 
                 CABasicAnimation *animation = [CABasicAnimation animation];
                 animation.keyPath = @"position";
@@ -2858,7 +2896,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
                 animTarget = CGPointMake(((UIWindow *)[self cursorWindow]).bounds.size.width, cursorPosition.y);
                 double dist = (double)((UIWindow *)[self cursorWindow]).bounds.size.width - (double)cursorPosition.x;
-                NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
+                NSTimeInterval dur = dist / (cursorSpeed.floatValue * 100.0);
                 NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
 
                 CABasicAnimation *animation = [CABasicAnimation animation];
@@ -3148,7 +3186,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             
                 animTarget = CGPointMake(cursorPosition.x, ((UIWindow *)[self cursorWindow]).bounds.size.height);
                 double dist = ((UIWindow *)[self cursorWindow]).bounds.size.height - (double)cursorPosition.y;
-                NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
+                NSTimeInterval dur = dist / (cursorSpeed.floatValue * 100.0);
                 NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
                 
                 CABasicAnimation *animation = [CABasicAnimation animation];
@@ -3426,7 +3464,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 
                 animTarget = CGPointMake(cursorPosition.x, 0);
                 double dist = cursorPosition.y;
-                NSTimeInterval dur = dist / CURSOR_PIXEL_PER_SECOND;
+                NSTimeInterval dur = dist / (cursorSpeed.floatValue * 100.0);
                 NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
                 
                 CABasicAnimation *animation = [CABasicAnimation animation];
@@ -4262,8 +4300,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             sbIconSelected = YES;
             sbDockIconSelected = NO;
 
-            [self scrollSBToPage:sbSelectedPage];
-            [self selectSBIcon];
+            //[self scrollSBToPage:sbSelectedPage];
+            //[self selectSBIcon];
         }
     }
     if (cursorShown) {
