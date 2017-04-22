@@ -253,50 +253,10 @@ static void postKeyEventNotification(int key, int down, int page) {
 }
 
 static void loadPrefs() {
-    /*
-    CFPreferencesAppSynchronize(CFSTR("de.hoenig.molar"));
-    CFPropertyListRef cf_enabled =            CFPreferencesCopyAppValue(CFSTR("enabled"), CFSTR("de.hoenig.molar"));
-    CFPropertyListRef cf_appSwitcherEnabled = CFPreferencesCopyAppValue(CFSTR("appSwitcherEnabled"), CFSTR("de.hoenig.molar"));
-    CFPropertyListRef cf_appControlEnabled =  CFPreferencesCopyAppValue(CFSTR("appControlEnabled"), CFSTR("de.hoenig.molar"));
-    CFPropertyListRef cf_keySheetEnabled =    CFPreferencesCopyAppValue(CFSTR("keySheetEnabled"), CFSTR("de.hoenig.molar"));
-    CFPropertyListRef cf_launcherEnabled =    CFPreferencesCopyAppValue(CFSTR("launcherEnabled"), CFSTR("de.hoenig.molar"));
-    CFPropertyListRef cf_cursorEnabled =      CFPreferencesCopyAppValue(CFSTR("cursorEnabled"), CFSTR("de.hoenig.molar"));
-    CFPropertyListRef cf_darkMode =           CFPreferencesCopyAppValue(CFSTR("darkMode"), CFSTR("de.hoenig.molar"));
-    CFPropertyListRef cf_hideLabels =         CFPreferencesCopyAppValue(CFSTR("hideLabels"), CFSTR("de.hoenig.molar"));
-
-    launcherApp1 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp1"), CFSTR("de.hoenig.molar"));
-    launcherApp2 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp2"), CFSTR("de.hoenig.molar"));
-    launcherApp3 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp3"), CFSTR("de.hoenig.molar"));
-    launcherApp4 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp4"), CFSTR("de.hoenig.molar"));
-    launcherApp5 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp5"), CFSTR("de.hoenig.molar"));
-    launcherApp6 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp6"), CFSTR("de.hoenig.molar"));
-    launcherApp7 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp7"), CFSTR("de.hoenig.molar"));
-    launcherApp8 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp8"), CFSTR("de.hoenig.molar"));
-    launcherApp9 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp9"), CFSTR("de.hoenig.molar"));
-    launcherApp0 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp0"), CFSTR("de.hoenig.molar"));
-
-    cursorType = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("cursorType"), CFSTR("de.hoenig.molar"));
-    cursorSpeed = (__bridge NSNumber *)CFPreferencesCopyAppValue(CFSTR("cursorSpeed"), CFSTR("de.hoenig.molar"));
-    cursorSize = (__bridge NSNumber *)CFPreferencesCopyAppValue(CFSTR("cursorSize"), CFSTR("de.hoenig.molar"));
-    
-    enabled = !cf_enabled ? YES : (cf_enabled == kCFBooleanTrue);
-    switcherEnabled = !cf_appSwitcherEnabled ? YES : (cf_appSwitcherEnabled == kCFBooleanTrue);
-    controlEnabled = !cf_appControlEnabled ? YES : (cf_appControlEnabled == kCFBooleanTrue);
-    keySheetEnabled = !cf_keySheetEnabled ? YES : (cf_keySheetEnabled == kCFBooleanTrue);
-    launcherEnabled = !cf_launcherEnabled ? YES : (cf_launcherEnabled == kCFBooleanTrue);
-    cursorEnabled = !cf_cursorEnabled ? YES : (cf_cursorEnabled == kCFBooleanTrue);
-    darkMode = !cf_darkMode ? YES : (cf_darkMode == kCFBooleanTrue);
-    hideLabels = !cf_hideLabels ? YES : (cf_hideLabels == kCFBooleanTrue);
-
-    //NSDebug(@"NSUD ct: %@", [[[NSUserDefaults standardUserDefaults] persistentDomainForName:@"de.hoenig.molar"] objectForKey:@"cursorType"]);
-    NSDebug(@"loadPrefs: enabled: %i", enabled);
-    
-    customShortcuts = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcuts"), CFSTR("de.hoenig.molar")));
-    */
 
     enabled = [preferences boolForKey:@"enabled"];
-    switcherEnabled = [preferences boolForKey:@"switcherEnabled"];
-    controlEnabled = [preferences boolForKey:@"controlEnabled"];
+    switcherEnabled = [preferences boolForKey:@"appSwitcherEnabled"];
+    controlEnabled = [preferences boolForKey:@"appControlEnabled"];
     keySheetEnabled = [preferences boolForKey:@"keySheetEnabled"];
     launcherEnabled = [preferences boolForKey:@"launcherEnabled"];
     cursorEnabled = [preferences boolForKey:@"cursorEnabled"];
@@ -320,8 +280,10 @@ static void loadPrefs() {
 
     customShortcuts = (NSArray *)[preferences objectForKey:@"shortcuts"];
 
+    //NSDebug(@"PREFS:\n%@", [preferences dictionaryRepresentation]);
+
     [[NSNotificationCenter defaultCenter] postNotificationName:@"ReloadShortcutsNotification" object:nil];
-    
+    /*
     if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"]) {
         NSString *notificationNameNSString = @"SpringBoardGotPrefsChangedNotification";
         CFStringRef notificationName = (CFStringRef)notificationNameNSString;
@@ -349,6 +311,7 @@ static void loadPrefs() {
                                                  YES);
         }
     }
+    */
 }
 
 static void updateActiveAppUserApplication(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
@@ -375,7 +338,7 @@ static void updateDiscoverabilityNotShown(CFNotificationCenterRef center, void *
 static void hideSwitcherByNotification(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
     [[NSNotificationCenter defaultCenter] postNotificationName:@"HideSwitcherNotificationLocalNotification" object:nil];
 }
-
+/*
 static void reloadPrefsUserApp(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
     enabled = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"enabled"]).boolValue;
     controlEnabled = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"controlEnabled"]).boolValue;
@@ -399,7 +362,7 @@ static void postPrefsToUserAppsNotification(CFNotificationCenterRef center, void
                                              YES);
     }
 }
-
+*/
 static void keyEventCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
     //NSDebug("KEY EVENT CALLBACK RECEIVED :)");
     int usage = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"key"]).intValue;
@@ -457,14 +420,14 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     waitForKeyRepeatTimer = nil;
     keyRepeatTimer = nil;
     loadPrefs();
-    if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"] || [[[UIDevice currentDevice] systemVersion] hasPrefix:@"9"]) {
+    //if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"] || [[[UIDevice currentDevice] systemVersion] hasPrefix:@"9"]) {
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
                                     NULL,
                                     (CFNotificationCallback)loadPrefs,
                                     CFSTR("de.hoenig.molar-preferencesChanged"),
                                     NULL,
                                     CFNotificationSuspensionBehaviorCoalesce);
-    }
+    //}
     
     void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
     CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
@@ -511,7 +474,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                 CFSTR("HideSwitcherNotification"),
                                 NULL,
                                 CFNotificationSuspensionBehaviorCoalesce);
-            if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"] ||
+            /*if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"] ||
                 [[[UIDevice currentDevice] systemVersion] hasPrefix:@"9"]) {
                 CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
                                 NULL,
@@ -519,15 +482,15 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                 CFSTR("UserAppSBPrefsRequestNotification"),
                                 NULL,
                                 CFNotificationSuspensionBehaviorCoalesce);
-            }
-        } else { //if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
+            }*/
+        } /*else { //if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
             CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
                                         NULL,
                                         (CFNotificationCallback)reloadPrefsUserApp,
                                         CFSTR("SpringBoardGotPrefsChangedNotification"),
                                         NULL,
                                         CFNotificationSuspensionBehaviorCoalesce);
-        }
+        }*/
         if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
             CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
                                         NULL,
@@ -693,6 +656,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)addMolarObservers {
 
+    // standard keys
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ctrlKeyDown) name:@"CtrlKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ctrlKeyUp) name:@"CtrlKeyUp" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(altKeyDown) name:@"AltKeyDown" object:nil];
@@ -702,9 +666,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(cmdKeyUp) name:@"CmdKeyUp" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(escKeyDown:) name:@"EscKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rightKeyDown) name:@"RightKeyDown" object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(leftKeyDown) name:@"LeftKeyDown" object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(genericKeyDown) name:@"GenericKeyDown" object:nil];
-    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(leftKeyDown) name:@"LeftKeyDown" object:nil];    
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_tabDown) name:@"TabKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_tabUp) name:@"TabKeyUp" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(shiftKeyDown) name:@"ShiftKeyDown" object:nil];
@@ -719,6 +681,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_downKey) name:@"DownKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_downKeyUp) name:@"DownKeyUp" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_rKey) name:@"RKeyDown" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(genericKeyDown) name:@"GenericKeyDown" object:nil];
 
     // shortcuts
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadShortcuts) name:@"ReloadShortcutsNotification" object:nil];
@@ -2576,9 +2539,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             [arr addObject:cmd0];
         }
 
-        CFPreferencesAppSynchronize(CFSTR("de.hoenig.molar"));
-        customShortcuts = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcuts"), CFSTR("de.hoenig.molar")));
-        NSArray *shortcutNames = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcutNames"), CFSTR("de.hoenig.molar")));
+        customShortcuts = (NSArray *)[preferences objectForKey:@"shortcuts"];
+        NSArray *shortcutNames = (NSArray *)[preferences objectForKey:@"shortcutNames"];
         NSMutableArray *activatorCmds = [NSMutableArray array];
         for (NSDictionary *shortcut in customShortcuts) {
             NSString *input = [shortcut objectForKey:@"input"];
