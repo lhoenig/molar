@@ -21,6 +21,7 @@
 #import "additions/UIApplication-KIFAdditions.h"
 #import "additions/UIEvent+KIFAdditions.h"
 #import "additions/UITouch-KIFAdditions.h"
+#import "HBPreferences.h"
 
 #define DegreesToRadians(x) ((x) * M_PI / 180.0)
 #define SWITCHER_HEIGHT 140
@@ -87,7 +88,7 @@
 #define NEXT_VIEW 1
 #define PREV_VIEW 0
 
-#define DEBUG 1
+#define DEBUG 0
 
 #if DEBUG == 0
 #define NSDebug(...)
@@ -177,14 +178,16 @@ id selectedSBIcon;
 SBApplicationIcon *selectedSBIconInOpenedFolder;
 
 NSString *cursorType, *cachedCursorType;
-NSNumber *cursorSize, *cursorSpeed;
-NSNumber *cachedCursorSize;
+double cursorSize, cursorSpeed;
+double cachedCursorSize;
 CGPoint cursorPosition;
 NSInteger pointID;
 unsigned int cursorDir;
 NSTimer *forceTouchTimer;
 int currentForce;
 UITouch *currentTouch;
+
+HBPreferences *preferences;
 
 static void postKeyEventNotification(int key, int down, int page) {
     CFStringRef notificationName = (CFStringRef)(@"KeyEventNotification");
@@ -250,6 +253,7 @@ static void postKeyEventNotification(int key, int down, int page) {
 }
 
 static void loadPrefs() {
+    /*
     CFPreferencesAppSynchronize(CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_enabled =            CFPreferencesCopyAppValue(CFSTR("enabled"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_appSwitcherEnabled = CFPreferencesCopyAppValue(CFSTR("appSwitcherEnabled"), CFSTR("de.hoenig.molar"));
@@ -260,18 +264,18 @@ static void loadPrefs() {
     CFPropertyListRef cf_darkMode =           CFPreferencesCopyAppValue(CFSTR("darkMode"), CFSTR("de.hoenig.molar"));
     CFPropertyListRef cf_hideLabels =         CFPreferencesCopyAppValue(CFSTR("hideLabels"), CFSTR("de.hoenig.molar"));
 
-    launcherApp1 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp1"), CFSTR("de.hoenig.molar"));
-    launcherApp2 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp2"), CFSTR("de.hoenig.molar"));
-    launcherApp3 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp3"), CFSTR("de.hoenig.molar"));
-    launcherApp4 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp4"), CFSTR("de.hoenig.molar"));
-    launcherApp5 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp5"), CFSTR("de.hoenig.molar"));
-    launcherApp6 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp6"), CFSTR("de.hoenig.molar"));
-    launcherApp7 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp7"), CFSTR("de.hoenig.molar"));
-    launcherApp8 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp8"), CFSTR("de.hoenig.molar"));
-    launcherApp9 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp9"), CFSTR("de.hoenig.molar"));
-    launcherApp0 = (NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp0"), CFSTR("de.hoenig.molar"));
+    launcherApp1 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp1"), CFSTR("de.hoenig.molar"));
+    launcherApp2 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp2"), CFSTR("de.hoenig.molar"));
+    launcherApp3 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp3"), CFSTR("de.hoenig.molar"));
+    launcherApp4 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp4"), CFSTR("de.hoenig.molar"));
+    launcherApp5 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp5"), CFSTR("de.hoenig.molar"));
+    launcherApp6 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp6"), CFSTR("de.hoenig.molar"));
+    launcherApp7 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp7"), CFSTR("de.hoenig.molar"));
+    launcherApp8 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp8"), CFSTR("de.hoenig.molar"));
+    launcherApp9 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp9"), CFSTR("de.hoenig.molar"));
+    launcherApp0 = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("launcherApp0"), CFSTR("de.hoenig.molar"));
 
-    cursorType = (NSString *)CFPreferencesCopyAppValue(CFSTR("cursorType"), CFSTR("de.hoenig.molar"));
+    cursorType = (__bridge NSString *)CFPreferencesCopyAppValue(CFSTR("cursorType"), CFSTR("de.hoenig.molar"));
     cursorSpeed = (__bridge NSNumber *)CFPreferencesCopyAppValue(CFSTR("cursorSpeed"), CFSTR("de.hoenig.molar"));
     cursorSize = (__bridge NSNumber *)CFPreferencesCopyAppValue(CFSTR("cursorSize"), CFSTR("de.hoenig.molar"));
     
@@ -288,6 +292,33 @@ static void loadPrefs() {
     NSDebug(@"loadPrefs: enabled: %i", enabled);
     
     customShortcuts = (NSArray *)CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("shortcuts"), CFSTR("de.hoenig.molar")));
+    */
+
+    enabled = [preferences boolForKey:@"enabled"];
+    switcherEnabled = [preferences boolForKey:@"switcherEnabled"];
+    controlEnabled = [preferences boolForKey:@"controlEnabled"];
+    keySheetEnabled = [preferences boolForKey:@"keySheetEnabled"];
+    launcherEnabled = [preferences boolForKey:@"launcherEnabled"];
+    cursorEnabled = [preferences boolForKey:@"cursorEnabled"];
+    darkMode = [preferences boolForKey:@"darkMode"];
+    hideLabels = [preferences boolForKey:@"hideLabels"];
+
+    launcherApp1 = [preferences objectForKey:@"launcherApp1"];
+    launcherApp2 = [preferences objectForKey:@"launcherApp2"];
+    launcherApp3 = [preferences objectForKey:@"launcherApp3"];
+    launcherApp4 = [preferences objectForKey:@"launcherApp4"];
+    launcherApp5 = [preferences objectForKey:@"launcherApp5"];
+    launcherApp6 = [preferences objectForKey:@"launcherApp6"];
+    launcherApp7 = [preferences objectForKey:@"launcherApp7"];
+    launcherApp8 = [preferences objectForKey:@"launcherApp8"];
+    launcherApp9 = [preferences objectForKey:@"launcherApp9"];
+    launcherApp0 = [preferences objectForKey:@"launcherApp0"];
+
+    cursorType = (NSString *)[preferences objectForKey:@"cursorType"];
+    cursorSpeed = [preferences doubleForKey:@"cursorSpeed"];
+    cursorSize = [preferences doubleForKey:@"cursorSize"];
+
+    customShortcuts = (NSArray *)[preferences objectForKey:@"shortcuts"];
 
     [[NSNotificationCenter defaultCenter] postNotificationName:@"ReloadShortcutsNotification" object:nil];
     
@@ -419,6 +450,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 %ctor {
+
+    preferences = [[HBPreferences alloc] initWithIdentifier:@"de.hoenig.molar"];
+
     discoverabilityTimer = nil;
     waitForKeyRepeatTimer = nil;
     keyRepeatTimer = nil;
@@ -1629,21 +1663,21 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             
             if ([cursorType isEqualToString:@"type1"] ||
                 [cursorType isEqualToString:@"type2"]) {
-                cursorView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, cursorSize.floatValue, cursorSize.floatValue)];
-                cursorView.layer.cornerRadius = cursorSize.floatValue / 2;
+                cursorView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, cursorSize, cursorSize)];
+                cursorView.layer.cornerRadius = cursorSize / 2;
                 cursorView.clipsToBounds = YES;
                 cursorView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.3];
                 if ([cursorType isEqualToString:@"type2"]) {
                     cursorView.layer.borderColor = [UIColor whiteColor].CGColor;
                     cursorView.layer.borderWidth = 2.0f;
-                    cursorView.layer.shadowRadius = cursorSize.floatValue / 2;
+                    cursorView.layer.shadowRadius = cursorSize / 2;
                     cursorView.layer.shadowColor = [UIColor blackColor].CGColor;
                 }
             } else if ([cursorType isEqualToString:@"type3"]) {
-                [cursorView = [UIView alloc] initWithFrame:CGRectMake(0, 0, cursorSize.floatValue, cursorSize.floatValue)];
+                [cursorView = [UIView alloc] initWithFrame:CGRectMake(0, 0, cursorSize, cursorSize)];
                 UIImage *cursorImage = [UIImage imageWithContentsOfFile:@"/Library/PreferenceBundles/Molar.bundle/cursor.png"];
                 UIImageView *cursorImageView = [[UIImageView alloc] initWithImage:cursorImage];
-                cursorImageView.frame = CGRectMake(CGRectGetMidX(cursorView.frame), CGRectGetMidY(cursorView.frame), (cursorImage.size.width / cursorImage.size.height) * cursorSize.floatValue, cursorSize.floatValue);
+                cursorImageView.frame = CGRectMake(CGRectGetMidX(cursorView.frame), CGRectGetMidY(cursorView.frame), (cursorImage.size.width / cursorImage.size.height) * cursorSize, cursorSize);
                 [cursorView addSubview:cursorImageView];
             }
     
@@ -1791,7 +1825,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     if (dir == CURSOR_DIR_LEFT) {
         animTarget = CGPointMake(0, cursorPosition.y);
         dist = (double)cursorPosition.x;
-        dur = dist / (cursorSpeed.floatValue * 100.0);
+        dur = dist / (cursorSpeed * 100.0);
         //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
 
         single_dir = YES;
@@ -1800,7 +1834,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     else if (dir == CURSOR_DIR_RIGHT) {
         animTarget = CGPointMake(((UIWindow *)[self cursorWindow]).bounds.size.width, cursorPosition.y);
         dist = (double)((UIWindow *)[self cursorWindow]).bounds.size.width - (double)cursorPosition.x;
-        dur = dist / (cursorSpeed.floatValue * 100.0);
+        dur = dist / (cursorSpeed * 100.0);
         NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         
         single_dir = YES;
@@ -1809,7 +1843,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     else if (dir == CURSOR_DIR_UP) {
         animTarget = CGPointMake(cursorPosition.x, 0);
         dist = cursorPosition.y;
-        dur = dist / (cursorSpeed.floatValue * 100.0);
+        dur = dist / (cursorSpeed * 100.0);
         //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         
         single_dir = YES;
@@ -1818,7 +1852,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     else if (dir == CURSOR_DIR_DOWN) {
         animTarget = CGPointMake(cursorPosition.x, ((UIWindow *)[self cursorWindow]).bounds.size.height);
         dist = ((UIWindow *)[self cursorWindow]).bounds.size.height - (double)cursorPosition.y;
-        dur = dist / (cursorSpeed.floatValue * 100.0);
+        dur = dist / (cursorSpeed * 100.0);
         //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         
         single_dir = YES;
@@ -1849,7 +1883,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         
         //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         dist = (double)sqrt(pow(cursorPosition.x - animTarget.x, 2) + pow(cursorPosition.y - animTarget.y, 2));
-        dur = dist / (cursorSpeed.floatValue * 100.0);
+        dur = dist / (cursorSpeed * 100.0);
         animation.toValue = [NSValue valueWithCGPoint:animTarget];
         animation.duration = dur;
 
@@ -1867,7 +1901,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             
         //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         dist = (double)sqrt(pow(cursorPosition.x - animTarget.x, 2) + pow(cursorPosition.y - animTarget.y, 2));
-        dur = dist / (cursorSpeed.floatValue * 100.0);
+        dur = dist / (cursorSpeed * 100.0);
         animation.toValue = [NSValue valueWithCGPoint:animTarget];
         animation.duration = dur;
         
@@ -1886,7 +1920,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 
         //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         dist = (double)sqrt(pow(cursorPosition.x - animTarget.x, 2) + pow(cursorPosition.y - animTarget.y, 2));
-        dur = dist / (cursorSpeed.floatValue * 100.0);
+        dur = dist / (cursorSpeed * 100.0);
         animation.toValue = [NSValue valueWithCGPoint:animTarget];
         animation.duration = dur;
             
@@ -1903,7 +1937,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         
         //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         dist = (double)sqrt(pow(cursorPosition.x - animTarget.x, 2) + pow(cursorPosition.y - animTarget.y, 2));
-        dur = dist / (cursorSpeed.floatValue * 100.0);
+        dur = dist / (cursorSpeed * 100.0);
         animation.toValue = [NSValue valueWithCGPoint:animTarget];
         animation.duration = dur;
         
@@ -2652,7 +2686,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 animTarget = CGPointMake(0, cursorPosition.y);
                 NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
                 dist = (double)cursorPosition.x;
-                dur = dist / (cursorSpeed.floatValue * 100.0);
+                dur = dist / (cursorSpeed * 100.0);
                 
                 CABasicAnimation *animation = [CABasicAnimation animation];
                 animation.keyPath = @"position";
@@ -2896,7 +2930,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
                 animTarget = CGPointMake(((UIWindow *)[self cursorWindow]).bounds.size.width, cursorPosition.y);
                 double dist = (double)((UIWindow *)[self cursorWindow]).bounds.size.width - (double)cursorPosition.x;
-                NSTimeInterval dur = dist / (cursorSpeed.floatValue * 100.0);
+                NSTimeInterval dur = dist / (cursorSpeed * 100.0);
                 NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
 
                 CABasicAnimation *animation = [CABasicAnimation animation];
@@ -3186,7 +3220,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             
                 animTarget = CGPointMake(cursorPosition.x, ((UIWindow *)[self cursorWindow]).bounds.size.height);
                 double dist = ((UIWindow *)[self cursorWindow]).bounds.size.height - (double)cursorPosition.y;
-                NSTimeInterval dur = dist / (cursorSpeed.floatValue * 100.0);
+                NSTimeInterval dur = dist / (cursorSpeed * 100.0);
                 NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
                 
                 CABasicAnimation *animation = [CABasicAnimation animation];
@@ -3464,7 +3498,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 
                 animTarget = CGPointMake(cursorPosition.x, 0);
                 double dist = cursorPosition.y;
-                NSTimeInterval dur = dist / (cursorSpeed.floatValue * 100.0);
+                NSTimeInterval dur = dist / (cursorSpeed * 100.0);
                 NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
                 
                 CABasicAnimation *animation = [CABasicAnimation animation];

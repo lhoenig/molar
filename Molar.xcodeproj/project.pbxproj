@@ -29,6 +29,10 @@
 		80B172FC1CA33C8600F60552 /* IOKit.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 80A3F47F1C416DF5001D4F51 /* IOKit.tbd */; };
 		80B172FD1CA33C8D00F60552 /* libactivator.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 80BF23371CA2A48E00A0D210 /* libactivator.dylib */; };
 		80B172FE1CA33C9100F60552 /* libapplist.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 800BA7E61CA0517100FEE37C /* libapplist.dylib */; };
+		80D7012E1EABD40600EB959A /* CepheiPrefs.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80D7012D1EABD40600EB959A /* CepheiPrefs.framework */; };
+		80D701301EABD51600EB959A /* HBPreferences.h in Headers */ = {isa = PBXBuildFile; fileRef = 80D7012F1EABD51600EB959A /* HBPreferences.h */; };
+		80D701331EABD5D500EB959A /* TechSupport.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80D701311EABD5D500EB959A /* TechSupport.framework */; };
+		80D701341EABD5D500EB959A /* Cephei.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80D701321EABD5D500EB959A /* Cephei.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,13 +42,12 @@
 		37D222771C22302C004D8F68 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		800BA7E61CA0517100FEE37C /* libapplist.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libapplist.dylib; path = ../../../../opt/theos/lib/libapplist.dylib; sourceTree = "<group>"; };
 		804844F21D5DF0DA000FD6A0 /* SpringBoard */ = {isa = PBXFileReference; lastKnownFileType = folder; path = SpringBoard; sourceTree = "<group>"; };
-		804F414A1EA93C61009F4626 /* cursor.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cursor.png; sourceTree = "<group>"; };
 		807516341CA33D7100D19C0D /* libactivator */ = {isa = PBXFileReference; lastKnownFileType = folder; path = libactivator; sourceTree = "<group>"; };
 		807516381CA34A5500D19C0D /* PreferenceBundles */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PreferenceBundles; path = Package/Library/PreferenceBundles; sourceTree = "<group>"; };
 		8078BDFD1EA7BF92001C04A7 /* additions */ = {isa = PBXFileReference; lastKnownFileType = folder; path = additions; sourceTree = "<group>"; };
 		8078BDFE1EA7C288001C04A7 /* FixCategoryBug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FixCategoryBug.h; sourceTree = "<group>"; };
-		8078BE011EA7C78B001C04A7 /* UITouch-KIFAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITouch-KIFAdditions.m"; path = "Molar/additions/UITouch-KIFAdditions.m"; sourceTree = "<group>"; };
-		8078BE021EA7C78B001C04A7 /* UIEvent+KIFAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UIEvent+KIFAdditions.m"; path = "Molar/additions/UIEvent+KIFAdditions.m"; sourceTree = "<group>"; };
+		8078BE011EA7C78B001C04A7 /* UITouch-KIFAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITouch-KIFAdditions.m"; path = "additions/UITouch-KIFAdditions.m"; sourceTree = "<group>"; };
+		8078BE021EA7C78B001C04A7 /* UIEvent+KIFAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UIEvent+KIFAdditions.m"; path = "additions/UIEvent+KIFAdditions.m"; sourceTree = "<group>"; };
 		807B4F711CA332A90009CFE1 /* Molar.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = Molar.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		807B4F771CA332A90009CFE1 /* control */ = {isa = PBXFileReference; lastKnownFileType = text; name = control; path = Package/DEBIAN/control; sourceTree = "<group>"; };
 		807B4F791CA332A90009CFE1 /* PackageVersion.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PackageVersion.plist; sourceTree = "<group>"; };
@@ -72,6 +75,10 @@
 		80BF23351CA1893500A0D210 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		80BF23371CA2A48E00A0D210 /* libactivator.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libactivator.dylib; path = ../../libactivator.dylib; sourceTree = "<group>"; };
 		80BF234C1CA2C27500A0D210 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		80D7012D1EABD40600EB959A /* CepheiPrefs.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CepheiPrefs.framework; path = ../../../../opt/theos/lib/CepheiPrefs.framework; sourceTree = "<group>"; };
+		80D7012F1EABD51600EB959A /* HBPreferences.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HBPreferences.h; sourceTree = "<group>"; };
+		80D701311EABD5D500EB959A /* TechSupport.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = TechSupport.framework; path = ../../../../opt/theos/lib/TechSupport.framework; sourceTree = "<group>"; };
+		80D701321EABD5D500EB959A /* Cephei.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cephei.framework; path = ../../../../opt/theos/lib/Cephei.framework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +86,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				80D701331EABD5D500EB959A /* TechSupport.framework in Frameworks */,
+				80D701341EABD5D500EB959A /* Cephei.framework in Frameworks */,
+				80D7012E1EABD40600EB959A /* CepheiPrefs.framework in Frameworks */,
 				807B4F8F1CA334A80009CFE1 /* libactivator.dylib in Frameworks */,
 				807B4F901CA334AB0009CFE1 /* libapplist.dylib in Frameworks */,
 				807B4F911CA334AE0009CFE1 /* libsubstrate.dylib in Frameworks */,
@@ -110,9 +120,6 @@
 		374F11BE1C21C6320070747D = {
 			isa = PBXGroup;
 			children = (
-				804F414A1EA93C61009F4626 /* cursor.png */,
-				8078BE011EA7C78B001C04A7 /* UITouch-KIFAdditions.m */,
-				8078BE021EA7C78B001C04A7 /* UIEvent+KIFAdditions.m */,
 				808D65651E79EAAB0013D490 /* Entitlements.plist */,
 				807B4F731CA332A90009CFE1 /* Molar */,
 				80B172C91CA33B4300F60552 /* MolarSettings */,
@@ -133,6 +140,9 @@
 		374F11CB1C21C6320070747D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				80D701311EABD5D500EB959A /* TechSupport.framework */,
+				80D701321EABD5D500EB959A /* Cephei.framework */,
+				80D7012D1EABD40600EB959A /* CepheiPrefs.framework */,
 				808716981CBE8BE9000CDC92 /* Preferences.framework */,
 				80BF234C1CA2C27500A0D210 /* QuartzCore.framework */,
 				80BF23371CA2A48E00A0D210 /* libactivator.dylib */,
@@ -151,7 +161,10 @@
 		807B4F731CA332A90009CFE1 /* Molar */ = {
 			isa = PBXGroup;
 			children = (
+				8078BE011EA7C78B001C04A7 /* UITouch-KIFAdditions.m */,
+				8078BE021EA7C78B001C04A7 /* UIEvent+KIFAdditions.m */,
 				8078BDFE1EA7C288001C04A7 /* FixCategoryBug.h */,
+				80D7012F1EABD51600EB959A /* HBPreferences.h */,
 				8078BDFD1EA7BF92001C04A7 /* additions */,
 				804844F21D5DF0DA000FD6A0 /* SpringBoard */,
 				807B4F8A1CA332F00009CFE1 /* IOKit */,
@@ -353,6 +366,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8078BDFF1EA7C288001C04A7 /* FixCategoryBug.h in Headers */,
+				80D701301EABD51600EB959A /* HBPreferences.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -588,6 +602,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Molar",
+					/opt/theos/lib,
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Molar/Molar-Prefix.pch";
@@ -605,7 +620,7 @@
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Molar/**";
 				iOSOpenDevBuildPackageOnAnyBuild = YES;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = 172.20.10.1;
+				iOSOpenDevDevice = 192.168.178.65;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
@@ -623,6 +638,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Molar",
+					/opt/theos/lib,
 				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "Molar/Molar-Prefix.pch";
@@ -640,7 +656,7 @@
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Molar/**";
 				iOSOpenDevBuildPackageOnAnyBuild = YES;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = 172.20.10.1;
+				iOSOpenDevDevice = 192.168.178.65;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
