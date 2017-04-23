@@ -3,7 +3,7 @@ Name: Molar
 Version: 1.5
 Description: 
 Section: Tweaks
-Depends: firmware (>= 9.0), mobilesubstrate, libactivator, applist
+Depends: firmware (>= 9.0), mobilesubstrate, libactivator, applist, ws.hbang.common
 Conflicts: 
 Replaces: 
 Priority: optional
