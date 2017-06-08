@@ -1620,7 +1620,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             CGRect contentFrame = CGRectMake(0, 0, ls ? bounds.size.height : bounds.size.width,
                                                    ls ? bounds.size.width  : bounds.size.height);
 
-            if ([self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+            if ([self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]) {
                 contentFrame = CGRectMake(contentFrame.origin.x, contentFrame.origin.y, contentFrame.size.height, contentFrame.size.width);
             }
 
@@ -1660,7 +1660,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     cursorView.transform = CGAffineTransformMakeRotation(DegreesToRadians(90));
             }
             else if (ls && ![self iPad] ||
-                (ls && [self iPad] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]))
+                (ls && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])))
                 cursorView.transform = orient == UIInterfaceOrientationLandscapeLeft ?
                                                 CGAffineTransformMakeRotation(DegreesToRadians(270)) :
                                                 CGAffineTransformMakeRotation(DegreesToRadians(90));
@@ -1713,7 +1713,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         }
         UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
         BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-        if (ls && [self iPad] && [self iOS10] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+        if (ls && [self iPad] && [self iOS10] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
             CGPoint inverted = CGPointMake(cursorPosition.y, [(UIWindow *)[self cursorWindow] frame].size.width - cursorPosition.x);
             //NSLog(@"New cursor pos: %@", NSStringFromCGPoint(cursorPosition));
             cursorPosition = inverted;
@@ -2649,7 +2649,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if (ls && [self iPad] && [self iOS10] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+            if (ls && [self iPad] && [self iOS10] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 [self ui_upKey];
@@ -2901,7 +2901,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if (ls && [self iPad] && [self iOS10] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+            if (ls && [self iPad] && [self iOS10] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 [self ui_downKey];
@@ -3195,7 +3195,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if (ls && [self iPad] && [self iOS10] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+            if (ls && [self iPad] && [self iOS10] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 [self ui_leftKey];
@@ -3478,7 +3478,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if (ls && [self iPad] && [self iOS10] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+            if (ls && [self iPad] && [self iOS10] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 [self ui_rightKey];
