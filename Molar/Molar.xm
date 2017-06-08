@@ -184,6 +184,7 @@ unsigned int cursorDir;
 NSTimer *forceTouchTimer;
 int currentForce;
 UITouch *currentTouch;
+BOOL disableRedirect, redirectRelease;
 
 HBPreferences *preferences;
 
@@ -506,6 +507,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
     cachedCursorSize = 0;
     cachedCursorType = nil;
+    
+    disableRedirect = NO;
+    redirectRelease = NO;
 }
 
 %subclass NoTouchWindow : UIWindow
@@ -1605,10 +1609,10 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
     if (enabled && cursorEnabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
 
-        NSLog(@"cursor: %@ cached: %@", cursorType, cachedCursorType);
+        //NSLog(@"cursor: %@ cached: %@", cursorType, cachedCursorType);
         
         if (![self cursorWindow] || cursorSize != cachedCursorSize || cursorType != cachedCursorType) {
-            NSLog(@"cursorType: %@", cursorType);
+            //NSLog(@"cursorType: %@", cursorType);
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
 
@@ -1623,7 +1627,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             NoTouchWindow *window = [[%c(NoTouchWindow) alloc] initWithFrame:contentFrame];
             ((UIWindow *)window).windowLevel = UIWindowLevelAlert;
             ((UIWindow *)window).userInteractionEnabled = YES;
-            ((UIWindow *)window).backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.2];
+            //((UIWindow *)window).backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.2];
 
             UIView *cursorView;
             
@@ -1690,7 +1694,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [self setCtrlDown:nil];
 
     if ([self cursorWindow]) {
-        NSLog(@"ctrl key up!!!");
+        //NSLog(@"ctrl key up!!!");
         [(UIWindow *)[self cursorWindow] setHidden:YES];
         cursorShown = NO;
         cursorDir = 0;
@@ -1705,20 +1709,20 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!cursorShown && [self cursorWindow] && [self isActive]) {
             [(UIWindow *)[self cursorWindow] setHidden:NO];
             ((UIView *)[self cursorView]).alpha = CURSOR_MAX_OPACITY;
-            NSLog(@"altkeydown: showing window");
+            //NSLog(@"altkeydown: showing window");
         }
         UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
         BOOL ls = UIInterfaceOrientationIsLandscape(orient);
         if (ls && [self iPad] && [self iOS10] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
             CGPoint inverted = CGPointMake(cursorPosition.y, [(UIWindow *)[self cursorWindow] frame].size.width - cursorPosition.x);
-            NSLog(@"New cursor pos: %@", NSStringFromCGPoint(cursorPosition));
+            //NSLog(@"New cursor pos: %@", NSStringFromCGPoint(cursorPosition));
             cursorPosition = inverted;
         }
         if ([self shiftDown] && [self isActive]) {
             PeekThread *peekThread = [%c(PeekThread) new];
             [peekThread start];
         } else if ([self isActive]) {
-            NSLog(@"altkeydown: start dragging");
+            //NSLog(@"altkeydown: start dragging");
             [self beginTouchAtPoint:cursorPosition];
             
             NSTimer *draggingTimer = [NSTimer scheduledTimerWithTimeInterval:DRAGGING_SLEEP_TIME target:self selector:@selector(draggingUpdate) userInfo:nil repeats:YES];
@@ -1731,13 +1735,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 - (void)altKeyUp {
     [self setAltDown:nil];
     if ([self isActive]) {
-        NSLog(@"altkey up: dt: %i", [self draggingTimer]);
+        //NSLog(@"altkey up: dt: %i", [self draggingTimer]);
         if ([self cursorWindow] && !cursorShown) {
-            NSLog(@"altkeydown: hiding window");
+            //NSLog(@"altkeydown: hiding window");
             [(UIWindow *)[self cursorWindow] setHidden:YES];
         }
         if ([self draggingTimer]) {
-            NSLog(@"altkeydown: stopping drag");
+            //NSLog(@"altkeydown: stopping drag");
             [[self draggingTimer] invalidate];
             [self setDraggingTimer:nil];
         }
@@ -1760,7 +1764,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)animateCursorInDirection:(unsigned int)dir {
     
-    NSLog(@"animating: %i", dir);
+    //NSLog(@"animating: %i", dir);
     
     if (!dir) {
         NSDebug(@"Stopping cursor movement");
@@ -1806,7 +1810,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         animTarget = CGPointMake(((UIWindow *)[self cursorWindow]).bounds.size.width, cursorPosition.y);
         dist = (double)((UIWindow *)[self cursorWindow]).bounds.size.width - (double)cursorPosition.x;
         dur = dist / (cursorSpeed * 100.0);
-        NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+        //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
         
         single_dir = YES;
         single_dir_name = @"right";
@@ -2641,9 +2645,22 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)ui_leftKey {
     if (enabled && cursorShown && ![self switcherShown] && !discoverabilityShown) {
-
+        
+        if (!disableRedirect) {
+            UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
+            BOOL ls = UIInterfaceOrientationIsLandscape(orient);
+            if (ls && [self iPad] && [self iOS10] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+                disableRedirect = YES;
+                redirectRelease = YES;
+                [self ui_upKey];
+                return;
+            }
+        } else {
+            disableRedirect = NO;
+        }
+        
         cursorPosition = [((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer) position];
-        NSLog(@"Cursor Pos: %@", NSStringFromCGPoint(cursorPosition));
+        //NSLog(@"Cursor Pos: %@", NSStringFromCGPoint(cursorPosition));
 
         if (cursorPosition.x >= 1) {
             
@@ -2654,7 +2671,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             if (!((NSNumber *)[self cursorAnimationExists]).boolValue) {
                 
                 animTarget = CGPointMake(0, cursorPosition.y);
-                NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+                //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
                 dist = (double)cursorPosition.x;
                 dur = dist / (cursorSpeed * 100.0);
                 
@@ -2858,13 +2875,18 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
     
-    NSLog(@"left up: cs %i  ad %i", cursorShown, [self altDown]);
+    //NSLog(@"left up: cs %i  ad %i", cursorShown, [self altDown]);
     if (([self isActive] && [self cursorWindow]) || cursorShown || ([self altDown] && [self isActive])) {
         ((CALayer *)((UIView *)[self cursorView]).layer).position =
         ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
         cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
         
-        cursorDir &= ~(CURSOR_DIR_LEFT);
+        if (redirectRelease) {
+            cursorDir &= ~(CURSOR_DIR_UP);
+            if (!cursorDir) redirectRelease = NO;
+        } else {
+            cursorDir &= ~(CURSOR_DIR_LEFT);
+        }
         [self animateCursorInDirection:cursorDir];
     }
 }
@@ -2874,8 +2896,21 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     if (enabled && cursorShown && ![self switcherShown] && !discoverabilityShown) {
         
         cursorPosition = [((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer) position];
-        NSLog(@"Cursor Pos: %@", NSStringFromCGPoint(cursorPosition));
+        //NSLog(@"Cursor Pos: %@", NSStringFromCGPoint(cursorPosition));
 
+        if (!disableRedirect) {
+            UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
+            BOOL ls = UIInterfaceOrientationIsLandscape(orient);
+            if (ls && [self iPad] && [self iOS10] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+                disableRedirect = YES;
+                redirectRelease = YES;
+                [self ui_downKey];
+                return;
+            }
+        } else {
+            disableRedirect = NO;
+        }
+        
         if (cursorPosition.x < ((UIWindow *)[self cursorWindow]).bounds.size.width) {
             
             CGPoint animTarget;
@@ -2887,7 +2922,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 animTarget = CGPointMake(((UIWindow *)[self cursorWindow]).bounds.size.width, cursorPosition.y);
                 double dist = (double)((UIWindow *)[self cursorWindow]).bounds.size.width - (double)cursorPosition.x;
                 NSTimeInterval dur = dist / (cursorSpeed * 100.0);
-                NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+                //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
 
                 CABasicAnimation *animation = [CABasicAnimation animation];
                 animation.keyPath = @"position";
@@ -3133,13 +3168,19 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
 
-    NSLog(@"right up: cs %i  ad %i", cursorShown, [self altDown]);
+    //NSLog(@"right up: cs %i  ad %i", cursorShown, [self altDown]);
     if (([self isActive] && [self cursorWindow]) || cursorShown || ([self altDown] && [self isActive])) {
         ((CALayer *)((UIView *)[self cursorView]).layer).position =
         ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
         cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
         
-        cursorDir &= ~(CURSOR_DIR_RIGHT);
+        if (redirectRelease) {
+            cursorDir &= ~(CURSOR_DIR_DOWN);
+            if (!cursorDir) redirectRelease = NO;
+        } else {
+            cursorDir &= ~(CURSOR_DIR_RIGHT);
+        }
+        
         [self animateCursorInDirection:cursorDir];
     }
 }
@@ -3149,7 +3190,20 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     if (enabled && cursorShown && ![self switcherShown] && !discoverabilityShown) {
         
         cursorPosition = [((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer) position];
-        NSLog(@"Cursor Pos: %@", NSStringFromCGPoint(cursorPosition));
+        //NSLog(@"Cursor Pos: %@", NSStringFromCGPoint(cursorPosition));
+        
+        if (!disableRedirect) {
+            UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
+            BOOL ls = UIInterfaceOrientationIsLandscape(orient);
+            if (ls && [self iPad] && [self iOS10] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+                disableRedirect = YES;
+                redirectRelease = YES;
+                [self ui_leftKey];
+                return;
+            }
+        } else {
+            disableRedirect = NO;
+        }
         
         if (cursorPosition.y < ((UIWindow *)[self cursorWindow]).bounds.size.height) {
 
@@ -3162,7 +3216,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 animTarget = CGPointMake(cursorPosition.x, ((UIWindow *)[self cursorWindow]).bounds.size.height);
                 double dist = ((UIWindow *)[self cursorWindow]).bounds.size.height - (double)cursorPosition.y;
                 NSTimeInterval dur = dist / (cursorSpeed * 100.0);
-                NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+                //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
                 
                 CABasicAnimation *animation = [CABasicAnimation animation];
                 animation.keyPath = @"position";
@@ -3397,13 +3451,19 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
 
-    NSLog(@"down up: cs %i  ad %i", cursorShown, [self altDown]);
+    //NSLog(@"down up: cs %i  ad %i", cursorShown, [self altDown]);
     if (([self isActive] && [self cursorWindow]) || cursorShown || ([self altDown] && [self isActive])) {
         ((CALayer *)((UIView *)[self cursorView]).layer).position =
         ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
         cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
         
-        cursorDir &= ~(CURSOR_DIR_DOWN);
+        if (redirectRelease) {
+            cursorDir &= ~(CURSOR_DIR_LEFT);
+            if (!cursorDir) redirectRelease = NO;
+        } else {
+            cursorDir &= ~(CURSOR_DIR_DOWN);
+        }
+        
         [self animateCursorInDirection:cursorDir];
     }
 }
@@ -3413,7 +3473,20 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     if (enabled && cursorShown && ![self switcherShown] && !discoverabilityShown) {
 
         cursorPosition = [((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer) position];
-        NSLog(@"Cursor Pos: %@", NSStringFromCGPoint(cursorPosition));
+        //NSLog(@"Cursor Pos: %@", NSStringFromCGPoint(cursorPosition));
+        
+        if (!disableRedirect) {
+            UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
+            BOOL ls = UIInterfaceOrientationIsLandscape(orient);
+            if (ls && [self iPad] && [self iOS10] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+                disableRedirect = YES;
+                redirectRelease = YES;
+                [self ui_rightKey];
+                return;
+            }
+        } else {
+            disableRedirect = NO;
+        }
         
         if (cursorPosition.y > 0) {
             
@@ -3426,7 +3499,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 animTarget = CGPointMake(cursorPosition.x, 0);
                 double dist = cursorPosition.y;
                 NSTimeInterval dur = dist / (cursorSpeed * 100.0);
-                NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
+                //NSLog(@"Endpoint: %@", NSStringFromCGPoint(animTarget));
                 
                 CABasicAnimation *animation = [CABasicAnimation animation];
                 animation.keyPath = @"position";
@@ -3664,13 +3737,19 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
 
-    NSLog(@"up up: cs %i  ad %i", cursorShown, [self altDown]);
+    //NSLog(@"up up: cs %i  ad %i", cursorShown, [self altDown]);
     if (([self isActive] && [self cursorWindow]) || cursorShown || ([self altDown] && [self isActive])) {
         ((CALayer *)((UIView *)[self cursorView]).layer).position =
         ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
         cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
         
-        cursorDir &= ~(CURSOR_DIR_UP);
+        if (redirectRelease) {
+            cursorDir &= ~(CURSOR_DIR_RIGHT);
+            if (!cursorDir) redirectRelease = NO;
+        } else {
+            cursorDir &= ~(CURSOR_DIR_UP);
+        }
+        
         [self animateCursorInDirection:cursorDir];
     }
 }
@@ -4252,7 +4331,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         }
     }
     if (cursorShown) {
-        NSLog(@"updatesb!!!");
         UIWindow *cursorWin = (UIWindow *)[self cursorWindow];
         [cursorWin setHidden:YES];
         cursorShown = NO;
@@ -4260,7 +4338,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [self setCursorWindow:nil];
     cursorPosition = CGPointMake(CGRectGetMidX([UIScreen mainScreen].bounds),
                                  CGRectGetMidY([UIScreen mainScreen].bounds));
-    NSLog(@"Set cursor position to %@", NSStringFromCGPoint(cursorPosition));
+    //NSLog(@"Set cursor position to %@", NSStringFromCGPoint(cursorPosition));
 }
 
 %new
