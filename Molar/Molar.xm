@@ -88,7 +88,7 @@
 #define NEXT_VIEW 1
 #define PREV_VIEW 0
 
-#define DEBUG 0
+#define DEBUG 1
 
 #if DEBUG == 0
 #define NSDebug(...)
@@ -123,9 +123,7 @@ BOOL darkMode,
      sbIconSelected,
      sbDockIconSelected,
      sbFolderIconSelected,
-     sbFolderOpened,
-     draggingPossible,
-     draggingStarted;
+     sbFolderOpened;
 
 NSString *launcherApp1,
          *launcherApp2,
@@ -1588,10 +1586,15 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (NSNumber *)cursorAnimationExists {
-    if ([((UIView*)[self cursorView]).layer animationForKey:@"left"]) return @YES;
+    /*if ([((UIView*)[self cursorView]).layer animationForKey:@"left"]) return @YES;
     if ([((UIView*)[self cursorView]).layer animationForKey:@"right"]) return @YES;
     if ([((UIView*)[self cursorView]).layer animationForKey:@"up"]) return @YES;
     if ([((UIView*)[self cursorView]).layer animationForKey:@"down"]) return @YES;
+    if ([((UIView*)[self cursorView]).layer animationForKey:@"up-left"]) return @YES;
+    if ([((UIView*)[self cursorView]).layer animationForKey:@"up-right"]) return @YES;
+    if ([((UIView*)[self cursorView]).layer animationForKey:@"down-left"]) return @YES;
+    if ([((UIView*)[self cursorView]).layer animationForKey:@"down-right"]) return @YES;*/
+    if ([((UIView*)[self cursorView]).layer animationKeys].count) return @YES;
     return NO;
 }
 
@@ -1620,7 +1623,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             NoTouchWindow *window = [[%c(NoTouchWindow) alloc] initWithFrame:contentFrame];
             ((UIWindow *)window).windowLevel = UIWindowLevelAlert;
             ((UIWindow *)window).userInteractionEnabled = YES;
-            //window.backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.3];
+            ((UIWindow *)window).backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.2];
 
             UIView *cursorView;
             
@@ -1687,8 +1690,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [self setCtrlDown:nil];
 
     if ([self cursorWindow]) {
+        NSLog(@"ctrl key up!!!");
         [(UIWindow *)[self cursorWindow] setHidden:YES];
         cursorShown = NO;
+        cursorDir = 0;
+        [self animateCursorInDirection:cursorDir];
     }
 }
 
@@ -1699,12 +1705,22 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!cursorShown && [self cursorWindow] && [self isActive]) {
             [(UIWindow *)[self cursorWindow] setHidden:NO];
             ((UIView *)[self cursorView]).alpha = CURSOR_MAX_OPACITY;
+            NSLog(@"altkeydown: showing window");
+        }
+        UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
+        BOOL ls = UIInterfaceOrientationIsLandscape(orient);
+        if (ls && [self iPad] && [self iOS10] && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
+            CGPoint inverted = CGPointMake(cursorPosition.y, [(UIWindow *)[self cursorWindow] frame].size.width - cursorPosition.x);
+            NSLog(@"New cursor pos: %@", NSStringFromCGPoint(cursorPosition));
+            cursorPosition = inverted;
         }
         if ([self shiftDown] && [self isActive]) {
             PeekThread *peekThread = [%c(PeekThread) new];
             [peekThread start];
         } else if ([self isActive]) {
+            NSLog(@"altkeydown: start dragging");
             [self beginTouchAtPoint:cursorPosition];
+            
             NSTimer *draggingTimer = [NSTimer scheduledTimerWithTimeInterval:DRAGGING_SLEEP_TIME target:self selector:@selector(draggingUpdate) userInfo:nil repeats:YES];
             [self setDraggingTimer:draggingTimer];
         }
@@ -1715,44 +1731,36 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 - (void)altKeyUp {
     [self setAltDown:nil];
     if ([self isActive]) {
-        if (!cursorShown && [self cursorWindow]) {
-            NSTimer *cursorFadeoutTimer = [NSTimer scheduledTimerWithTimeInterval:CURSOR_FADE_DELAY target:self selector:@selector(fadeoutCursor) userInfo:nil repeats:NO];
+        NSLog(@"altkey up: dt: %i", [self draggingTimer]);
+        if ([self cursorWindow] && !cursorShown) {
+            NSLog(@"altkeydown: hiding window");
+            [(UIWindow *)[self cursorWindow] setHidden:YES];
         }
         if ([self draggingTimer]) {
+            NSLog(@"altkeydown: stopping drag");
             [[self draggingTimer] invalidate];
             [self setDraggingTimer:nil];
         }
-        if ([self shiftDown]) {
-            [self endCurrentTouchAtPoint:cursorPosition];
-        } else {
-            [self endCurrentTouchAtPoint:cursorPosition];
-        }
+        [self endCurrentTouchAtPoint:cursorPosition];
     }
 }
 
 %new
-- (void)fadeoutCursor {
-    [UIView animateWithDuration:CURSOR_FADE_TIME animations:^{
-        ((UIView *)[self cursorView]).alpha = 0.0;
-    } completion:^(BOOL completed){
-        [(UIWindow *)[self cursorWindow] setHidden:YES];
-    }];
-}
-
-%new
 - (void)draggingUpdate {
-    CGPoint intermediatePoint = [((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer) position];
-    [self updateCurrentTouchAtPoint:intermediatePoint withPhase:cursorDir ? UITouchPhaseMoved : UITouchPhaseStationary];
-    //[PTFakeMetaTouch fake3DTouchId:pointID AtPoint:intermediatePoint withTouchPhase:cursorDir ? UITouchPhaseMoved : UITouchPhaseStationary];
-}
-
-%new
-- (void)updateCursorPosition {
-    ((UIView *)[self cursorView]).center = cursorPosition;
+    if ([self altDown]) {
+        CGPoint intermediatePoint = [((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer) position];
+        [self updateCurrentTouchAtPoint:intermediatePoint withPhase:cursorDir ? UITouchPhaseMoved : UITouchPhaseStationary];
+    }
+    else {
+        [[self draggingTimer] invalidate];
+        [self setDraggingTimer:nil];
+    }
 }
 
 %new
 - (void)animateCursorInDirection:(unsigned int)dir {
+    
+    NSLog(@"animating: %i", dir);
     
     if (!dir) {
         NSDebug(@"Stopping cursor movement");
@@ -2674,14 +2682,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     [self animateCursorInDirection:cursorDir];
                 }
             }
-            
-            if ([self altDown]) {
-                if (draggingPossible && !draggingStarted) {
-                    NSTimer *draggingTimer = [NSTimer scheduledTimerWithTimeInterval:DRAGGING_SLEEP_TIME target:self selector:@selector(draggingUpdate) userInfo:nil repeats:YES];
-                    [self setDraggingTimer:draggingTimer];
-                    draggingStarted = YES;
-                }
-            }
         }
     }
     else if (![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
@@ -2858,7 +2858,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
     
-    if (cursorShown) {
+    NSLog(@"left up: cs %i  ad %i", cursorShown, [self altDown]);
+    if (([self isActive] && [self cursorWindow]) || cursorShown || ([self altDown] && [self isActive])) {
         ((CALayer *)((UIView *)[self cursorView]).layer).position =
         ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
         cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
@@ -2866,13 +2867,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         cursorDir &= ~(CURSOR_DIR_LEFT);
         [self animateCursorInDirection:cursorDir];
     }
-    
-    /*if ([((UIView *)[self cursorView]).layer animationForKey:@"left"]) {
-        [((UIView *)[self cursorView]).layer removeAnimationForKey:@"left"];
-        ((CALayer *)((UIView *)[self cursorView]).layer).position = 
-            ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
-        cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
-    }*/
 }
 
 %new
@@ -2917,15 +2911,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 else if ([((UIView*)[self cursorView]).layer animationForKey:@"down"]) {
                     cursorDir = (CURSOR_DIR_RIGHT | CURSOR_DIR_DOWN);
                     [self animateCursorInDirection:cursorDir];
-                }
-                
-            }
-            
-            if ([self altDown]) {
-                if (draggingPossible && !draggingStarted) {
-                    NSTimer *draggingTimer = [NSTimer scheduledTimerWithTimeInterval:DRAGGING_SLEEP_TIME target:self selector:@selector(draggingUpdate) userInfo:nil repeats:YES];
-                    [self setDraggingTimer:draggingTimer];
-                    draggingStarted = YES;
                 }
             }
         }
@@ -3148,7 +3133,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
 
-    if (cursorShown) {
+    NSLog(@"right up: cs %i  ad %i", cursorShown, [self altDown]);
+    if (([self isActive] && [self cursorWindow]) || cursorShown || ([self altDown] && [self isActive])) {
         ((CALayer *)((UIView *)[self cursorView]).layer).position =
         ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
         cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
@@ -3156,13 +3142,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         cursorDir &= ~(CURSOR_DIR_RIGHT);
         [self animateCursorInDirection:cursorDir];
     }
-    
-    /*if ([((UIView *)[self cursorView]).layer animationForKey:@"right"]) {
-        [((UIView *)[self cursorView]).layer removeAnimationForKey:@"right"];
-        ((CALayer *)((UIView *)[self cursorView]).layer).position = 
-            ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
-        cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
-    }*/
 }
 
 %new
@@ -3208,14 +3187,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 else if ([((UIView*)[self cursorView]).layer animationForKey:@"right"]) {
                     cursorDir = (CURSOR_DIR_DOWN | CURSOR_DIR_RIGHT);
                     [self animateCursorInDirection:cursorDir];
-                }
-            }
-
-            if ([self altDown]) {
-                if (draggingPossible && !draggingStarted) {
-                    NSTimer *draggingTimer = [NSTimer scheduledTimerWithTimeInterval:DRAGGING_SLEEP_TIME target:self selector:@selector(draggingUpdate) userInfo:nil repeats:YES];
-                    [self setDraggingTimer:draggingTimer];
-                    draggingStarted = YES;
                 }
             }
         }
@@ -3426,7 +3397,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
 
-    if (cursorShown) {
+    NSLog(@"down up: cs %i  ad %i", cursorShown, [self altDown]);
+    if (([self isActive] && [self cursorWindow]) || cursorShown || ([self altDown] && [self isActive])) {
         ((CALayer *)((UIView *)[self cursorView]).layer).position =
         ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
         cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
@@ -3434,13 +3406,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         cursorDir &= ~(CURSOR_DIR_DOWN);
         [self animateCursorInDirection:cursorDir];
     }
-    
-    /*if ([((UIView *)[self cursorView]).layer animationForKey:@"down"]) {
-        [((UIView *)[self cursorView]).layer removeAnimationForKey:@"down"];
-        ((CALayer *)((UIView *)[self cursorView]).layer).position = 
-            ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
-        cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
-    }*/
 }
 
 %new
@@ -3486,14 +3451,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 else if ([((UIView*)[self cursorView]).layer animationForKey:@"right"]) {
                     cursorDir = (CURSOR_DIR_UP | CURSOR_DIR_RIGHT);
                     [self animateCursorInDirection:cursorDir];
-                }
-            }
-
-            if ([self altDown]) {
-                if (draggingPossible && !draggingStarted) {
-                    NSTimer *draggingTimer = [NSTimer scheduledTimerWithTimeInterval:DRAGGING_SLEEP_TIME target:self selector:@selector(draggingUpdate) userInfo:nil repeats:YES];
-                    [self setDraggingTimer:draggingTimer];
-                    draggingStarted = YES;
                 }
             }
         }
@@ -3707,7 +3664,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     keyRepeatTimer = nil;
     waitingForKeyRepeat = NO;
 
-    if (cursorShown) {
+    NSLog(@"up up: cs %i  ad %i", cursorShown, [self altDown]);
+    if (([self isActive] && [self cursorWindow]) || cursorShown || ([self altDown] && [self isActive])) {
         ((CALayer *)((UIView *)[self cursorView]).layer).position =
         ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
         cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
@@ -3715,13 +3673,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         cursorDir &= ~(CURSOR_DIR_UP);
         [self animateCursorInDirection:cursorDir];
     }
-    
-    /*if ([((UIView *)[self cursorView]).layer animationForKey:@"up"]) {
-        [((UIView *)[self cursorView]).layer removeAnimationForKey:@"up"];
-        ((CALayer *)((UIView *)[self cursorView]).layer).position = 
-            ((CALayer *)((CALayer *)((UIView *)[self cursorView]).layer).presentationLayer).position;
-        cursorPosition = ((CALayer *)((UIView *)[self cursorView]).layer).position;
-    }*/
 }
 
 %new
@@ -4301,6 +4252,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         }
     }
     if (cursorShown) {
+        NSLog(@"updatesb!!!");
         UIWindow *cursorWin = (UIWindow *)[self cursorWindow];
         [cursorWin setHidden:YES];
         cursorShown = NO;
@@ -4308,6 +4260,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [self setCursorWindow:nil];
     cursorPosition = CGPointMake(CGRectGetMidX([UIScreen mainScreen].bounds),
                                  CGRectGetMidY([UIScreen mainScreen].bounds));
+    NSLog(@"Set cursor position to %@", NSStringFromCGPoint(cursorPosition));
 }
 
 %new
