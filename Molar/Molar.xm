@@ -146,6 +146,7 @@ UITableView *selectedTableView;
 UITableViewCell *selectedCell;
 UICollectionView *selectedCollectionView;
 UICollectionViewCell *selectedItem;
+NSArray *cellsWithTitles;
 int selectedRow,
     selectedSection,
     selectedViewIndex;
@@ -185,6 +186,7 @@ NSTimer *forceTouchTimer;
 int currentForce;
 UITouch *currentTouch;
 BOOL disableRedirect, redirectRelease;
+NSString *layout;
 
 HBPreferences *preferences;
 
@@ -245,7 +247,7 @@ static void postKeyEventNotification(int key, int down, int page) {
             else if (usage == ENTER_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EnterKeyDown" object:nil];
             else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyDown" object:nil];
             else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyUp" object:nil];
-            else if (usagePage == 7 && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"GenericKeyDown" object:nil];
+            else if (usagePage == 7 && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"GenericKeyDown" object:nil userInfo:@{@"usage": @(usage), @"down": @(down)}];
         }
         NSDebug(@"page: %i  key: %i  down: %i", usagePage, usage, down);
     }
@@ -279,6 +281,8 @@ static void loadPrefs() {
 
     customShortcuts = (NSArray *)[preferences objectForKey:@"shortcuts"];
 
+    layout = [preferences objectForKey:@"keyboardLayout"];
+    
     //NSDebug(@"PREFS:\n%@", [preferences dictionaryRepresentation]);
 
     [[NSNotificationCenter defaultCenter] postNotificationName:@"ReloadShortcutsNotification" object:nil];
@@ -367,6 +371,7 @@ static void keyEventCallback(CFNotificationCenterRef center, void *observer, CFS
     int usage = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"key"]).intValue;
     int down = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"down"]).intValue;
     int usagePage = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"page"]).intValue;
+    
     if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
     else if (usage == CTRL_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"CtrlKeyDown" object:nil];
     else if (usage == CTRL_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"CtrlKeyUp" object:nil];
@@ -388,7 +393,7 @@ static void keyEventCallback(CFNotificationCenterRef center, void *observer, CFS
     else if (usage == ENTER_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EnterKeyDown" object:nil];
     else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyDown" object:nil];
     else if ((usage == SHIFT_KEY || usage == SHIFT_KEY_2) && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"ShiftKeyUp" object:nil];
-    else if (usagePage == 7 && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"GenericKeyDown" object:nil];
+    else if (usagePage == 7 && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"GenericKeyDown" object:nil userInfo:@{@"usage": @(usage), @"down": @(down)}];
 }
 
 static void setupHID() {
@@ -683,7 +688,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_downKey) name:@"DownKeyDown" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_downKeyUp) name:@"DownKeyUp" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ui_rKey) name:@"RKeyDown" object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(genericKeyDown) name:@"GenericKeyDown" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(genericKeyDown:) name:@"GenericKeyDown" object:nil];
 
     // shortcuts
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadShortcuts) name:@"ReloadShortcutsNotification" object:nil];
@@ -992,6 +997,27 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 %new
+- (id)cellTitles {
+    return objc_getAssociatedObject(self, @selector(cellTitles));
+}
+
+%new
+- (void)setCellTitles:(id)value {
+    objc_setAssociatedObject(self, @selector(cellTitles), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+%new
+- (id)cellsWithTitles {
+    return objc_getAssociatedObject(self, @selector(cellsWithTitles));
+}
+
+%new
+- (void)setCellsWithTitles:(id)value {
+    objc_setAssociatedObject(self, @selector(cellsWithTitles), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+
+%new
 - (id)draggingTimer {
     return objc_getAssociatedObject(self, @selector(draggingTimer));
 }
@@ -1000,6 +1026,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 - (void)setDraggingTimer:(id)value {
     objc_setAssociatedObject(self, @selector(draggingTimer), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
+
 
 %new
 - (id)switcherShown {
@@ -1627,7 +1654,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             NoTouchWindow *window = [[%c(NoTouchWindow) alloc] initWithFrame:contentFrame];
             ((UIWindow *)window).windowLevel = UIWindowLevelAlert;
             ((UIWindow *)window).userInteractionEnabled = YES;
-            //((UIWindow *)window).backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.2];
+            ((UIWindow *)window).backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.2];
 
             UIView *cursorView;
             
@@ -2001,8 +2028,77 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 %new
-- (void)genericKeyDown {
+- (NSArray *)characters {
+    
+    if ([layout isEqualToString:@"en"]) {
+        return @[
+                 @"",  @"",  @"",  @"",  @"A", @"B", @"C", @"D", @"E", @"F",
+                 @"G", @"H", @"I", @"J", @"K", @"L", @"M", @"N", @"O", @"P",
+                 @"Q", @"R", @"S", @"T", @"U", @"V", @"W", @"X", @"Y", @"Z",
+                 @"1", @"2", @"3", @"4", @"5", @"6", @"7", @"8", @"9", @"0",
+                 @"⏎", @"",  @"⌫", @"⇥", @"␣", @"-", @"=", @"[", @"]", @"|",
+                 @"",  @";", @"'", @"`", @",", @".", @"/"
+                 ];
+    }
+    
+    else if ([layout isEqualToString:@"de"]) {
+        return @[
+                 @"",  @"",  @"",  @"",  @"A", @"B", @"C", @"D", @"E", @"F",
+                 @"G", @"H", @"I", @"J", @"K", @"L", @"M", @"N", @"O", @"P",
+                 @"Q", @"R", @"S", @"T", @"U", @"V", @"W", @"X", @"Z", @"Y",
+                 @"1", @"2", @"3", @"4", @"5", @"6", @"7", @"8", @"9", @"0",
+                 @"⏎", @"",  @"⌫", @"⇥", @"␣", @"ß", @"´", @"Ü", @"+", @"#",
+                 @"",  @"Ö", @"Ä", @"<", @",", @".", @"-"
+                 ];
+    }
+    
+    else
+        return @[
+                 @"",  @"",  @"",  @"",  @"A", @"B", @"C", @"D", @"E", @"F",
+                 @"G", @"H", @"I", @"J", @"K", @"L", @"M", @"N", @"O", @"P",
+                 @"Q", @"R", @"S", @"T", @"U", @"V", @"W", @"X", @"Z", @"Y",
+                 @"1", @"2", @"3", @"4", @"5", @"6", @"7", @"8", @"9", @"0",
+                 @"⏎", @"",  @"⌫", @"⇥", @"␣", @"ß", @"´", @"Ü", @"+", @"#",
+                 @"",  @"Ö", @"Ä", @"<", @",", @".", @"-"
+                 ];
+}
+
+
+
+%new
+- (void)genericKeyDown:(NSNotification *)notif {
     [self stopDiscoverabilityTimer];
+    if (tableViewMode) {
+
+        NSString *charStr = [self characters][((NSNumber *)notif.userInfo[@"usage"]).intValue];
+        NSDebug(@"Pressed: %@", charStr);
+        
+        int lex_idx;
+        
+        for (int i = 0; i < ((NSArray *)[self cellTitles]).count; i++) {
+            switch ([charStr caseInsensitiveCompare:((NSArray *)[self cellTitles])[i]]) {
+                case NSOrderedAscending:
+                    break;
+                case NSOrderedSame:
+                    lex_idx = i;
+                    break;
+                case NSOrderedDescending:
+                    lex_idx = (i == ((NSArray *)[self cellTitles]).count - 1) ? i : i + 1;
+                default:
+                    break;
+            }
+        }
+        NSDebug(@"index: %i", lex_idx);
+        NSDebug(@"IP: %@", ((NSDictionary *)((NSArray *)[self cellsWithTitles])[lex_idx])[@"indexPath"]);
+        [selectedTableView scrollToRowAtIndexPath:((NSDictionary *)((NSArray *)[self cellsWithTitles])[lex_idx])[@"indexPath"] atScrollPosition:UITableViewScrollPositionMiddle animated:YES];
+        if (selectedCell) {
+            selectedCell.selected = NO;
+        }
+        selectedCell = [selectedTableView cellForRowAtIndexPath:((NSDictionary *)((NSArray *)[self cellsWithTitles])[lex_idx])[@"indexPath"]];
+        selectedCell.selected = YES;
+        selectedSection = ((NSIndexPath *)((NSDictionary *)((NSArray *)[self cellsWithTitles])[lex_idx])[@"indexPath"]).section;
+        selectedRow = ((NSIndexPath *)((NSDictionary *)((NSArray *)[self cellsWithTitles])[lex_idx])[@"indexPath"]).row;
+    }
 }
 
 %new
@@ -4134,6 +4230,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             if ([tView numberOfSections] && [tView numberOfRowsInSection:0]) {
                 selectedRow = selectedSection = 0;
                 tableViewMode = YES;
+                [self initCellTitles:tView];
                 collectionViewMode = NO;
                 scrollViewMode = NO;
                 selectedCell = [tView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:selectedRow inSection:selectedSection]];
@@ -4211,6 +4308,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                         UITableView *tView = (UITableView *)[self selectedView];
                         if ([tView numberOfSections] && [tView numberOfRowsInSection:0]) {
                             selectedRow = selectedSection = 0;
+                            [self initCellTitles:tView];
                             tableViewMode = YES;
                             collectionViewMode = NO;
                             scrollViewMode = NO;
@@ -4452,6 +4550,34 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         sbIconOpenedFolderView.transform = backupTransform;
     } completion:^(BOOL completed){
     }];
+}
+
+%new
+- (void)initCellTitles:(UITableView *)table {
+    NSMutableArray *cwt = [NSMutableArray array];
+    NSMutableArray *titles = [NSMutableArray array];
+    NSInteger sectionCount = [table numberOfSections];
+    for (NSInteger section = 0; section < sectionCount; section++) {
+        NSInteger rowCount = [table numberOfRowsInSection:section];
+        for (NSInteger row = 0; row < rowCount; row++) {
+            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:section];
+            UITableViewCell *cell = [table cellForRowAtIndexPath:indexPath];
+            NSDebug(@"%@ %@", indexPath, cell.textLabel.text);
+            if (cell.textLabel.text && ![cell.textLabel.text isEqualToString:@""]) {
+                [cwt addObject:@{@"text": [cell.textLabel.text copy], @"indexPath": indexPath}];
+            }
+        }
+    }
+    NSDebug(@"cwt: %@", cwt);
+    NSSortDescriptor *sortByName = [NSSortDescriptor sortDescriptorWithKey:@"text" ascending:YES];
+    NSArray *sortDescriptors = [NSArray arrayWithObject:sortByName];
+    cwt = [cwt sortedArrayUsingDescriptors:sortDescriptors];
+    for (NSDictionary *d in cwt) {
+        [titles addObject:d[@"text"]];
+    }
+    NSDebug(@"titles: %@", titles);
+    [self setCellsWithTitles:cwt];
+    [self setCellTitles:titles];
 }
 
 %new
