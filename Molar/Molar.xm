@@ -85,6 +85,8 @@
 #define SBFOLDER_ICONS_DEFAULT_X 3
 #define SBFOLDER_ICONS_DEFAULT_Y 3
 
+#define LIST_SEARCH_TIME 1.5
+
 #define NEXT_VIEW 1
 #define PREV_VIEW 0
 
@@ -187,6 +189,7 @@ int currentForce;
 UITouch *currentTouch;
 BOOL disableRedirect, redirectRelease;
 NSString *layout;
+NSMutableString *listSearchTerm;
 
 HBPreferences *preferences;
 
@@ -1027,6 +1030,15 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     objc_setAssociatedObject(self, @selector(draggingTimer), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
+%new
+- (id)listSelectTimer {
+    return objc_getAssociatedObject(self, @selector(listSelectTimer));
+}
+
+%new
+- (void)setListSelectTimer:(id)value {
+    objc_setAssociatedObject(self, @selector(listSelectTimer), value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
 
 %new
 - (id)switcherShown {
@@ -1636,7 +1648,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
     if (enabled && cursorEnabled && ![self switcherShown] && !discoverabilityShown && [self isActive]) {
 
-        //NSLog(@"cursor: %@ cached: %@", cursorType, cachedCursorType);
+        NSDebug(@"cursor: %@ cached: %@", cursorType, cachedCursorType);
         
         if (![self cursorWindow] || cursorSize != cachedCursorSize || cursorType != cachedCursorType) {
             //NSLog(@"cursorType: %@", cursorType);
@@ -1654,7 +1666,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             NoTouchWindow *window = [[%c(NoTouchWindow) alloc] initWithFrame:contentFrame];
             ((UIWindow *)window).windowLevel = UIWindowLevelAlert;
             ((UIWindow *)window).userInteractionEnabled = YES;
-            ((UIWindow *)window).backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.2];
+            //((UIWindow *)window).backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.2];
 
             UIView *cursorView;
             
@@ -1740,7 +1752,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         }
         UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
         BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-        if (ls && [self iPad] && [self iOS10] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
+        if (ls && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
             CGPoint inverted = CGPointMake(cursorPosition.y, [(UIWindow *)[self cursorWindow] frame].size.width - cursorPosition.x);
             //NSLog(@"New cursor pos: %@", NSStringFromCGPoint(cursorPosition));
             cursorPosition = inverted;
@@ -2064,19 +2076,39 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 
+%new
+- (void)resetListSearch {
+    [self setListSelectTimer:nil];
+    listSearchTerm = [NSMutableString new];
+}
+
 
 %new
 - (void)genericKeyDown:(NSNotification *)notif {
     [self stopDiscoverabilityTimer];
-    if (tableViewMode) {
+    if (tableViewMode && [self cellTitles] && ((NSArray *)[self cellTitles]).count) {
 
         NSString *charStr = [self characters][((NSNumber *)notif.userInfo[@"usage"]).intValue];
-        NSDebug(@"Pressed: %@", charStr);
+        
+        if (![self listSelectTimer]) {
+            listSearchTerm = [NSMutableString new];
+            [listSearchTerm appendString:charStr];
+            NSTimer *searchTimer = [NSTimer scheduledTimerWithTimeInterval:LIST_SEARCH_TIME
+                                                                     target:self
+                                                                   selector:@selector(resetListSearch)
+                                                                   userInfo:nil
+                                                                    repeats:NO];
+            [self setListSelectTimer:searchTimer];
+        } else {
+            [listSearchTerm appendString:charStr];
+        }
+        
+        NSDebug(@"Search for: %@ pressed: %@", listSearchTerm, charStr);
         
         int lex_idx;
         
         for (int i = 0; i < ((NSArray *)[self cellTitles]).count; i++) {
-            switch ([charStr caseInsensitiveCompare:((NSArray *)[self cellTitles])[i]]) {
+            switch ([listSearchTerm caseInsensitiveCompare:((NSArray *)[self cellTitles])[i]]) {
                 case NSOrderedAscending:
                     break;
                 case NSOrderedSame:
@@ -2745,7 +2777,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if (ls && [self iPad] && [self iOS10] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
+            if (ls && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 [self ui_upKey];
@@ -2997,7 +3029,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if (ls && [self iPad] && [self iOS10] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
+            if (ls && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 [self ui_downKey];
@@ -3291,7 +3323,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if (ls && [self iPad] && [self iOS10] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
+            if (ls && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 [self ui_leftKey];
@@ -3574,7 +3606,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if (ls && [self iPad] && [self iOS10] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
+            if (ls && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 [self ui_rightKey];
