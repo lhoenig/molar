@@ -85,7 +85,7 @@
 #define SBFOLDER_ICONS_DEFAULT_X 3
 #define SBFOLDER_ICONS_DEFAULT_Y 3
 
-#define LIST_SEARCH_TIME 1.5
+#define LIST_SEARCH_TIME 2.0
 
 #define NEXT_VIEW 1
 #define PREV_VIEW 0
@@ -179,6 +179,7 @@ id selectedSBIcon;
 SBApplicationIcon *selectedSBIconInOpenedFolder;
 
 NSString *cursorType, *cachedCursorType;
+NSInteger cachedOrientation;
 double cursorSize, cursorSpeed;
 double cachedCursorSize;
 CGPoint cursorPosition;
@@ -1650,7 +1651,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
         NSDebug(@"cursor: %@ cached: %@", cursorType, cachedCursorType);
         
-        if (![self cursorWindow] || cursorSize != cachedCursorSize || cursorType != cachedCursorType) {
+        if (![self cursorWindow] || cursorSize != cachedCursorSize || cursorType != cachedCursorType ||
+            [UIApplication sharedApplication].statusBarOrientation != cachedOrientation) {
             //NSLog(@"cursorType: %@", cursorType);
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
@@ -1659,14 +1661,14 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             CGRect contentFrame = CGRectMake(0, 0, ls ? bounds.size.height : bounds.size.width,
                                                    ls ? bounds.size.width  : bounds.size.height);
 
-            if ([self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]) {
+            if ([self iPad] && [self iOS10] && ls && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]) {
                 contentFrame = CGRectMake(contentFrame.origin.x, contentFrame.origin.y, contentFrame.size.height, contentFrame.size.width);
             }
 
             NoTouchWindow *window = [[%c(NoTouchWindow) alloc] initWithFrame:contentFrame];
             ((UIWindow *)window).windowLevel = UIWindowLevelAlert;
             ((UIWindow *)window).userInteractionEnabled = YES;
-            //((UIWindow *)window).backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.2];
+            ((UIWindow *)window).backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.2];
 
             UIView *cursorView;
             
@@ -1719,6 +1721,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             
             cachedCursorSize = cursorSize;
             cachedCursorType = cursorType;
+            cachedOrientation = orient;
         
         } else {
             [(UIWindow *)[self cursorWindow] setHidden:NO];
@@ -1733,7 +1736,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [self setCtrlDown:nil];
 
     if ([self cursorWindow]) {
-        //NSLog(@"ctrl key up!!!");
         [(UIWindow *)[self cursorWindow] setHidden:YES];
         cursorShown = NO;
         cursorDir = 0;
@@ -1752,7 +1754,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         }
         UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
         BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-        if (ls && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
+        if (ls/* && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])*/) {
             CGPoint inverted = CGPointMake(cursorPosition.y, [(UIWindow *)[self cursorWindow] frame].size.width - cursorPosition.x);
             //NSLog(@"New cursor pos: %@", NSStringFromCGPoint(cursorPosition));
             cursorPosition = inverted;
@@ -2078,7 +2080,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)resetListSearch {
-    [self setListSelectTimer:nil];
+    [self setListSelectTimer:nil];  
     listSearchTerm = [NSMutableString new];
 }
 
@@ -2088,6 +2090,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     [self stopDiscoverabilityTimer];
     if (tableViewMode && [self cellTitles] && ((NSArray *)[self cellTitles]).count) {
 
+        if (((NSNumber *)notif.userInfo[@"usage"]).intValue >= ((NSArray *)[self characters]).count) return;
+        
         NSString *charStr = [self characters][((NSNumber *)notif.userInfo[@"usage"]).intValue];
         
         if (![self listSelectTimer]) {
@@ -2777,7 +2781,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if (ls && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
+            if ((![self iPad] && ls) || ([self iPad] && ls && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]))) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 [self ui_upKey];
@@ -3029,7 +3033,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if (ls && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
+            if ((![self iPad] && ls) || ([self iPad] && ls && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]))) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 [self ui_downKey];
@@ -3254,7 +3258,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     sbSelectedPage++;
                     sbSelectedColumn = 0;
                     if ([(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] < ((sbSelectedRow + 1) * sbColumns)) {
-                        sbSelectedRow = (int)floor((double)[(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] / (double)sbColumns) - 1;
+                        sbSelectedRow = ((int)floor((double)[(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] count] / (double)sbColumns));
+                        sbSelectedRow = (sbSelectedRow > 0) ? sbSelectedRow - 1 : sbSelectedRow;
                     }
 
                     [self scrollSBToPage:sbSelectedPage];
@@ -3323,7 +3328,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if (ls && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
+            if ((![self iPad] && ls) || ([self iPad] && ls && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]))) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 [self ui_leftKey];
@@ -3606,7 +3611,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if (ls && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
+            if ((![self iPad] && ls) || ([self iPad] && ls && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]))) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 [self ui_rightKey];
@@ -4483,11 +4488,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     sbIconSelected = YES;
     sbDockIconSelected = NO;
 
+    NSDebug(@"Page: %i row: %i col: %i", sbSelectedPage, sbSelectedRow, sbSelectedColumn);
+    
     if (sbIconOverlay) {
         [sbIconOverlay removeFromSuperview];
         sbIconOverlay = nil;
     }
-
+    
     selectedSBIcon = [(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] icons] objectAtIndex:(sbSelectedRow * sbColumns) + sbSelectedColumn];
     if ([selectedSBIcon isKindOfClass:[%c(SBApplicationIcon) class]]) {
 
