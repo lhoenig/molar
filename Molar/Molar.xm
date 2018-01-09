@@ -14,6 +14,7 @@
 #import <SpringBoard/SBApplication.h>
 #import <SpringBoard/SBFolder.h>
 #import <SpringBoard/SBFolderView.h>
+#import <SpringBoard/SBCommandTabController.h>
 #import <QuartzCore/QuartzCore.h>
 #import "FixCategoryBug.h"
 #import "additions/IOHIDEvent+KIF.h"
@@ -1043,7 +1044,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (id)switcherShown {
-    return objc_getAssociatedObject(self, @selector(switcherShown));
+    if ([self iPad]) {
+        if ([(SBCommandTabController *)[%c(SBCommandTabController) sharedInstance] isVisible]) return [NSNull null];
+        else return nil;
+    }
+    else return objc_getAssociatedObject(self, @selector(switcherShown));
 }
 
 %new
@@ -2908,7 +2913,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             pageControl.currentPage--;
             [self pageChanged];
         }
-    } else if (enabled && !switcherShown && ([self iOS9] || [self iOS10])) {
+    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10])) {
         if (sbFolderOpened) {
             if (sbOpenedFolderSelectedCol > 0) {
 
@@ -3169,7 +3174,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             pageControl.currentPage++;
             [self pageChanged];
         }
-    } else if (enabled && !switcherShown && ([self iOS9] || [self iOS10]) && sbFolderOpened) {
+    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10]) && sbFolderOpened) {
 
         if (sbOpenedFolderSelectedCol < sbOpenedFolderCols - 1) {
 
@@ -3228,7 +3233,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             }
         }
 
-    } else if (enabled && !switcherShown && ([self iOS9] || [self iOS10])) {
+    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10])) {
         if (!sbIconSelected) {
 
             if (sbDockIconSelected) {
@@ -3557,7 +3562,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 } else waitingForKeyRepeat = NO;
             }
         }
-    } else if (enabled && !switcherShown && ([self iOS9] || [self iOS10])) {
+    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10])) {
         if (sbFolderOpened) {
 
             if (sbOpenedFolderSelectedRow < sbOpenedFolderRows - 1 && [(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] >= sbOpenedFolderCols * (sbOpenedFolderSelectedRow + 1) + sbOpenedFolderSelectedCol + 1) {
@@ -3847,7 +3852,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 } else waitingForKeyRepeat = NO;
             }
         }
-    } else if (enabled && !switcherShown && ([self iOS9] || [self iOS10])) {
+    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10])) {
         if (sbFolderOpened) {
 
             if (sbOpenedFolderSelectedRow > 0) {
