@@ -2804,6 +2804,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 if (orient == UIInterfaceOrientationLandscapeLeft) {
                   [self ui_downKey];
                 }
+                else if (orient == UIInterfaceOrientationPortraitUpsideDown) {
+                  [self ui_rightKey];
+                }
                 else [self ui_upKey];
                 return;
             }
@@ -3041,6 +3044,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (redirectRelease) {
             if ([UIApplication sharedApplication].statusBarOrientation == UIInterfaceOrientationLandscapeLeft)
               cursorDir &= ~(CURSOR_DIR_DOWN);
+            else if ([UIApplication sharedApplication].statusBarOrientation == UIInterfaceOrientationPortraitUpsideDown)
+              cursorDir &= ~(CURSOR_DIR_RIGHT);
             else
               cursorDir &= ~(CURSOR_DIR_UP);
             if (!cursorDir) redirectRelease = NO;
@@ -3067,6 +3072,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 redirectRelease = YES;
                 if (orient == UIInterfaceOrientationLandscapeLeft) {
                   [self ui_upKey];
+                }
+                else if (orient == UIInterfaceOrientationPortraitUpsideDown) {
+                  [self ui_leftKey];
                 }
                 else [self ui_downKey];
                 return;
@@ -3347,6 +3355,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (redirectRelease) {
             if ([UIApplication sharedApplication].statusBarOrientation == UIInterfaceOrientationLandscapeLeft)
               cursorDir &= ~(CURSOR_DIR_UP);
+            else if ([UIApplication sharedApplication].statusBarOrientation == UIInterfaceOrientationPortraitUpsideDown)
+              cursorDir &= ~(CURSOR_DIR_LEFT);
             else
               cursorDir &= ~(CURSOR_DIR_DOWN);
             if (!cursorDir) redirectRelease = NO;
@@ -3373,6 +3383,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 redirectRelease = YES;
                 if (orient == UIInterfaceOrientationLandscapeLeft) {
                   [self ui_rightKey];
+                }
+                else if (orient == UIInterfaceOrientationPortraitUpsideDown) {
+                  [self ui_upKey];
                 }
                 else [self ui_leftKey];
                 return;
@@ -3641,6 +3654,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (redirectRelease) {
             if ([UIApplication sharedApplication].statusBarOrientation == UIInterfaceOrientationLandscapeLeft)
               cursorDir &= ~(CURSOR_DIR_RIGHT);
+            else if ([UIApplication sharedApplication].statusBarOrientation == UIInterfaceOrientationPortraitUpsideDown)
+              cursorDir &= ~(CURSOR_DIR_UP);
             else
               cursorDir &= ~(CURSOR_DIR_LEFT);
             if (!cursorDir) redirectRelease = NO;
@@ -3667,6 +3682,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 redirectRelease = YES;
                 if (orient == UIInterfaceOrientationLandscapeLeft) {
                   [self ui_leftKey];
+                }
+                else if (orient == UIInterfaceOrientationPortraitUpsideDown) {
+                  [self ui_downKey];
                 }
                 else [self ui_rightKey];
                 return;
@@ -3938,6 +3956,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (redirectRelease) {
             if ([UIApplication sharedApplication].statusBarOrientation == UIInterfaceOrientationLandscapeLeft)
               cursorDir &= ~(CURSOR_DIR_LEFT);
+            else if ([UIApplication sharedApplication].statusBarOrientation == UIInterfaceOrientationPortraitUpsideDown)
+              cursorDir &= ~(CURSOR_DIR_DOWN);
             else
               cursorDir &= ~(CURSOR_DIR_RIGHT);
             if (!cursorDir) redirectRelease = NO;
