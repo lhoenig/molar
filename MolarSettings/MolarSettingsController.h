@@ -7,12 +7,15 @@
 //
 
 #import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
 #import <Preferences/Preferences.h>
+#import <UIKit/UIKit.h>
+#import "HBPreferences.h"
 
-@interface MolarSettingsController : PSListController <UITableViewDelegate, UITableViewDataSource> {
+@interface MolarSettingsController
+    : PSListController <UITableViewDelegate, UITableViewDataSource> {
+  HBPreferences *preferences;
 }
 
-- (id)getValueForSpecifier:(PSSpecifier*)specifier;
+- (id)getValueForSpecifier:(PSSpecifier *)specifier;
 
 @end

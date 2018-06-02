@@ -18,7 +18,7 @@
 			<key>label</key>
 			<string>Enabled</string>
 			<key>PostNotification</key>
-			<string>de.hoenig.molar-preferencesChanged</string>
+			<string>de.hoenig.molar/ReloadPrefs</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -68,7 +68,7 @@ Shift-Alt: Force Touch</string>
 			<key>label</key>
 			<string>App Switcher</string>
 			<key>PostNotification</key>
-			<string>de.hoenig.molar-preferencesChanged</string>
+			<string>de.hoenig.molar/ReloadPrefs</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -82,7 +82,7 @@ Shift-Alt: Force Touch</string>
 			<key>label</key>
 			<string>App Control</string>
 			<key>PostNotification</key>
-			<string>de.hoenig.molar-preferencesChanged</string>
+			<string>de.hoenig.molar/ReloadPrefs</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -96,7 +96,7 @@ Shift-Alt: Force Touch</string>
 			<key>label</key>
 			<string>Launcher</string>
 			<key>PostNotification</key>
-			<string>de.hoenig.molar-preferencesChanged</string>
+			<string>de.hoenig.molar/ReloadPrefs</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -110,7 +110,21 @@ Shift-Alt: Force Touch</string>
 			<key>label</key>
 			<string>Key Sheet</string>
 			<key>PostNotification</key>
-			<string>de.hoenig.molar-preferencesChanged</string>
+			<string>de.hoenig.molar/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>de.hoenig.molar</string>
+			<key>key</key>
+			<string>listSelectEnabled</string>
+			<key>label</key>
+			<string>List Select</string>
+			<key>PostNotification</key>
+			<string>de.hoenig.molar/ReloadPrefs</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -124,7 +138,7 @@ Shift-Alt: Force Touch</string>
 			<key>label</key>
 			<string>Cursor</string>
 			<key>PostNotification</key>
-			<string>de.hoenig.molar-preferencesChanged</string>
+			<string>de.hoenig.molar/ReloadPrefs</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -152,7 +166,35 @@ Shift-Alt: Force Touch</string>
 			<key>key</key>
 			<string>cursorSpeed</string>
 			<key>PostNotification</key>
-			<string>de.hoenig.molar-preferencesChanged</string>
+			<string>de.hoenig.molar/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>isStaticText</key>
+			<true/>
+			<key>label</key>
+			<string>Cursor Acceleration</string>
+		</dict>
+		<dict>
+			<key>isSegmented</key>
+			<false/>
+			<key>showValue</key>
+			<true/>
+			<key>max</key>
+			<integer>100</integer>
+			<key>min</key>
+			<integer>1</integer>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>default</key>
+			<integer>40</integer>
+			<key>defaults</key>
+			<string>de.hoenig.molar</string>
+			<key>key</key>
+			<string>cursorAcc</string>
+			<key>PostNotification</key>
+			<string>de.hoenig.molar/ReloadPrefs</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -180,7 +222,63 @@ Shift-Alt: Force Touch</string>
 			<key>key</key>
 			<string>cursorSize</string>
 			<key>PostNotification</key>
-			<string>de.hoenig.molar-preferencesChanged</string>
+			<string>de.hoenig.molar/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>isStaticText</key>
+			<true/>
+			<key>label</key>
+			<string>Cursor Opacity</string>
+		</dict>
+		<dict>
+			<key>isSegmented</key>
+			<false/>
+			<key>showValue</key>
+			<true/>
+			<key>max</key>
+			<integer>100</integer>
+			<key>min</key>
+			<integer>1</integer>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>default</key>
+			<integer>30</integer>
+			<key>defaults</key>
+			<string>de.hoenig.molar</string>
+			<key>key</key>
+			<string>cursorOpacity</string>
+			<key>PostNotification</key>
+			<string>de.hoenig.molar/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>isStaticText</key>
+			<true/>
+			<key>label</key>
+			<string>Force Touch Full Force Delay</string>
+		</dict>
+		<dict>
+			<key>isSegmented</key>
+			<false/>
+			<key>showValue</key>
+			<true/>
+			<key>max</key>
+			<integer>3</integer>
+			<key>min</key>
+			<integer>0</integer>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>default</key>
+			<integer>1</integer>
+			<key>defaults</key>
+			<string>de.hoenig.molar</string>
+			<key>key</key>
+			<string>forceTouchDelay</string>
+			<key>PostNotification</key>
+			<string>de.hoenig.molar/ReloadPrefs</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -204,7 +302,7 @@ Shift-Alt: Force Touch</string>
 			<key>label</key>
 			<string>Cursor Type</string>
 			<key>PostNotification</key>
-			<string>de.hoenig.molar-preferencesChanged</string>
+			<string>de.hoenig.molar/ReloadPrefs</string>
 			<key>validValues</key>
 			<array>
 				<string>type1</string>
@@ -256,7 +354,7 @@ Shift-Alt: Force Touch</string>
 			<key>isStaticText</key>
 			<true/>
 			<key>label</key>
-			<string>Appearance</string>
+			<string>App Switcher Appearance</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -270,7 +368,7 @@ Shift-Alt: Force Touch</string>
 			<key>label</key>
 			<string>Hide App Names</string>
 			<key>PostNotification</key>
-			<string>de.hoenig.molar-preferencesChanged</string>
+			<string>de.hoenig.molar/ReloadPrefs</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -284,7 +382,7 @@ Shift-Alt: Force Touch</string>
 			<key>label</key>
 			<string>Dark Mode</string>
 			<key>PostNotification</key>
-			<string>de.hoenig.molar-preferencesChanged</string>
+			<string>de.hoenig.molar/ReloadPrefs</string>
 		</dict>
 		<dict>
 			<key>cell</key>
