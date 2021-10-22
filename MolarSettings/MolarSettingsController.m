@@ -19,9 +19,8 @@
 #define kPrefs_KeyName_Key @"key"
 #define kPrefs_KeyName_Defaults @"defaults"
 
-#define kNotificationName @"de.hoenig.molar-preferencesChanged"
+#define kNotificationName @"de.hoenig.molar/ReloadPrefs"
 #define kBundleID @"de.hoenig.molar"
-#define kPrefsFile @"/var/mobile/Library/Preferences/de.hoenig.molar.plist"
 #define kShortcutsKey @"shortcuts"
 #define kShortcutNamesKey @"shortcutNames"
 #define kKeyboardLayoutKey @"keyboardLayout"
@@ -34,6 +33,14 @@
 #define CTRL_KEY_2 0xe0
 #define SHIFT_KEY 0xe5
 #define SHIFT_KEY_2 0xe1
+
+static void sendReloadNotif() {
+    CFStringRef notificationName = (CFStringRef)kNotificationName;
+    CFNotificationCenterPostNotification(
+                                         CFNotificationCenterGetDarwinNotifyCenter(), notificationName, NULL, NULL,
+                                         YES);
+    CFRelease(notificationName);
+}
 
 @interface AppSelectController : UITableViewController <UITableViewDataSource> {
 @private
@@ -55,9 +62,7 @@
   UITableViewCell *cell =
       [dataSource tableView:tableView cellForRowAtIndexPath:indexPath];
   if ([[dataSource displayIdentifierForIndexPath:indexPath]
-          isEqualToString:(__bridge NSString *)CFPreferencesCopyAppValue(
-                              (CFStringRef)settingsKey,
-                              (CFStringRef)kBundleID)]) {
+          isEqualToString:(NSString *)[preferences objectForKey:settingsKey]]) {
     cell.accessoryType = UITableViewCellAccessoryCheckmark;
     selectedCell = cell;
   } else {
@@ -116,10 +121,7 @@
     didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
   [tableView deselectRowAtIndexPath:indexPath animated:YES];
 
-  // NSMutableDictionary *settings = [NSMutableDictionary
-  // dictionaryWithContentsOfFile:kPrefsFile];
   if ([tableView cellForRowAtIndexPath:indexPath] == selectedCell) {
-    //[settings setObject:@"" forKey:settingsKey];
     [preferences setObject:@"" forKey:settingsKey];
     [tableView cellForRowAtIndexPath:indexPath].accessoryType =
         UITableViewCellAccessoryNone;
@@ -134,10 +136,7 @@
     selectedCell = [tableView cellForRowAtIndexPath:indexPath];
   }
 
-  CFStringRef notificationName = (CFStringRef)kNotificationName;
-  CFNotificationCenterPostNotification(
-      CFNotificationCenterGetDarwinNotifyCenter(), notificationName, NULL, NULL,
-      YES);
+  sendReloadNotif();
 
   [self.navigationController popViewControllerAnimated:YES];
 }
@@ -379,10 +378,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service,
   [preferences setObject:shortcuts forKey:kShortcutsKey];
   [preferences setObject:shortcutNames forKey:kShortcutNamesKey];
 
-  CFStringRef notificationName = (CFStringRef)kNotificationName;
-  CFNotificationCenterPostNotification(
-      CFNotificationCenterGetDarwinNotifyCenter(), notificationName, NULL, NULL,
-      YES);
+  sendReloadNotif();
 
   [self.navigationController popViewControllerAnimated:YES];
 }
@@ -544,39 +540,40 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service,
   [self reloadTable];
 }
 
-- (void)reloadTable {
-
-  shortcuts = [NSMutableArray
-      arrayWithArray:(NSArray *)[preferences objectForKey:kShortcutsKey
-                                                  default:@[]]];
-  NSMutableArray *shortcutNames =
-      [NSMutableArray arrayWithCapacity:shortcuts.count];
-
-  for (int i = 0; i < shortcuts.count; i++) {
-    if ([[LAActivator sharedInstance]
-            assignedListenerNameForEvent:
-                [LAEvent
-                    eventWithName:[shortcuts[i] objectForKey:@"eventName"]]]) {
-      NSString *shortcutName = [[LAActivator sharedInstance]
-          localizedTitleForListenerName:
-              [[LAActivator sharedInstance]
-                  assignedListenerNameForEvent:
-                      [LAEvent eventWithName:[shortcuts[i]
-                                                 objectForKey:@"eventName"]]]];
-      [shortcutNames
-          insertObject:(shortcutName
-                            ? ([shortcutName isEqualToString:@"No Title"]
+- (void)setShortcutNames {
+    shortcuts = [NSMutableArray
+                 arrayWithArray:(NSArray *)[preferences objectForKey:kShortcutsKey
+                                                             default:@[]]];
+    NSMutableArray *shortcutNames =
+    [NSMutableArray arrayWithCapacity:shortcuts.count];
+    for (int i = 0; i < shortcuts.count; i++) {
+        if ([[LAActivator sharedInstance]
+             assignedListenerNameForEvent:
+             [LAEvent
+              eventWithName:[shortcuts[i] objectForKey:@"eventName"]]]) {
+                 NSString *shortcutName = [[LAActivator sharedInstance]
+                                           localizedTitleForListenerName:
+                                           [[LAActivator sharedInstance]
+                                            assignedListenerNameForEvent:
+                                            [LAEvent eventWithName:[shortcuts[i]
+                                                                    objectForKey:@"eventName"]]]];
+                 [shortcutNames
+                  insertObject:(shortcutName
+                                ? ([shortcutName isEqualToString:@"No Title"]
                                    ? @"NOLISTENER"
                                    : shortcutName)
-                            : @"NOLISTENER")
-               atIndex:i];
-    } else {
-      [shortcutNames insertObject:@"NOLISTENER" atIndex:i];
+                                : @"NOLISTENER")
+                  atIndex:i];
+             } else {
+                 [shortcutNames insertObject:@"NOLISTENER" atIndex:i];
+             }
     }
-  }
+    [preferences setObject:shortcutNames forKey:kShortcutNamesKey];
+}
 
-  [preferences setObject:shortcutNames forKey:kShortcutNamesKey];
-
+- (void)reloadTable {
+  [self setShortcutNames];
+  sendReloadNotif();
   [self.tableView reloadData];
 }
 
@@ -658,9 +655,15 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service,
 - (void)tableView:(UITableView *)tableView
     commitEditingStyle:(UITableViewCellEditingStyle)editingStyle
      forRowAtIndexPath:(NSIndexPath *)indexPath {
+  NSArray *shortcutNames = (NSArray *)[preferences objectForKey:kShortcutNamesKey];
+  if (![shortcutNames[indexPath.row] isEqualToString:@"NOLISTENER"]) {
+      [LASharedActivator unassignEvent:[LAEvent eventWithName:[shortcuts[indexPath.row] objectForKey:@"eventName"]]];
+  }
   [shortcuts removeObjectAtIndex:indexPath.row];
   [preferences setObject:shortcuts forKey:kShortcutsKey];
-  [tableView deleteRowsAtIndexPaths:@[ indexPath ]
+  [self setShortcutNames];
+  sendReloadNotif();
+  [tableView deleteRowsAtIndexPaths:@[indexPath]
                    withRowAnimation:UITableViewRowAnimationAutomatic];
 }
 
@@ -737,16 +740,18 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service,
   else if (section == 5)
     return 1;
   else if (section == 6)
-      return 1;
+    return 1;
   else if (section == 7)
-      return 1;
+    return 1;
   else if (section == 8)
       return 1;
   else if (section == 9)
-    return 2;
+    return 1;
   else if (section == 10)
-    return 10;
+    return 2;
   else if (section == 11)
+    return 10;
+  else if (section == 12)
     return 1;
   else
     return 0;
@@ -763,7 +768,7 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service,
       ((UISwitch *)cell.accessoryView).enabled = NO;
     }
   }
-  if (indexPath.section == 10) {
+  if (indexPath.section == 11) {
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     cell.selectionStyle = UITableViewCellSelectionStyleDefault;
     cell.detailTextLabel.text =
@@ -781,25 +786,27 @@ void handle_event(void *target, void *refcon, IOHIDServiceRef service,
 
   if (indexPath.section == 7 || indexPath.section == 8) {
     [super tableView:tableView didSelectRowAtIndexPath:indexPath];
-  } else if (indexPath.section == 10) {
+  } else if (indexPath.section == 11) {
     AppSelectController *asc =
         [[AppSelectController alloc] initWithStyle:UITableViewStyleGrouped];
     asc.settingsKey =
-        [[[[self specifiersInGroup:10] objectAtIndex:(int)indexPath.row + 1]
+        [[[[self specifiersInGroup:11] objectAtIndex:(int)indexPath.row + 1]
             properties] objectForKey:kPrefs_KeyName_Key];
     [self pushController:asc animate:YES];
-  } else if (indexPath.section == 11 && indexPath.row == 0) {
+  } else if (indexPath.section == 12 && indexPath.row == 0) {
     ShortcutsController *scc =
         [[ShortcutsController alloc] initWithStyle:UITableViewStyleGrouped];
     [self pushController:scc];
   }
 }
 
+/*
 static void sendReloadNotification() {
   [[NSNotificationCenter defaultCenter]
       postNotificationName:@"de.hoenig.molar-preferencesChanged-nc"
                     object:nil];
 }
+*/
 
 - (void)reloadTable {
   [self reload];
@@ -822,11 +829,13 @@ static void sendReloadNotification() {
       [self reloadSpecifiers];
     }];
 
+    /*
     CFNotificationCenterAddObserver(
         CFNotificationCenterGetDarwinNotifyCenter(), NULL,
         (CFNotificationCallback)sendReloadNotification,
         CFSTR("de.hoenig.molar/ReloadPrefs"), NULL,
         CFNotificationSuspensionBehaviorCoalesce);
+    */
   }
 
   return self;

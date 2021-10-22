@@ -1,0 +1,16 @@
+CRASHES
+- Key sheet springboard
+- ui_rightKey partiaL icon row (ls)
+
+13.03.17, 21:02:57 SpringBoard(CoreFoundation)[33133]: *** Terminating app due to uncaught exception 'NSRangeException', reason: '*** -[__NSArrayM objectAtIndex:]: index 15 beyond bounds [0 .. 14]'
+*** First throw call stack:
+(0x185d251b8 0x18475c55c 0x185c0071c 0x1027b8858 0x185cbeb10 0x185cbe214 0x185cbdf90 0x185d2db8c 0x185bffe64 0x186734e0c 0x1027bb26c 0x185fb9d28 0x185cbae50 0x185cd3218 0x185cd29cc 0x185cd04b0 0x185bfe2b8 0x1876b2198 0x18bc3e7fc 0x18bc39534 0x184be15b8)
+
+BUGS
+- iOS10: Discoverability not opening
+
+UIWindowDidRotateNotification
+
+Check what SB notifs are sent when:
+- open / close folder
+- page swipe

@@ -53,7 +53,7 @@ Cursor
 Hold Ctrl: Show Cursor
 Arrow Keys: Move Cursor
 Alt: Tap at current Cursor position
-Hold Alt: Tap and Hold (to drag icons on the homescreenfor example)
+Hold Alt: Tap and Hold (to drag icons on the home screen for example)
 Shift-Alt: Force Touch</string>
 		</dict>
 		<dict>
@@ -137,6 +137,34 @@ Shift-Alt: Force Touch</string>
 			<string>cursorEnabled</string>
 			<key>label</key>
 			<string>Cursor</string>
+			<key>PostNotification</key>
+			<string>de.hoenig.molar/ReloadPrefs</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>isStaticText</key>
+			<true/>
+			<key>label</key>
+			<string>Arrow Keys Scroll Speed</string>
+		</dict>
+		<dict>
+			<key>isSegmented</key>
+			<false/>
+			<key>showValue</key>
+			<true/>
+			<key>max</key>
+			<integer>15</integer>
+			<key>min</key>
+			<integer>1</integer>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>default</key>
+			<integer>5</integer>
+			<key>defaults</key>
+			<string>de.hoenig.molar</string>
+			<key>key</key>
+			<string>scrollSpeed</string>
 			<key>PostNotification</key>
 			<string>de.hoenig.molar/ReloadPrefs</string>
 		</dict>
@@ -520,9 +548,7 @@ Shift-Alt: Force Touch</string>
 			<key>label</key>
 			<string>Activator</string>
 			<key>footerText</key>
-			<string>Changes sometimes require a respring to take effect.
-
-© 2018 Lukas Hönig, Daniel Marass</string>
+			<string>© 2019 Lukas Hönig, Daniel Marass</string>
 		</dict>
 		<dict>
 			<key>defaults</key>

@@ -1,7 +1,3 @@
-
-// Logos by Dustin Howett
-// See http://iphonedevwiki.net/index.php/Logos
-
 #import <UIKit/UIKit.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <IOKit/hid/IOHIDEventSystem.h>
@@ -61,6 +57,7 @@
 #define HIGHLIGHT_DURATION 0.15
 #define KEY_REPEAT_DELAY 0.4
 #define KEY_REPEAT_INTERVAL 0.005
+#define KEY_REPEAT_INTERVAL_BASE 0.001
 #define KEY_REPEAT_INTERVAL_SLOW 0.1
 #define KEY_REPEAT_STEP 3
 #define DISCOVERABILITY_DELAY 1.0
@@ -91,13 +88,17 @@
 #define NEXT_VIEW 1
 #define PREV_VIEW 0
 
-#define DEBUG 1
+#define DEBUG 0
 
 #if DEBUG == 0
 #define NSDebug(...)
 #elif DEBUG == 1
 #define NSDebug(...) NSLog(__VA_ARGS__)
 #endif
+
+#define TICK   NSDate *startTime = [NSDate date]
+#define TOCK   NSLog(@"Time: %f", -[startTime timeIntervalSinceNow])
+
 
 void handle_event(void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {}
 
@@ -110,6 +111,7 @@ BOOL darkMode,
      controlEnabled,
      keySheetEnabled,
      launcherEnabled,
+     listSelectEnabled,
      cursorEnabled,
      switcherOpenedInLandscape,
      sliderMode,
@@ -144,6 +146,7 @@ NSTimer *discoverabilityTimer,
         *keyRepeatTimer;
 
 NSArray *customShortcuts;
+NSArray *shortcutNames;
 NSMutableArray *allKeyCommands;
 UITableView *selectedTableView;
 UITableViewCell *selectedCell;
@@ -181,8 +184,8 @@ SBApplicationIcon *selectedSBIconInOpenedFolder;
 
 NSString *cursorType, *cachedCursorType;
 NSInteger cachedOrientation;
-double cursorSize, cursorSpeed;
-double cachedCursorSize;
+double cursorSize, cursorSpeed, cursorAcc, cursorOpacity, forceTouchDelay;
+double cachedCursorSize, cachedCursorOpacity;
 CGPoint cursorPosition;
 NSInteger pointID;
 unsigned int cursorDir;
@@ -192,6 +195,7 @@ UITouch *currentTouch;
 BOOL disableRedirect, redirectRelease;
 NSString *layout;
 NSMutableString *listSearchTerm;
+double scrollSpeed;
 
 HBPreferences *preferences;
 
@@ -214,8 +218,11 @@ static void postKeyEventNotification(int key, int down, int page) {
                                              NULL,
                                              cfDict,
                                              YES);
+        } else {
+            // check if this fails sometimes
         }
     }
+    dlclose(libHandle);
 }
 
 %hookf(void, handle_event, void *target, void *refcon, IOHIDServiceRef service, IOHIDEventRef event) {
@@ -228,7 +235,9 @@ static void postKeyEventNotification(int key, int down, int page) {
         int usagePage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsagePage);
         int usage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage);
         int down = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown);
-        if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
+        if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"] ||
+            [[[UIDevice currentDevice] systemVersion] hasPrefix:@"11"] ||
+            [[[UIDevice currentDevice] systemVersion] hasPrefix:@"12"]) {
             postKeyEventNotification(usage, down, usagePage);
         } else {
             if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
@@ -259,12 +268,14 @@ static void postKeyEventNotification(int key, int down, int page) {
 }
 
 static void loadPrefs() {
-
+    NSDebug(@"LOADING PREFS");
+    
     enabled = [preferences boolForKey:@"enabled"];
     switcherEnabled = [preferences boolForKey:@"appSwitcherEnabled"];
     controlEnabled = [preferences boolForKey:@"appControlEnabled"];
     keySheetEnabled = [preferences boolForKey:@"keySheetEnabled"];
     launcherEnabled = [preferences boolForKey:@"launcherEnabled"];
+    listSelectEnabled = [preferences boolForKey:@"listSelectEnabled"];
     cursorEnabled = [preferences boolForKey:@"cursorEnabled"];
     darkMode = [preferences boolForKey:@"darkMode"];
     hideLabels = [preferences boolForKey:@"hideLabels"];
@@ -280,12 +291,20 @@ static void loadPrefs() {
     launcherApp9 = [preferences objectForKey:@"launcherApp9"];
     launcherApp0 = [preferences objectForKey:@"launcherApp0"];
 
+    scrollSpeed = [preferences doubleForKey:@"scrollSpeed"];
     cursorType = (NSString *)[preferences objectForKey:@"cursorType"];
     cursorSpeed = [preferences doubleForKey:@"cursorSpeed"];
+    cursorAcc = [preferences doubleForKey:@"cursorAcc"] / 100.0;
+    cursorOpacity = [preferences doubleForKey:@"cursorOpacity"] / 100.0;
     cursorSize = [preferences doubleForKey:@"cursorSize"];
+    forceTouchDelay = [preferences doubleForKey:@"forceTouchDelay"];
 
     customShortcuts = (NSArray *)[preferences objectForKey:@"shortcuts"];
+    shortcutNames = (NSArray *)[preferences objectForKey:@"shortcutNames"];
 
+    NSDebug(@"SHORTCUTS: %@", customShortcuts);
+    NSDebug(@"SHORTCUT NAMES: %@", shortcutNames);
+    
     layout = [preferences objectForKey:@"keyboardLayout"];
 
     //NSDebug(@"PREFS:\n%@", [preferences dictionaryRepresentation]);
@@ -373,9 +392,14 @@ static void postPrefsToUserAppsNotification(CFNotificationCenterRef center, void
 */
 static void keyEventCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
     //NSDebug("KEY EVENT CALLBACK RECEIVED :)");
-    int usage = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"key"]).intValue;
-    int down = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"down"]).intValue;
-    int usagePage = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"page"]).intValue;
+    //NSDictionary *userInfoBridged = (NSDictionary *)CFBridgingRetain(userInfo);
+    NSDictionary *userInfoBridged = (__bridge NSDictionary *)userInfo;
+    //int usage = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"key"]).intValue;
+    //int down = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"down"]).intValue;
+    //int usagePage = ((NSNumber *)((__bridge NSDictionary *)userInfo)[@"page"]).intValue;
+    int usage = ((NSNumber *)userInfoBridged[@"key"]).intValue;
+    int down = ((NSNumber *)userInfoBridged[@"down"]).intValue;
+    int usagePage = ((NSNumber *)userInfoBridged[@"page"]).intValue;
 
     if (usage == TAB_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyDown" object:nil];
     else if (usage == CTRL_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"CtrlKeyDown" object:nil];
@@ -385,7 +409,7 @@ static void keyEventCallback(CFNotificationCenterRef center, void *observer, CFS
     else if (usage == TAB_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"TabKeyUp" object:nil];
     else if ((usage == CMD_KEY && down) || (usage == CMD_KEY_2 && down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyDown" object:nil];
     else if ((usage == CMD_KEY && !down) || (usage == CMD_KEY_2 && !down)) [[NSNotificationCenter defaultCenter] postNotificationName:@"CmdKeyUp" object:nil];
-    else if (usage == ESC_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil userInfo:@{@"sender": activeApp}];
+    else if (usage == ESC_KEY && down && activeApp) [[NSNotificationCenter defaultCenter] postNotificationName:@"EscKeyDown" object:nil userInfo:@{@"sender": activeApp}];
     else if (usage == R_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RKeyDown" object:nil];
     else if (usage == RIGHT_KEY && down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyDown" object:nil];
     else if (usage == RIGHT_KEY && !down) [[NSNotificationCenter defaultCenter] postNotificationName:@"RightKeyUp" object:nil];
@@ -419,108 +443,10 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                              NULL,
                                              YES);
     }
-}
-
-%ctor {
-
-    preferences = [[HBPreferences alloc] initWithIdentifier:@"de.hoenig.molar"];
-
-    discoverabilityTimer = nil;
-    waitForKeyRepeatTimer = nil;
-    keyRepeatTimer = nil;
-    loadPrefs();
-    //if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"] || [[[UIDevice currentDevice] systemVersion] hasPrefix:@"9"]) {
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
-                                    NULL,
-                                    (CFNotificationCallback)loadPrefs,
-                                    CFSTR("de.hoenig.molar-preferencesChanged"),
-                                    NULL,
-                                    CFNotificationSuspensionBehaviorCoalesce);
-    //}
-
-    void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
-    CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
-    if (CFNotificationCenterGetDistributedCenter) {
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
-                                        NULL,
-                                        (CFNotificationCallback)updateActiveAppUserApplication,
-                                        CFSTR("NewFrontAppNotification"),
-                                        NULL,
-                                        CFNotificationSuspensionBehaviorCoalesce);
-
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
-                                        NULL,
-                                        (CFNotificationCallback)updateSwitcherShown,
-                                        CFSTR("SwitcherDidAppearNotification"),
-                                        NULL,
-                                        CFNotificationSuspensionBehaviorCoalesce);
-
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
-                                        NULL,
-                                        (CFNotificationCallback)updateSwitcherNotShown,
-                                        CFSTR("SwitcherDidDisappearNotification"),
-                                        NULL,
-                                        CFNotificationSuspensionBehaviorCoalesce);
-
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
-                                        NULL,
-                                        (CFNotificationCallback)updateDiscoverabilityShown,
-                                        CFSTR("DiscoverabilityDidAppearNotification"),
-                                        NULL,
-                                        CFNotificationSuspensionBehaviorCoalesce);
-
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
-                                        NULL,
-                                        (CFNotificationCallback)updateDiscoverabilityNotShown,
-                                        CFSTR("DiscoverabilityDidDisappearNotification"),
-                                        NULL,
-                                        CFNotificationSuspensionBehaviorCoalesce);
-
-        if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"]) {
-            CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
-                                NULL,
-                                (CFNotificationCallback)hideSwitcherByNotification,
-                                CFSTR("HideSwitcherNotification"),
-                                NULL,
-                                CFNotificationSuspensionBehaviorCoalesce);
-            /*if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"] ||
-                [[[UIDevice currentDevice] systemVersion] hasPrefix:@"9"]) {
-                CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
-                                NULL,
-                                (CFNotificationCallback)postPrefsToUserAppsNotification,
-                                CFSTR("UserAppSBPrefsRequestNotification"),
-                                NULL,
-                                CFNotificationSuspensionBehaviorCoalesce);
-            }*/
-        } /*else { //if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
-            CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
-                                        NULL,
-                                        (CFNotificationCallback)reloadPrefsUserApp,
-                                        CFSTR("SpringBoardGotPrefsChangedNotification"),
-                                        NULL,
-                                        CFNotificationSuspensionBehaviorCoalesce);
-        }*/
-        if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
-            CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
-                                        NULL,
-                                        (CFNotificationCallback)keyEventCallback,
-                                        CFSTR("KeyEventNotification"),
-                                        NULL,
-                                        CFNotificationSuspensionBehaviorCoalesce);
-        }
-    }
     dlclose(libHandle);
-
-    switcherMode = numThreads = 0;
-
-    cursorPosition = CGPointMake(-1, -1);
-
-    cachedCursorSize = 0;
-    cachedCursorType = nil;
-
-    disableRedirect = NO;
-    redirectRelease = NO;
 }
+
+%group Molar;
 
 %subclass NoTouchWindow : UIWindow
 
@@ -535,29 +461,58 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 - (void)main {
     if (![self isCancelled]) {
         UIApplication *app = [UIApplication sharedApplication];
+        
         dispatch_sync(dispatch_get_main_queue(), ^(void) {
             [app beginForceTouchAtPoint:cursorPosition];
         });
+        
         [NSThread sleepForTimeInterval:0.05];
+        
+        dispatch_sync(dispatch_get_main_queue(), ^(void) {
+            [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:50.0];
+        });
+        
+        [NSThread sleepForTimeInterval:0.05];
+        
+        dispatch_sync(dispatch_get_main_queue(), ^(void) {
+            [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:100.0];
+        });
+        
+        [NSThread sleepForTimeInterval:0.05];
+        
+        dispatch_sync(dispatch_get_main_queue(), ^(void) {
+            [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:150.0];
+        });
+        
+        [NSThread sleepForTimeInterval:0.05];
+        
         dispatch_sync(dispatch_get_main_queue(), ^(void) {
             [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:200.0];
         });
-        [NSThread sleepForTimeInterval:0.05];
-        dispatch_sync(dispatch_get_main_queue(), ^(void) {
-            [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:300.0];
-        });
-        [NSThread sleepForTimeInterval:0.05];
-        dispatch_sync(dispatch_get_main_queue(), ^(void) {
-            [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:350.0];
-        });
-        [NSThread sleepForTimeInterval:0.05];
-        dispatch_sync(dispatch_get_main_queue(), ^(void) {
-            [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:400.0];
-        });
-        /*[NSThread sleepForTimeInterval:0.05];
-        dispatch_sync(dispatch_get_main_queue(), ^(void) {
-            [app endCurrentTouchAtPoint:cursorPosition];
-        });*/
+        
+        [NSThread sleepForTimeInterval:forceTouchDelay];
+        
+        if (![self isCancelled] && [app altDown]) {
+            dispatch_sync(dispatch_get_main_queue(), ^(void) {
+                [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:250.0];
+            });
+            [NSThread sleepForTimeInterval:0.05];
+            dispatch_sync(dispatch_get_main_queue(), ^(void) {
+                [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:300.0];
+            });
+            [NSThread sleepForTimeInterval:0.05];
+            dispatch_sync(dispatch_get_main_queue(), ^(void) {
+                [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:350.0];
+            });
+            [NSThread sleepForTimeInterval:0.05];
+            dispatch_sync(dispatch_get_main_queue(), ^(void) {
+                [app updateCurrentForceTouchAtPoint:cursorPosition withPhase:UITouchPhaseMoved andForce:4590.0];
+            });
+            /*[NSThread sleepForTimeInterval:0.05];
+             dispatch_sync(dispatch_get_main_queue(), ^(void) {
+             [app endCurrentTouchAtPoint:cursorPosition];
+             });*/
+        }
     }
 }
 
@@ -655,8 +610,26 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 %new
-- (BOOL)iOS10 {
-    return [[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"];
+- (BOOL)iOS10AndUp {
+    return [[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"] ||
+           [[[UIDevice currentDevice] systemVersion] hasPrefix:@"11"] ||
+           [[[UIDevice currentDevice] systemVersion] hasPrefix:@"12"];
+}
+
+%new
+- (BOOL)iOS11AndUp {
+    return [[[UIDevice currentDevice] systemVersion] hasPrefix:@"11"] ||
+           [[[UIDevice currentDevice] systemVersion] hasPrefix:@"12"];
+}
+
+%new
+- (BOOL)iOS11 {
+    return [[[UIDevice currentDevice] systemVersion] hasPrefix:@"11"];
+}
+
+%new
+- (BOOL)iOS12 {
+    return [[[UIDevice currentDevice] systemVersion] hasPrefix:@"12"];
 }
 
 %new
@@ -803,7 +776,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     CGRect bounds = [[UIScreen mainScreen] bounds];
     //NSLog(@"Bounds: %@", NSStringFromCGRect(bounds));
 
-    if (![self switcherShown] && !discoverabilityShown && enabled && switcherEnabled && !([self iPad] && ([self iOS9] || [self iOS10]))) {
+    if (![self switcherShown] && !discoverabilityShown && enabled && switcherEnabled && !([self iPad] && ([self iOS9] || [self iOS10AndUp]))) {
 
         NSArray *apps = (NSArray *)[(SpringBoard *)[%c(SpringBoard) sharedApplication] _accessibilityRunningApplications];
 
@@ -829,7 +802,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                         }
                     }
                 }
-            } else {
+            } else if (![self iOS10AndUp]) {
                 switcherMode = SWITCHER_IOS8_MODE;
                 NSArray *switcherItems = [(SBAppSwitcherModel *)[%c(SBAppSwitcherModel) sharedInstance] snapshotOfFlattenedArrayOfAppIdentifiersWhichIsOnlyTemporary];
                 %c(SBApplication);
@@ -845,6 +818,45 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                         }
                     }
                 }
+            } else {    // iOS 11+
+                @try {
+                    NSArray *appLayouts = [(SBMainSwitcherViewController *)[%c(SBMainSwitcherViewController) sharedInstance] appLayouts];
+                    NSMutableArray *switcherDisplayIdentifiers = [NSMutableArray new];
+                    %c(SBAppLayout);
+                    %c(SBDisplayItem);
+                    for (SBAppLayout *layout in appLayouts) {
+                        [switcherDisplayIdentifiers addObject:[(SBDisplayItem *)[[layout allItems] objectAtIndex:0] displayIdentifier]];
+                    }
+                    // move active app to front of array
+                    NSUInteger activeAppIndex = 0;
+                    for (int i = 0; i < apps.count; i++) {
+                        if ([[apps[i] bundleIdentifier] isEqualToString:[self activeAppUserApplication]]) {
+                            activeAppIndex = (NSUInteger)i;
+                            break;
+                        }
+                    }
+                    if (activeAppIndex) {
+                        SBApplication *activeApp = [apps[activeAppIndex] copy];
+                        NSMutableArray *appsM = [NSMutableArray arrayWithArray:apps];
+                        [appsM removeObjectAtIndex:activeAppIndex];
+                        [appsM insertObject:activeApp atIndex:0];
+                        apps = (NSArray *)appsM;
+                    }
+                    for (SBApplication *app in apps) {
+                        if ([switcherDisplayIdentifiers containsObject:[app bundleIdentifier]]) {
+                            [appsFiltered addObject:app];
+                            SBApplicationIcon *icon = [[%c(SBApplicationIcon) alloc] initWithApplication:app];
+                            [icons addObject:[self image:(UIImage *)[icon generateIconImage:10] scaledToSize:CGSizeMake(ICON_SIZE, ICON_SIZE)]];
+                        }
+                    }
+                    //NSLog(@"MOLAR DEBUG 1: %@", [(SBMainSwitcherViewController *)[%c(SBMainSwitcherViewController) sharedInstance] appLayouts]);
+                    //NSLog(@"MOLAR DEBUG 2: %@", [(SBMainSwitcherViewController *)[%c(SBMainSwitcherViewController) sharedInstance] _cacheAppList]);
+                    /*for (SBAppLayout *layout in [(SBMainSwitcherViewController *)[%c(SBMainSwitcherViewController) sharedInstance] appLayouts]) {
+                        NSLog(@"LAYOUT: %@ ITEMS: %@", layout, [layout allItems]);
+                    }*/
+                } @catch (NSException *e) { NSLog([e description]); }
+                
+                switcherItemsFiltered = nil;
             }
 
             [self setApps:appsFiltered];
@@ -856,7 +868,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                                        ls ? [UIScreen mainScreen].bounds.size.width : [UIScreen mainScreen].bounds.size.height);
 
                 UIWindow *window = [[UIWindow alloc] initWithFrame:contentFrame];
-                window.windowLevel = UIWindowLevelAlert;
+                window.windowLevel = UIWindowLevelAlert + 1;
 
                 CGFloat h = SWITCHER_HEIGHT;
                 CGFloat w = ([((NSArray *)[self apps]) count] < (ls ? (NSUInteger)[self maxIconsLS] : (NSUInteger)[self maxIconsP])) ? ([((NSArray *)[self apps]) count] * ICON_SIZE + ([((NSArray *)[self apps]) count] + 1) * APP_GAP)
@@ -1280,10 +1292,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     SBUIController *uicontroller = (SBUIController *)[%c(SBUIController) sharedInstance];
     SBApplicationController *appcontroller = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
     switcherMode = ([(SBAppSwitcherModel *)[%c(SBAppSwitcherModel) sharedInstance] respondsToSelector:@selector(mainSwitcherDisplayItems)]) ? SWITCHER_IOS9_MODE : SWITCHER_IOS8_MODE;
-    if (switcherMode == SWITCHER_IOS9_MODE) {
+    if (switcherMode == SWITCHER_IOS9_MODE && ![self iOS10AndUp]) {  // iOS 9
         [uicontroller activateApplication:[appcontroller applicationWithBundleIdentifier:bundleID]];
-    } else {
+    } else if (![self iOS10AndUp]) { // iOS 8
         [uicontroller activateApplicationAnimated:[appcontroller applicationWithBundleIdentifier:bundleID]];
+    } else {    // iOS 10+
+        NSDebug(@"launch with identifier");
+        [[UIApplication sharedApplication] launchApplicationWithIdentifier:bundleID suspended:NO];
     }
 }
 
@@ -1308,7 +1323,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)handleCmdQ:(UIKeyCommand *)keyCommand {
-    if ([self switcherShown] && [((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) pid] > 0) {
+    if ([self switcherShown] && ([self iOS11AndUp] || [((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) pid] > 0)) {
 
         //BOOL ls = UIInterfaceOrientationIsLandscape((UIInterfaceOrientation)[(SpringBoard *)[%c(SpringBoard) sharedApplication] activeInterfaceOrientation]);
         BOOL ls = switcherOpenedInLandscape;
@@ -1324,7 +1339,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         FBApplicationProcess *process = [(FBProcessManager *)[%c(FBProcessManager) sharedInstance] createApplicationProcessForBundleID:[((SBApplication *)((NSArray *)[self apps])[((NSNumber *)[self selectedIcon]).intValue]) bundleIdentifier]];
         [process killForReason:1 andReport:NO withDescription:@"MolarAppSwitcher"];
 
-        if (!((NSNumber *)[self selectedIcon]).intValue && ((NSArray *)[self switcherItems]).count == 1) {
+        if (!((NSNumber *)[self selectedIcon]).intValue && (([self switcherItems] && ((NSArray *)[self switcherItems]).count == 1) || ((NSArray *)[self apps]).count == 1)) {
             [UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
                 ((UIView *)[self switcherView]).transform = CGAffineTransformConcat(((UIView *)[self switcherView]).transform, CGAffineTransformMakeScale(0.001, 0.001));
             } completion:^(BOOL completed){
@@ -1334,9 +1349,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             return;
         }
 
-        NSMutableArray *mSwitcherItems = [NSMutableArray arrayWithArray:(NSArray *)[self switcherItems]];
-        [mSwitcherItems removeObjectAtIndex:((NSNumber *)[self selectedIcon]).intValue];
-        [self setSwitcherItems:mSwitcherItems];
+        if ([self switcherItems]) {
+            NSMutableArray *mSwitcherItems = [NSMutableArray arrayWithArray:(NSArray *)[self switcherItems]];
+            [mSwitcherItems removeObjectAtIndex:((NSNumber *)[self selectedIcon]).intValue];
+            [self setSwitcherItems:mSwitcherItems];
+        }
 
         NSMutableArray *mApps = [NSMutableArray arrayWithArray:(NSArray *)[self apps]];
         [mApps removeObjectAtIndex:((NSNumber *)[self selectedIcon]).intValue];
@@ -1409,9 +1426,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         }];
     }
     else if (enabled && ![self switcherShown] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
-        if (([self iOS9] || [self iOS10])) {
+        if (([self iOS9] || [self iOS10AndUp])) {
             %c(SBDisplayItem);
-            [[%c(SBApplicationController) sharedInstance] applicationService:nil suspendApplicationWithBundleIdentifier:[self activeAppUserApplication]];
+            if (![self iOS12]) {
+                [[%c(SBApplicationController) sharedInstance] applicationService:nil suspendApplicationWithBundleIdentifier:[self activeAppUserApplication]];
+            }
             %c(FBApplicationProcess);
             %c(FBProcessManager);
             FBApplicationProcess *process = [(FBProcessManager *)[%c(FBProcessManager) sharedInstance] createApplicationProcessForBundleID:[self activeAppUserApplication]];
@@ -1435,6 +1454,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)handleCmdShiftH:(UIKeyCommand *)keyCommand {
+    NSDebug(@"CMD SHIFT H");
     [self stopDiscoverabilityTimer];
     if (sbFolderOpened && [[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) {
         sbFolderOpened = NO;
@@ -1453,6 +1473,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)handleCmdShiftP:(UIKeyCommand *)keyCommand {
+    NSDebug(@"CMD SHIFT P");
     [self stopDiscoverabilityTimer];
     LAEvent *event = [LAEvent eventWithName:@"MolarSleepButton" mode:[LASharedActivator currentEventMode]];
     [LASharedActivator assignEvent:event toListenerWithName:@"libactivator.system.sleepbutton"];
@@ -1647,6 +1668,21 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     return NO;
 }
 
+/*%new
+- (void)makeSureCursorWindowIsOnTop {
+    NSDebug(@"MAKE CURSOR WINDOW KEY 1");
+    if (cursorShown && [UIApplication sharedApplication].keyWindow != [self cursorWindow]) {
+        [(UIWindow *)[self cursorWindow] makeKeyWindow];
+        NSDebug(@"MAKE CURSOR WINDOW KEY 2");
+    }
+}
+
+%new
+- (void)printKeyWindow {
+    NSDebug(@"CRS WINDOW: %@", [self cursorWindow]);
+    NSDebug(@"KEY WINDOW: %@", [UIApplication sharedApplication].keyWindow);
+}*/
+
 %new
 - (void)ctrlKeyDown {
     [self setCtrlDown:[NSNull null]];
@@ -1656,7 +1692,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
         NSDebug(@"cursor: %@ cached: %@", cursorType, cachedCursorType);
 
-        if (![self cursorWindow] || cursorSize != cachedCursorSize || cursorType != cachedCursorType ||
+        if (![self cursorWindow] || cursorSize != cachedCursorSize || cursorType != cachedCursorType || cursorOpacity != cachedCursorOpacity ||
             [UIApplication sharedApplication].statusBarOrientation != cachedOrientation) {
             //NSLog(@"cursorType: %@", cursorType);
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
@@ -1667,7 +1703,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                                    ls ? bounds.size.width  : bounds.size.height);
 
             if ([self iPad] &&
-                [self iOS10] &&
+                //[self iOS10AndUp] &&
                 ls &&
                 ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] &&
                 ![[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]) {
@@ -1675,9 +1711,9 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             }
 
             NoTouchWindow *window = [[%c(NoTouchWindow) alloc] initWithFrame:contentFrame];
-            ((UIWindow *)window).windowLevel = UIWindowLevelAlert;
+            ((UIWindow *)window).windowLevel = UIWindowLevelAlert + 1;
             ((UIWindow *)window).userInteractionEnabled = YES;
-            ((UIWindow *)window).backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.2];
+            //((UIWindow *)window).backgroundColor = [[UIColor greenColor] colorWithAlphaComponent:0.2];
 
             UIView *cursorView;
 
@@ -1686,7 +1722,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 cursorView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, cursorSize, cursorSize)];
                 cursorView.layer.cornerRadius = cursorSize / 2;
                 cursorView.clipsToBounds = YES;
-                cursorView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.3];
+                cursorView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:cursorOpacity];
                 if ([cursorType isEqualToString:@"type2"]) {
                     cursorView.layer.borderColor = [UIColor whiteColor].CGColor;
                     cursorView.layer.borderWidth = 2.0f;
@@ -1698,32 +1734,36 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 UIImage *cursorImage = [UIImage imageWithContentsOfFile:@"/Library/PreferenceBundles/Molar.bundle/cursor.png"];
                 UIImageView *cursorImageView = [[UIImageView alloc] initWithImage:cursorImage];
                 cursorImageView.frame = CGRectMake(CGRectGetMidX(cursorView.frame), CGRectGetMidY(cursorView.frame), (cursorImage.size.width / cursorImage.size.height) * cursorSize, cursorSize);
+                cursorImageView.alpha = cursorOpacity;
                 [cursorView addSubview:cursorImageView];
             }
 
             if ([self iPhonePlus] && ls && [self iOS9]) {
                 cursorView.transform = CGAffineTransformMakeRotation(DegreesToRadians(0));
-            } else if ([self iPhonePlus] && ls && [self iOS10]) {
+            }
+            else if ([self iPhonePlus] && ls && [self iOS10AndUp]) {
                 if ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"])
                     cursorView.transform = CGAffineTransformMakeRotation(DegreesToRadians(90));
                 else
                     cursorView.transform = CGAffineTransformMakeRotation(DegreesToRadians(90));
             }
             else if (ls && ![self iPad] ||
-                (ls && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || 
-                                       [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])))
+                     (ls && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] ||
+                                            [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"] ||
+                                            [self iOS9]))) {
+                NSDebug(@"ROTATE CURSOR VIEW");
                 cursorView.transform = orient == UIInterfaceOrientationLandscapeLeft ?
                                                 CGAffineTransformMakeRotation(DegreesToRadians(270)) :
                                                 CGAffineTransformMakeRotation(DegreesToRadians(90));
-            else if (orient == UIInterfaceOrientationPortraitUpsideDown && ![self iPad]) {
+            } else if (orient == UIInterfaceOrientationPortraitUpsideDown && ![self iPad]) {
                 cursorView.transform = CGAffineTransformMakeRotation(DegreesToRadians(180));
             }
             [self setCursorWindow:window];
 
             [window addSubview:cursorView];
-            if (CGPointEqualToPoint(cursorPosition, CGPointMake(-1, -1))) {
+            //if (CGPointEqualToPoint(cursorPosition, CGPointMake(-1, -1))) {
                 cursorPosition = CGPointMake(CGRectGetMidX(contentFrame), CGRectGetMidY(contentFrame));
-            }
+            //}
             cursorView.center = cursorPosition;
             [self setCursorView:cursorView];
             [window makeKeyAndVisible];
@@ -1731,7 +1771,12 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
             cachedCursorSize = cursorSize;
             cachedCursorType = cursorType;
+            cachedCursorOpacity = cursorOpacity;
             cachedOrientation = orient;
+            
+            //[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(makeSureCursorWindowIsOnTop) name:@"UIWindowDidBecomeKeyNotification" object:nil];
+            
+            //[NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(printKeyWindow) userInfo:nil repeats:YES];
 
         } else {
             [(UIWindow *)[self cursorWindow] setHidden:NO];
@@ -1750,6 +1795,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         cursorShown = NO;
         cursorDir = 0;
         [self animateCursorInDirection:cursorDir];
+        [[NSNotificationCenter defaultCenter] removeObserver:self name:@"UIWindowDidBecomeKeyNotification" object:nil];
     }
 }
 
@@ -1764,8 +1810,19 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         }
         UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
         BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-        if (ls/* && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])*/) {
+        if (orient == UIInterfaceOrientationLandscapeRight/*ls*//* && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])*/) {
             CGPoint inverted = CGPointMake(cursorPosition.y, [(UIWindow *)[self cursorWindow] frame].size.width - cursorPosition.x);
+            //NSLog(@"New cursor pos: %@", NSStringFromCGPoint(cursorPosition));
+            cursorPosition = inverted;
+        }
+        if (orient == UIInterfaceOrientationLandscapeLeft/*ls*//* && [self iPad] && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])*/) {
+            CGPoint inverted = CGPointMake([(UIWindow *)[self cursorWindow] frame].size.height - cursorPosition.y, cursorPosition.x);
+            //NSLog(@"New cursor pos: %@", NSStringFromCGPoint(cursorPosition));
+            cursorPosition = inverted;
+        }
+        else if (orient == UIInterfaceOrientationPortraitUpsideDown && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])) {
+            CGPoint inverted = CGPointMake([(UIWindow *)[self cursorWindow] frame].size.width - cursorPosition.x,
+                                           [(UIWindow *)[self cursorWindow] frame].size.height - cursorPosition.y);
             //NSLog(@"New cursor pos: %@", NSStringFromCGPoint(cursorPosition));
             cursorPosition = inverted;
         }
@@ -1786,13 +1843,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 - (void)altKeyUp {
     [self setAltDown:nil];
     if ([self isActive]) {
-        //NSLog(@"altkey up: dt: %i", [self draggingTimer]);
+        NSDebug(@"altkey up: dt: %i", [self draggingTimer]);
         if ([self cursorWindow] && !cursorShown) {
             //NSLog(@"altkeydown: hiding window");
             [(UIWindow *)[self cursorWindow] setHidden:YES];
         }
         if ([self draggingTimer]) {
-            //NSLog(@"altkeydown: stopping drag");
+            NSDebug(@"altkeydown: stopping drag");
             [[self draggingTimer] invalidate];
             [self setDraggingTimer:nil];
         }
@@ -1812,10 +1869,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         }
         [self updateCurrentTouchAtPoint:intermediatePoint withPhase:cursorDir ? UITouchPhaseMoved : UITouchPhaseStationary];
     }
-    else {
+    /*else {
         [[self draggingTimer] invalidate];
         [self setDraggingTimer:nil];
-    }
+        //[self endCurrentTouchAtPoint:cursorPosition];
+    }*/
 }
 
 %new
@@ -2104,7 +2162,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 %new
 - (void)genericKeyDown:(NSNotification *)notif {
     [self stopDiscoverabilityTimer];
-    if (tableViewMode && [self cellTitles] && ((NSArray *)[self cellTitles]).count) {
+    if (listSelectEnabled && tableViewMode && [self cellTitles] && ((NSArray *)[self cellTitles]).count) {
 
         if (((NSNumber *)notif.userInfo[@"usage"]).intValue >= ((NSArray *)[self characters]).count) return;
 
@@ -2224,6 +2282,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     else if ([kc.input isEqualToString:UIKeyInputDownArrow])  [mStr appendString:@"↓ "];
     else if ([kc.input isEqualToString:UIKeyInputEscape])     [mStr appendString:@"ESC"];
     else if ([kc.input isEqualToString:@"   "])     [mStr appendString:@"⇥"];
+    else if ([kc.input isEqualToString:@" "])       [mStr appendString:@"␣"];
     else [mStr appendString:kc.input.uppercaseString];
     return mStr;
 }
@@ -2268,7 +2327,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 - (NSNumber *)minimumWidthForKeyCommands:(NSArray *)cmds maxWidth:(CGFloat)maxWidth {
     CGFloat modifierWidth = DISCOVERABILITY_MODIFIER_WIDTH;
     CGFloat max = 0.0;
-    if (([self iOS9] || [self iOS10])) {
+    if (([self iOS9] || [self iOS10AndUp])) {
         for (UIKeyCommand *kc in cmds) {
             CGSize size = [(kc.discoverabilityTitle ? kc.discoverabilityTitle: @"") sizeWithAttributes:@{NSFontAttributeName: [UIFont systemFontOfSize:DISCOVERABILITY_FONT_SIZE]}];
             CGSize adjustedSize = CGSizeMake(ceilf(size.width), ceilf(size.height));
@@ -2296,7 +2355,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 - (void)showDiscoverability {
 
     discoverabilityTimer = nil;
-    if (enabled && [self isActive] && ![self switcherShown] && !([self iPad] && ([self iOS9] || [self iOS10]))) {
+    if (enabled && [self isActive] && ![self switcherShown] && !([self iPad] && ([self iOS9] || [self iOS10AndUp]))) {
 
         allKeyCommands = [NSMutableArray array];
         [self recursivelyFindKeyCommands:self.keyWindow.rootViewController];
@@ -2304,12 +2363,15 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         [commands addObjectsFromArray:allKeyCommands];
         NSMutableArray *selfCommands = [NSMutableArray arrayWithArray:self.keyCommands];
 
+        NSDebug(@"REC KC: %@", allKeyCommands);
+        NSDebug(@"ACT KC: %@", [self activatorKeyCommands]);
+        
         for (UIKeyCommand *kc in (NSMutableArray *)[self activatorKeyCommands]) {
             if (![commands containsObject:kc]) [commands addObject:kc];
         }
         for (int i = 0; i < commands.count; i++) {
             UIKeyCommand *kc = commands[i];
-            if ([self iOS9] || [self iOS10]) {
+            if ([self iOS9] || [self iOS10AndUp]) {
                 if (!kc.discoverabilityTitle &&
                     kc.modifierFlags == UIKeyModifierCommand &&
                     ([kc.input isEqualToString:@"+"] || [kc.input.uppercaseString isEqualToString:@"-"] || [kc.input isEqualToString:@"0"])) {
@@ -2319,7 +2381,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         }
         for (int i = 0; i < commands.count; i++) {
             UIKeyCommand *kc = commands[i];
-            if (kc && ([self iOS9] || [self iOS10])) {
+            if (kc && ([self iOS9] || [self iOS10AndUp])) {
                 if (!kc.discoverabilityTitle && [[self modifierString:kc] isEqualToString:@"⌘ -"]) [commands removeObjectAtIndex:i];
             } else {
                 if ([[self modifierString:kc] isEqualToString:@"⌘ -"]) [commands removeObjectAtIndex:i];
@@ -2344,7 +2406,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             CGRect discRect = CGRectInset(((NSUInteger)[self maxIconsLS] == 6 && ![self iPhonePlus]) ? contentFrame : bounds, 15.0f, 15.0f);
 
             UIWindow *window = [[UIWindow alloc] initWithFrame:((NSUInteger)[self maxIconsLS] == 6 && ![self iPhonePlus]) || ([self iPad] && ![[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"]) ? contentFrame : bounds];
-            window.windowLevel = UIWindowLevelAlert;
+            window.windowLevel = UIWindowLevelAlert + 1;
 
             UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:darkMode ? UIBlurEffectStyleDark : UIBlurEffectStyleLight];
             UIVisualEffectView *blurEffectView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
@@ -2357,7 +2419,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
             if ([self iPhonePlus] && ls && [self iOS9]) {
                 blurEffectView.transform = CGAffineTransformMakeRotation(DegreesToRadians(0));
-            } else if ([self iPhonePlus] && ls && [self iOS10]) {
+            } else if ([self iPhonePlus] && ls && [self iOS10AndUp]) {
                 if ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"])
                     blurEffectView.transform = CGAffineTransformMakeRotation(DegreesToRadians(90));
                 else
@@ -2408,7 +2470,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                             for (int l = 0; l < iconsPerPage; l++) {
                                 if (!cmdsLeft) break;
                                 UIKeyCommand *kc = commands[idx];
-                                UIView *label = [self discoverabilityLabelViewWithTitle:([self iOS9] || [self iOS10]) ? kc.discoverabilityTitle : @""
+                                UIView *label = [self discoverabilityLabelViewWithTitle:([self iOS9] || [self iOS10AndUp]) ? kc.discoverabilityTitle : @""
                                                                                shortcut:[self modifierString:kc]
                                                                                minWidth:maxWLS/2 - 25
                                                                                maxWidth:maxWLS/2 - 25];
@@ -2424,7 +2486,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                         [discoverabilityScrollView addSubview:page];
                         if (!cmdsLeft) break;
                     }
-                    [blurEffectView addSubview:discoverabilityScrollView];
+                    [blurEffectView.contentView addSubview:discoverabilityScrollView];
                     if (pages > 1) {
                         pageControl = [[UIPageControl alloc] initWithFrame:CGRectMake(0, 0, blurEffectView.frame.size.height, 15)];
                         pageControl.userInteractionEnabled = NO;
@@ -2432,14 +2494,14 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                         pageControl.frame = CGRectMake(0, 0, [pageControl sizeForNumberOfPages:pages].width, [pageControl sizeForNumberOfPages:pages].height);
                         pageControl.center = CGPointMake(CGRectGetMidX(blurEffectView.frame) - ([self iPhonePlus] ? pageControl.frame.size.width - 5 : DISCOVERABILITY_LS_Y_DECREASE), CGRectGetMidY(blurEffectView.frame) + ([self iPhonePlus] ? (blurEffectView.frame.size.height / 2) - 40 : 109));
                         [pageControl addTarget:self action:@selector(pageChanged) forControlEvents:UIControlEventValueChanged];
-                        [blurEffectView addSubview:pageControl];
+                        [blurEffectView.contentView addSubview:pageControl];
                     }
                 } else {
                     NSMutableArray *labels = [NSMutableArray array];
                     CGFloat maxWidth = 0;
                     CGFloat minWidth = ((NSNumber *)[self minimumWidthForKeyCommands:commands maxWidth:maxWLS]).floatValue;
                     for (UIKeyCommand *kc in commands) {
-                        UIView *l = [self discoverabilityLabelViewWithTitle:([self iOS9] || [self iOS10]) ? kc.discoverabilityTitle : @""
+                        UIView *l = [self discoverabilityLabelViewWithTitle:([self iOS9] || [self iOS10AndUp]) ? kc.discoverabilityTitle : @""
                                                                    shortcut:[self modifierString:kc]
                                                                    minWidth:minWidth
                                                                    maxWidth:maxWLS];
@@ -2468,7 +2530,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                                  DISCOVERABILITY_INSET + ((double)index * (DISCOVERABILITY_GAP + label.frame.size.height)),
                                                  label.frame.size.width,
                                                  label.frame.size.height);
-                        [blurEffectView addSubview:label];
+                        [blurEffectView.contentView addSubview:label];
                         index++;
                     }
                 }
@@ -2503,7 +2565,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                         for (int l = 0; l < iconsPerPage; l++) {
                             if (!cmdsLeft) break;
                             UIKeyCommand *kc = commands[idx];
-                            UIView *label = [self discoverabilityLabelViewWithTitle:([self iOS9] || [self iOS10]) ? kc.discoverabilityTitle : @""
+                            UIView *label = [self discoverabilityLabelViewWithTitle:([self iOS9] || [self iOS10AndUp]) ? kc.discoverabilityTitle : @""
                                                                            shortcut:[self modifierString:kc]
                                                                            minWidth:maxWP
                                                                            maxWidth:maxWP];
@@ -2518,19 +2580,19 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                         [discoverabilityScrollView addSubview:page];
                         if (!cmdsLeft) break;
                     }
-                    [blurEffectView addSubview:discoverabilityScrollView];
+                    [blurEffectView.contentView addSubview:discoverabilityScrollView];
                     pageControl = [[UIPageControl alloc] initWithFrame:CGRectMake(0, 0, blurEffectView.frame.size.width, 15)];
                     pageControl.userInteractionEnabled = NO;
                     pageControl.numberOfPages = pages;
                     pageControl.frame = CGRectMake(0, 0, [pageControl sizeForNumberOfPages:pages].width, [pageControl sizeForNumberOfPages:pages].height);
                     pageControl.center = CGPointMake(CGRectGetMidX(blurEffectView.frame), blurEffectView.frame.size.height - 17);
                     [pageControl addTarget:self action:@selector(pageChanged) forControlEvents:UIControlEventValueChanged];
-                    [blurEffectView addSubview:pageControl];
+                    [blurEffectView.contentView addSubview:pageControl];
                 } else {
                     NSMutableArray *labels = [NSMutableArray array];
                     CGFloat minWidth = ((NSNumber *)[self minimumWidthForKeyCommands:commands maxWidth:maxWP]).floatValue;
                     for (UIKeyCommand *kc in commands) {
-                        UIView *l = [self discoverabilityLabelViewWithTitle:([self iOS9] || [self iOS10]) ? kc.discoverabilityTitle : @""
+                        UIView *l = [self discoverabilityLabelViewWithTitle:([self iOS9] || [self iOS10AndUp]) ? kc.discoverabilityTitle : @""
                                                                    shortcut:[self modifierString:kc]
                                                                    minWidth:minWidth
                                                                    maxWidth:maxWP];
@@ -2547,7 +2609,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                                  DISCOVERABILITY_INSET + ((double)index * (DISCOVERABILITY_GAP + label.frame.size.height)),
                                                  label.frame.size.width,
                                                  label.frame.size.height);
-                        [blurEffectView addSubview:label];
+                        [blurEffectView.contentView addSubview:label];
                         index++;
                     }
                 }
@@ -2607,6 +2669,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                                  dictionary,
                                                  YES);
         }
+        dlclose(libHandle);
     }
 }
 
@@ -2627,10 +2690,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 - (NSArray *)keyCommands {
-
+    
     NSArray *orig_cmds = %orig;
     NSMutableArray *arr = [NSMutableArray arrayWithArray:orig_cmds];
 
+    //if (enabled && ![[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.mobilesafari"]) {
     if (enabled) {
         UIKeyCommand *cmdQ = [UIKeyCommand keyCommandWithInput:@"q"
                                   modifierFlags:UIKeyModifierCommand
@@ -2646,7 +2710,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                   modifierFlags:UIKeyModifierCommand | UIKeyModifierShift
                                   action:@selector(handleCmdShiftP:)];
         [arr addObject:cmdShiftP];
-
+        
         if (launcherEnabled) {
             UIKeyCommand *cmd1 = [UIKeyCommand keyCommandWithInput:@"1"
                                   modifierFlags:UIKeyModifierCommand
@@ -2698,9 +2762,14 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                                       action:@selector(handleCmd0:)];
             [arr addObject:cmd0];
         }
-
-        customShortcuts = (NSArray *)[preferences objectForKey:@"shortcuts"];
-        NSArray *shortcutNames = (NSArray *)[preferences objectForKey:@"shortcutNames"];
+        
+        if ([[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]) {
+            customShortcuts = (NSArray *)[preferences objectForKey:@"shortcuts"];
+            shortcutNames = (NSArray *)[preferences objectForKey:@"shortcutNames"];
+        }
+        
+        NSDebug(@"shortcuts: %@\n names: %@", customShortcuts, shortcutNames);
+        
         NSMutableArray *activatorCmds = [NSMutableArray array];
         for (NSDictionary *shortcut in customShortcuts) {
             NSString *input = [shortcut objectForKey:@"input"];
@@ -2717,12 +2786,12 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 [activatorCmds addObject:customCommand];
                 [arr addObject:customCommand];
             }
-            [self setActivatorKeyCommands:activatorCmds];
         }
+        [self setActivatorKeyCommands:activatorCmds];
     }
 
     if (![self hidSetup]) {
-        if (([self iOS10] && ![[NSBundle mainBundle].bundleIdentifier isEqualToString:@"com.apple.Preferences"]) || [self iOS9]) {
+        if (([self iOS10AndUp] && ![[NSBundle mainBundle].bundleIdentifier isEqualToString:@"com.apple.Preferences"]) || [self iOS9]) {
             setupHID();
         }
         [self addMolarObservers];
@@ -2774,7 +2843,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = sbOpenedFolderSelectedPage = 0;
                 sbOpenedFolderRows = sbOpenedFolderCols = (int)sqrt([[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:0 inFolder:selectedSBFolder createIfNecessary:YES] model] maxNumberOfIcons]);
                 //[self selectSBIconInOpenedFolder];
-            } else if ([self iOS10]) {
+            } else if ([self iOS10AndUp]) {
                 sbFolderOpened = YES;
                 selectedSBFolder = [[%c(SBIconController) sharedInstance] openFolder];
                 sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = sbOpenedFolderSelectedPage = 0;
@@ -2798,13 +2867,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
             NSLog(@"Orient: %i ls: %i", orient, ls);
-            if ((![self iPad] && ls) || ([self iPad] && ls && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]))) {
+            if ((![self iPad] && ls) || ([self iPad] && orient != UIInterfaceOrientationPortrait && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]))) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 if (orient == UIInterfaceOrientationLandscapeLeft) {
                   [self ui_downKey];
                 }
-                else if (orient == UIInterfaceOrientationPortraitUpsideDown) {
+                else if (orient == UIInterfaceOrientationPortraitUpsideDown /*&& !([[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])*/) {
                   [self ui_rightKey];
                 }
                 else [self ui_upKey];
@@ -2835,7 +2904,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
                 animation.toValue = [NSValue valueWithCGPoint:animTarget];
                 animation.duration = dur;
-                animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+                if (cursorAcc == 1.0) {
+                    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+                } else {
+                    animation.timingFunction = [CAMediaTimingFunction functionWithControlPoints:1.0 - cursorAcc :0 :1 :1];
+                }
                 animation.additive = NO;
 
                 cursorDir = CURSOR_DIR_LEFT;
@@ -2916,7 +2989,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             pageControl.currentPage--;
             [self pageChanged];
         }
-    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10])) {
+    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10AndUp])) {
         if (sbFolderOpened) {
             if (sbOpenedFolderSelectedCol > 0) {
 
@@ -3067,13 +3140,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if ((![self iPad] && ls) || ([self iPad] && ls && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]))) {
+            if ((![self iPad] && ls) || ([self iPad] && orient != UIInterfaceOrientationPortrait && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]))) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 if (orient == UIInterfaceOrientationLandscapeLeft) {
                   [self ui_upKey];
                 }
-                else if (orient == UIInterfaceOrientationPortraitUpsideDown) {
+                else if (orient == UIInterfaceOrientationPortraitUpsideDown /*&& !([[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])*/) {
                   [self ui_leftKey];
                 }
                 else [self ui_downKey];
@@ -3101,7 +3174,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
                 animation.toValue = [NSValue valueWithCGPoint:animTarget];
                 animation.duration = dur;
-                animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+                if (cursorAcc == 1.0) {
+                    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+                } else {
+                    animation.timingFunction = [CAMediaTimingFunction functionWithControlPoints:1.0 - cursorAcc :0 :1 :1];
+                }
                 animation.additive = NO;
 
                 cursorDir = CURSOR_DIR_RIGHT;
@@ -3182,7 +3259,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             pageControl.currentPage++;
             [self pageChanged];
         }
-    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10]) && sbFolderOpened) {
+    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10AndUp]) && sbFolderOpened) {
 
         if (sbOpenedFolderSelectedCol < sbOpenedFolderCols - 1) {
 
@@ -3241,7 +3318,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
             }
         }
 
-    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10])) {
+    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10AndUp])) {
         if (!sbIconSelected) {
 
             if (sbDockIconSelected) {
@@ -3378,13 +3455,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if ((![self iPad] && ls) || ([self iPad] && ls && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]))) {
+            if ((![self iPad] && ls) || ([self iPad] && orient != UIInterfaceOrientationPortrait && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]))) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 if (orient == UIInterfaceOrientationLandscapeLeft) {
                   [self ui_rightKey];
                 }
-                else if (orient == UIInterfaceOrientationPortraitUpsideDown) {
+                else if (orient == UIInterfaceOrientationPortraitUpsideDown /*&& !([[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])*/) {
                   [self ui_upKey];
                 }
                 else [self ui_leftKey];
@@ -3412,7 +3489,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
                 animation.toValue = [NSValue valueWithCGPoint:animTarget];
                 animation.duration = dur;
-                animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+                if (cursorAcc == 1.0) {
+                    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+                } else {
+                    animation.timingFunction = [CAMediaTimingFunction functionWithControlPoints:1.0 - cursorAcc :0 :1 :1];
+                }
                 animation.additive = NO;
 
                 cursorDir = CURSOR_DIR_DOWN;
@@ -3575,7 +3656,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 } else waitingForKeyRepeat = NO;
             }
         }
-    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10])) {
+    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10AndUp])) {
         if (sbFolderOpened) {
 
             if (sbOpenedFolderSelectedRow < sbOpenedFolderRows - 1 && [(NSArray *)[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] icons] count] >= sbOpenedFolderCols * (sbOpenedFolderSelectedRow + 1) + sbOpenedFolderSelectedCol + 1) {
@@ -3677,13 +3758,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         if (!disableRedirect) {
             UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
             BOOL ls = UIInterfaceOrientationIsLandscape(orient);
-            if ((![self iPad] && ls) || ([self iPad] && ls && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]))) {
+            if ((![self iPad] && ls) || ([self iPad] && orient != UIInterfaceOrientationPortrait && ([[self activeAppUserApplication] isEqualToString:@"com.apple.springboard"] || [[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"]))) {
                 disableRedirect = YES;
                 redirectRelease = YES;
                 if (orient == UIInterfaceOrientationLandscapeLeft) {
                   [self ui_leftKey];
                 }
-                else if (orient == UIInterfaceOrientationPortraitUpsideDown) {
+                else if (orient == UIInterfaceOrientationPortraitUpsideDown /*&& !([[self activeAppUserApplication] isEqualToString:@"com.apple.Preferences"])*/) {
                   [self ui_downKey];
                 }
                 else [self ui_rightKey];
@@ -3711,7 +3792,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 animation.fromValue = [NSValue valueWithCGPoint:cursorPosition];
                 animation.toValue = [NSValue valueWithCGPoint:animTarget];
                 animation.duration = dur;
-                animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+                if (cursorAcc == 1.0) {
+                    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+                } else {
+                    animation.timingFunction = [CAMediaTimingFunction functionWithControlPoints:1.0 - cursorAcc :0 :1 :1];
+                }
                 animation.additive = NO;
 
                 cursorDir = CURSOR_DIR_UP;
@@ -3870,7 +3955,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                 } else waitingForKeyRepeat = NO;
             }
         }
-    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10])) {
+    } else if (enabled && !switcherShown && ![self switcherShown] && ([self iOS9] || [self iOS10AndUp])) {
         if (sbFolderOpened) {
 
             if (sbOpenedFolderSelectedRow > 0) {
@@ -4147,7 +4232,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
                     sbOpenedFolderRows = sbOpenedFolderCols = (int)sqrt([[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:0 inFolder:selectedSBFolder createIfNecessary:YES] model] maxNumberOfIcons]);
                     [self selectSBIconInOpenedFolder];
                 }];
-            } else if ([self iOS10]) {
+            } else if ([self iOS10AndUp]) {
                 sbFolderOpened = YES;
                 [[%c(SBIconController) sharedInstance] openFolderIcon:selectedSBIcon animated:YES withCompletion:^(BOOL completed){
                     sbOpenedFolderSelectedRow = sbOpenedFolderSelectedCol = sbOpenedFolderSelectedPage = 0;
@@ -4158,7 +4243,11 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
         }
         else if (sbIconSelected || sbDockIconSelected) {
             if (sbDockIconSelected) {
-                [[[[[%c(SBIconController) sharedInstance] rootFolder] dock] iconAtIndex:sbSelectedColumn] launchFromLocation:0 context:0];
+                if ([self iOS11AndUp]) {
+                    [[[[[%c(SBIconController) sharedInstance] rootFolder] dock] iconAtIndex:sbSelectedColumn] launchFromLocation:0 context:0 activationSettings:nil actions:nil];
+                } else {
+                    [[[[[%c(SBIconController) sharedInstance] rootFolder] dock] iconAtIndex:sbSelectedColumn] launchFromLocation:0 context:0];
+                }
             } else {
                 [self activateBundleID:selectedSBIconBundleID];
             }
@@ -4303,16 +4392,28 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 - (void)keyRepeat:(NSNotification *)notification {
     waitingForKeyRepeat = NO;
     SEL keySelector;
-    if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"tab"]) keySelector = @selector(ui_tabDown);
-    else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"up"]) keySelector = @selector(ui_upKey);
-    else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"down"]) keySelector = @selector(ui_downKey);
-    else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"left"]) keySelector = @selector(ui_leftKey);
-    else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"right"]) keySelector = @selector(ui_rightKey);
+    BOOL arrowKey = NO;
+    if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"tab"]) {
+        keySelector = @selector(ui_tabDown);
+        arrowKey = YES;
+    } else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"up"]) {
+        keySelector = @selector(ui_upKey);
+        arrowKey = YES;
+    } else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"down"]) {
+        keySelector = @selector(ui_downKey);
+        arrowKey = YES;
+    } else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"left"]) {
+        keySelector = @selector(ui_leftKey);
+        arrowKey = YES;
+    } else if ([(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"right"]) {
+        keySelector = @selector(ui_rightKey);
+        arrowKey = YES;
+    }
     keyRepeatTimer = [NSTimer scheduledTimerWithTimeInterval:(tableViewMode ||
                                                               collectionViewMode ||
                                                               sliderMode ||
                                                               [(NSString *)[notification.userInfo objectForKey:@"key"] isEqualToString:@"tab"])
-                                                              ? KEY_REPEAT_INTERVAL_SLOW : KEY_REPEAT_INTERVAL
+                      ? KEY_REPEAT_INTERVAL_SLOW : (arrowKey ? (KEY_REPEAT_INTERVAL_BASE * scrollSpeed) : KEY_REPEAT_INTERVAL)
                                                       target:self
                                                     selector:keySelector
                                                     userInfo:nil
@@ -4538,7 +4639,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
         sbPages = [(SBFolder *)[[%c(SBIconController) sharedInstance] rootFolder] listCount];
 
-        if ([self iOS10]) {
+        if ([self iOS10AndUp]) {
             sbSelectedColumn = sbSelectedRow = sbSelectedPage = 0;
             sbIconSelected = YES;
             sbDockIconSelected = NO;
@@ -4560,8 +4661,12 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (NSNumber *)sbIconCornerRadius {
-    if ([self iPad]) return @17.0f;
-    else return @13.0f;
+    if ([self iPad]) return (sbFolderIconSelected ? @16.0f : @17.0f);
+    else if ([self iOS11AndUp]) {
+        return sbFolderIconSelected ? @13.0f : @13.0f;
+    } else {
+        return @13.0f;
+    }
 }
 
 %new
@@ -4593,10 +4698,19 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     }
 
     sbIconView = [[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] viewForIcon:selectedSBIcon] _iconImageView];
+    
+    //sbIconView = [[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbSelectedPage inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] viewForIcon:selectedSBIcon];
 
-    sbIconOverlay = [[UIView alloc] initWithFrame:CGRectMake(1, 1, sbIconView.frame.size.width - 2, sbIconView.frame.size.height - 2)];
+    if ([self iOS11AndUp]) {
+        sbIconOverlay = [[UIView alloc] initWithFrame:CGRectMake(0, 0, sbIconView.frame.size.width, sbIconView.frame.size.height)];
+    } else {
+        sbIconOverlay = [[UIView alloc] initWithFrame:CGRectMake(1, 1, sbIconView.frame.size.width - 2, sbIconView.frame.size.height - 2)];
+    }
     sbIconOverlay.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.35];
-    sbIconOverlay.layer.cornerRadius = [[self sbIconCornerRadius] doubleValue];
+    //sbIconOverlay.layer.cornerRadius = [[self sbIconCornerRadius] doubleValue];
+    sbIconOverlay.layer.cornerRadius = [%c(SBIconImageView) cornerRadius];
+    //sbIconOverlay.maskView = [sbIconView _iconImageView];
+    //sbIconOverlay.layer.mask = sbIconView.layer.mask;
     sbIconOverlay.clipsToBounds = YES;
     [sbIconView addSubview:sbIconOverlay];
 
@@ -4627,9 +4741,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
         sbIconView = [[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:0 inFolder:[[%c(SBIconController) sharedInstance] rootFolder] createIfNecessary:YES] viewForIcon:selectedSBIcon] _iconImageView];
 
-        sbIconOverlay = [[UIView alloc] initWithFrame:CGRectMake(1, 1, sbIconView.frame.size.width - 2, sbIconView.frame.size.height - 2)];
+        if ([self iOS11AndUp]) {
+            sbIconOverlay = [[UIView alloc] initWithFrame:CGRectMake(0, 0, sbIconView.frame.size.width, sbIconView.frame.size.height)];
+        } else {
+            sbIconOverlay = [[UIView alloc] initWithFrame:CGRectMake(1, 1, sbIconView.frame.size.width - 2, sbIconView.frame.size.height - 2)];
+        }
         sbIconOverlay.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.35];
-        sbIconOverlay.layer.cornerRadius = 13.0f;
+        sbIconOverlay.layer.cornerRadius = [[self sbIconCornerRadius] doubleValue];
         sbIconOverlay.clipsToBounds = YES;
         [sbIconView addSubview:sbIconOverlay];
 
@@ -4656,9 +4774,13 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
     sbIconOpenedFolderView = [[[[%c(SBIconController) sharedInstance] iconListViewAtIndex:sbOpenedFolderSelectedPage inFolder:selectedSBFolder createIfNecessary:YES] viewForIcon:selectedSBIconInOpenedFolder] _iconImageView];
 
-    sbIconOpenedFolderOverlay = [[UIView alloc] initWithFrame:CGRectMake(1, 1, sbIconOpenedFolderView.frame.size.width - 2, sbIconOpenedFolderView.frame.size.height - 2)];
+    if ([self iOS11AndUp]) {
+        sbIconOpenedFolderOverlay = [[UIView alloc] initWithFrame:CGRectMake(0, 0, sbIconOpenedFolderView.frame.size.width, sbIconOpenedFolderView.frame.size.height)];
+    } else {
+        sbIconOpenedFolderOverlay = [[UIView alloc] initWithFrame:CGRectMake(1, 1, sbIconOpenedFolderView.frame.size.width - 2, sbIconOpenedFolderView.frame.size.height - 2)];
+    }
     sbIconOpenedFolderOverlay.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.35];
-    sbIconOpenedFolderOverlay.layer.cornerRadius = 13.0f;
+    sbIconOpenedFolderOverlay.layer.cornerRadius = [[self sbIconCornerRadius] doubleValue];
     sbIconOpenedFolderOverlay.clipsToBounds = YES;
     [sbIconOpenedFolderView addSubview:sbIconOpenedFolderOverlay];
 
@@ -4842,8 +4964,8 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)resetViews {
-    [self setViews:(NSArray *)[self controlViews]];
     NSDebug(@"RESET VIEWS");
+    [self setViews:(NSArray *)[self controlViews]];
     //NSLog(@"NEW VIEWS:\n%@", ((NSArray *)[self views]).description);
     selectedViewIndex = -1;
     tableViewMode = collectionViewMode = scrollViewMode = sliderMode = NO;
@@ -4864,7 +4986,6 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
     return [self topViewControllerWithRootViewController:[UIApplication sharedApplication].keyWindow.rootViewController];
 }
 
-
 %end
 
 
@@ -4872,6 +4993,7 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 
 %new
 - (void)resignTextFields {
+    NSDebug(@"END EDITING");
     [self.view endEditing:YES];
 }
 
@@ -4987,3 +5109,150 @@ static void postDistributedNotification(NSString *notificationNameNSString) {
 }
 
 %end
+
+%end // group Molar
+
+%ctor {
+    
+    //if ([[[NSBundle mainBundle] bundleIdentifier] hasPrefix:@"com.apple.mobilesafari"]) return;
+    if ([[[NSBundle mainBundle] bundleIdentifier] hasPrefix:@"com.apple.WebKit"]) return;
+    if ([[[NSBundle mainBundle] bundleIdentifier] hasPrefix:@"com.apple.mobilesafari."]) return;
+    if ([[[NSBundle mainBundle] bundleIdentifier] hasPrefix:@"com.apple.PDFKit"]) return;
+    if ([[[NSBundle mainBundle] bundleIdentifier] hasPrefix:@"com.apple.Safari."]) return;
+    NSLog(@"MOLAR INIT: %@", [[NSBundle mainBundle] bundleIdentifier]);
+    
+    %init;
+    %init(Molar);
+    
+    preferences = [[HBPreferences alloc] initWithIdentifier:@"de.hoenig.molar"];
+    [preferences registerDefaults:@{
+                                    @"enabled": @YES,
+                                    @"appSwitcherEnabled": @YES,
+                                    @"appControlEnabled": @YES,
+                                    @"launcherEnabled": @YES,
+                                    @"keySheetEnabled": @YES,
+                                    @"listSelectEnabled": @YES,
+                                    @"cursorEnabled": @YES,
+                                    @"cursorSpeed": @5,
+                                    @"cursorAcc": @40,
+                                    @"cursorOpacity": @30,
+                                    @"cursorSize": @40,
+                                    @"cursorType": @"type2",
+                                    @"forceTouchDelay": @1,
+                                    @"keyboardLayout": @"en",
+                                    @"hideLabels": @NO,
+                                    @"darkMode": @NO,
+                                    @"scrollSpeed": @5,
+                                    @"launcherApp1": @"",
+                                    @"launcherApp2": @"",
+                                    @"launcherApp3": @"",
+                                    @"launcherApp4": @"",
+                                    @"launcherApp5": @"",
+                                    @"launcherApp6": @"",
+                                    @"launcherApp7": @"",
+                                    @"launcherApp8": @"",
+                                    @"launcherApp9": @"",
+                                    @"launcherApp0": @"",
+                                    @"shortcuts": @[],
+                                    @"shortcutNames": @[]
+                                    }];
+    
+    discoverabilityTimer = nil;
+    waitForKeyRepeatTimer = nil;
+    keyRepeatTimer = nil;
+    loadPrefs();
+    //if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"] || [[[UIDevice currentDevice] systemVersion] hasPrefix:@"9"]) {
+    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
+                                    NULL,
+                                    (CFNotificationCallback)loadPrefs,
+                                    CFSTR("de.hoenig.molar/ReloadPrefs"),
+                                    NULL,
+                                    CFNotificationSuspensionBehaviorCoalesce);
+    //}
+    
+    void *libHandle = dlopen("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation", RTLD_LAZY);
+    CFNotificationCenterRef (*CFNotificationCenterGetDistributedCenter)() = (CFNotificationCenterRef (*)())dlsym(libHandle, "CFNotificationCenterGetDistributedCenter");
+    if (CFNotificationCenterGetDistributedCenter) {
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                        NULL,
+                                        (CFNotificationCallback)updateActiveAppUserApplication,
+                                        CFSTR("NewFrontAppNotification"),
+                                        NULL,
+                                        CFNotificationSuspensionBehaviorCoalesce);
+        
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                        NULL,
+                                        (CFNotificationCallback)updateSwitcherShown,
+                                        CFSTR("SwitcherDidAppearNotification"),
+                                        NULL,
+                                        CFNotificationSuspensionBehaviorCoalesce);
+        
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                        NULL,
+                                        (CFNotificationCallback)updateSwitcherNotShown,
+                                        CFSTR("SwitcherDidDisappearNotification"),
+                                        NULL,
+                                        CFNotificationSuspensionBehaviorCoalesce);
+        
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                        NULL,
+                                        (CFNotificationCallback)updateDiscoverabilityShown,
+                                        CFSTR("DiscoverabilityDidAppearNotification"),
+                                        NULL,
+                                        CFNotificationSuspensionBehaviorCoalesce);
+        
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                        NULL,
+                                        (CFNotificationCallback)updateDiscoverabilityNotShown,
+                                        CFSTR("DiscoverabilityDidDisappearNotification"),
+                                        NULL,
+                                        CFNotificationSuspensionBehaviorCoalesce);
+        
+        if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"]) {
+            CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                            NULL,
+                                            (CFNotificationCallback)hideSwitcherByNotification,
+                                            CFSTR("HideSwitcherNotification"),
+                                            NULL,
+                                            CFNotificationSuspensionBehaviorCoalesce);
+            /*if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"] ||
+             [[[UIDevice currentDevice] systemVersion] hasPrefix:@"9"]) {
+             CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+             NULL,
+             (CFNotificationCallback)postPrefsToUserAppsNotification,
+             CFSTR("UserAppSBPrefsRequestNotification"),
+             NULL,
+             CFNotificationSuspensionBehaviorCoalesce);
+             }*/
+        } /*else { //if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"]) {
+           CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+           NULL,
+           (CFNotificationCallback)reloadPrefsUserApp,
+           CFSTR("SpringBoardGotPrefsChangedNotification"),
+           NULL,
+           CFNotificationSuspensionBehaviorCoalesce);
+           }*/
+        if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"10"] ||
+            [[[UIDevice currentDevice] systemVersion] hasPrefix:@"11"] ||
+            [[[UIDevice currentDevice] systemVersion] hasPrefix:@"12"]) {
+            CFNotificationCenterAddObserver(CFNotificationCenterGetDistributedCenter(),
+                                            NULL,
+                                            (CFNotificationCallback)keyEventCallback,
+                                            CFSTR("KeyEventNotification"),
+                                            NULL,
+                                            CFNotificationSuspensionBehaviorCoalesce);
+        }
+    }
+    dlclose(libHandle);
+    
+    switcherMode = numThreads = 0;
+    
+    cursorPosition = CGPointMake(-1, -1);
+    
+    cachedCursorSize = 0;
+    cachedCursorOpacity = 0;
+    cachedCursorType = nil;
+    
+    disableRedirect = NO;
+    redirectRelease = NO;
+}

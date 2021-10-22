@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8021584220C01E5A00F8DD13 /* Cephei.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80D701321EABD5D500EB959A /* Cephei.framework */; };
+		803BF8BF225C9D3D00EF31DF /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 374F11CC1C21C6320070747D /* Foundation.framework */; };
+		803BF8C0225C9D3D00EF31DF /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222751C21E56E004D8F68 /* UIKit.framework */; };
+		803BF8C9225C9D3D00EF31DF /* MolarToggle.m in Sources */ = {isa = PBXBuildFile; fileRef = 803BF8C8225C9D3D00EF31DF /* MolarToggle.m */; };
+		803BF8D8225C9D9600EF31DF /* libactivator.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 803BF8D7225C9D9600EF31DF /* libactivator.dylib */; };
+		803BF8DA225C9EF000EF31DF /* Cephei.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 803BF8D9225C9EEF00EF31DF /* Cephei.framework */; };
 		8078BDFF1EA7C288001C04A7 /* FixCategoryBug.h in Headers */ = {isa = PBXBuildFile; fileRef = 8078BDFE1EA7C288001C04A7 /* FixCategoryBug.h */; };
 		8078BE031EA7C78B001C04A7 /* UITouch-KIFAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = 8078BE011EA7C78B001C04A7 /* UITouch-KIFAdditions.m */; };
 		8078BE041EA7C78B001C04A7 /* UIEvent+KIFAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = 8078BE021EA7C78B001C04A7 /* UIEvent+KIFAdditions.m */; };
@@ -18,7 +24,6 @@
 		807B4F8F1CA334A80009CFE1 /* libactivator.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 80BF23371CA2A48E00A0D210 /* libactivator.dylib */; };
 		807B4F901CA334AB0009CFE1 /* libapplist.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 800BA7E61CA0517100FEE37C /* libapplist.dylib */; };
 		807B4F911CA334AE0009CFE1 /* libsubstrate.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222731C21C7E1004D8F68 /* libsubstrate.dylib */; };
-		8087169A1CBE8C0E000CDC92 /* Preferences.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 808716981CBE8BE9000CDC92 /* Preferences.framework */; };
 		80AF44BF1CA81B2400612805 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80BF234C1CA2C27500A0D210 /* QuartzCore.framework */; };
 		80B172C61CA33B4300F60552 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 374F11CC1C21C6320070747D /* Foundation.framework */; };
 		80B172C71CA33B4300F60552 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 37D222751C21E56E004D8F68 /* UIKit.framework */; };
@@ -29,10 +34,9 @@
 		80B172FC1CA33C8600F60552 /* IOKit.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 80A3F47F1C416DF5001D4F51 /* IOKit.tbd */; };
 		80B172FD1CA33C8D00F60552 /* libactivator.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 80BF23371CA2A48E00A0D210 /* libactivator.dylib */; };
 		80B172FE1CA33C9100F60552 /* libapplist.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 800BA7E61CA0517100FEE37C /* libapplist.dylib */; };
-		80D7012E1EABD40600EB959A /* CepheiPrefs.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80D7012D1EABD40600EB959A /* CepheiPrefs.framework */; };
 		80D701301EABD51600EB959A /* HBPreferences.h in Headers */ = {isa = PBXBuildFile; fileRef = 80D7012F1EABD51600EB959A /* HBPreferences.h */; };
-		80D701331EABD5D500EB959A /* TechSupport.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80D701311EABD5D500EB959A /* TechSupport.framework */; };
 		80D701341EABD5D500EB959A /* Cephei.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80D701321EABD5D500EB959A /* Cephei.framework */; };
+		80F85DEE225A099100320B63 /* Preferences.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 80F85DED225A099100320B63 /* Preferences.tbd */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +45,17 @@
 		37D222751C21E56E004D8F68 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		37D222771C22302C004D8F68 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		800BA7E61CA0517100FEE37C /* libapplist.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libapplist.dylib; path = ../../../../opt/theos/lib/libapplist.dylib; sourceTree = "<group>"; };
+		803BF8BE225C9D3D00EF31DF /* MolarToggle.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = MolarToggle.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		803BF8C4225C9D3D00EF31DF /* control.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = control.txt; path = Package/DEBIAN/control.txt; sourceTree = "<group>"; };
+		803BF8C5225C9D3D00EF31DF /* control */ = {isa = PBXFileReference; lastKnownFileType = text; name = control; path = Package/DEBIAN/control; sourceTree = "<group>"; };
+		803BF8C7225C9D3D00EF31DF /* PackageVersion.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PackageVersion.plist; sourceTree = "<group>"; };
+		803BF8C8225C9D3D00EF31DF /* MolarToggle.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MolarToggle.m; sourceTree = "<group>"; };
+		803BF8CD225C9D3D00EF31DF /* MolarToggle.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = MolarToggle.plist; path = Package/Library/MobileSubstrate/DynamicLibraries/MolarToggle.plist; sourceTree = "<group>"; };
+		803BF8D1225C9D3D00EF31DF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = Package/Library/Activator/Listeners/de.hoenig.MolarToggle/Info.plist; sourceTree = "<group>"; };
+		803BF8D2225C9D3D00EF31DF /* Icon-small.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "Icon-small.png"; path = "Package/Library/Activator/Listeners/de.hoenig.MolarToggle/Icon-small.png"; sourceTree = "<group>"; };
+		803BF8D3225C9D3D00EF31DF /* Icon-small@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "Icon-small@2x.png"; path = "Package/Library/Activator/Listeners/de.hoenig.MolarToggle/Icon-small@2x.png"; sourceTree = "<group>"; };
+		803BF8D7225C9D9600EF31DF /* libactivator.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libactivator.dylib; path = ../../../../opt/iOSOpenDev/lib/libactivator.dylib; sourceTree = "<group>"; };
+		803BF8D9225C9EEF00EF31DF /* Cephei.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cephei.framework; path = ../../../../opt/iOSOpenDev/frameworks/Cephei.framework; sourceTree = "<group>"; };
 		804844F21D5DF0DA000FD6A0 /* SpringBoard */ = {isa = PBXFileReference; lastKnownFileType = folder; path = SpringBoard; sourceTree = "<group>"; };
 		807516341CA33D7100D19C0D /* libactivator */ = {isa = PBXFileReference; lastKnownFileType = folder; path = libactivator; sourceTree = "<group>"; };
 		807516381CA34A5500D19C0D /* PreferenceBundles */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PreferenceBundles; path = Package/Library/PreferenceBundles; sourceTree = "<group>"; };
@@ -75,20 +90,30 @@
 		80BF23351CA1893500A0D210 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		80BF23371CA2A48E00A0D210 /* libactivator.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libactivator.dylib; path = ../../libactivator.dylib; sourceTree = "<group>"; };
 		80BF234C1CA2C27500A0D210 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
-		80D7012D1EABD40600EB959A /* CepheiPrefs.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CepheiPrefs.framework; path = ../../../../opt/theos/lib/CepheiPrefs.framework; sourceTree = "<group>"; };
 		80D7012F1EABD51600EB959A /* HBPreferences.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HBPreferences.h; sourceTree = "<group>"; };
-		80D701311EABD5D500EB959A /* TechSupport.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = TechSupport.framework; path = ../../../../opt/theos/lib/TechSupport.framework; sourceTree = "<group>"; };
 		80D701321EABD5D500EB959A /* Cephei.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cephei.framework; path = ../../../../opt/theos/lib/Cephei.framework; sourceTree = "<group>"; };
+		80F85DE9225A076500320B63 /* CoreImage.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreImage.framework; path = System/Library/Frameworks/CoreImage.framework; sourceTree = SDKROOT; };
+		80F85DEB225A07F500320B63 /* IOSurface.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOSurface.framework; path = System/Library/Frameworks/IOSurface.framework; sourceTree = SDKROOT; };
+		80F85DED225A099100320B63 /* Preferences.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = Preferences.tbd; path = ../PrivateFrameworks/Preferences.framework/Preferences.tbd; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		803BF8BA225C9D3D00EF31DF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				803BF8DA225C9EF000EF31DF /* Cephei.framework in Frameworks */,
+				803BF8D8225C9D9600EF31DF /* libactivator.dylib in Frameworks */,
+				803BF8BF225C9D3D00EF31DF /* Foundation.framework in Frameworks */,
+				803BF8C0225C9D3D00EF31DF /* UIKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		807B4F6D1CA332A90009CFE1 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				80D701331EABD5D500EB959A /* TechSupport.framework in Frameworks */,
 				80D701341EABD5D500EB959A /* Cephei.framework in Frameworks */,
-				80D7012E1EABD40600EB959A /* CepheiPrefs.framework in Frameworks */,
 				807B4F8F1CA334A80009CFE1 /* libactivator.dylib in Frameworks */,
 				807B4F901CA334AB0009CFE1 /* libapplist.dylib in Frameworks */,
 				807B4F911CA334AE0009CFE1 /* libsubstrate.dylib in Frameworks */,
@@ -104,7 +129,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8087169A1CBE8C0E000CDC92 /* Preferences.framework in Frameworks */,
+				80F85DEE225A099100320B63 /* Preferences.tbd in Frameworks */,
+				8021584220C01E5A00F8DD13 /* Cephei.framework in Frameworks */,
 				80B172FB1CA33C7100F60552 /* QuartzCore.framework in Frameworks */,
 				80B172C61CA33B4300F60552 /* Foundation.framework in Frameworks */,
 				80B172C71CA33B4300F60552 /* UIKit.framework in Frameworks */,
@@ -123,6 +149,7 @@
 				808D65651E79EAAB0013D490 /* Entitlements.plist */,
 				807B4F731CA332A90009CFE1 /* Molar */,
 				80B172C91CA33B4300F60552 /* MolarSettings */,
+				803BF8C1225C9D3D00EF31DF /* MolarToggle */,
 				374F11CB1C21C6320070747D /* Frameworks */,
 				374F11CA1C21C6320070747D /* Products */,
 			);
@@ -133,6 +160,7 @@
 			children = (
 				807B4F711CA332A90009CFE1 /* Molar.dylib */,
 				80B172C51CA33B4300F60552 /* MolarSettings.bundle */,
+				803BF8BE225C9D3D00EF31DF /* MolarToggle.dylib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -140,9 +168,12 @@
 		374F11CB1C21C6320070747D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				80D701311EABD5D500EB959A /* TechSupport.framework */,
+				803BF8D9225C9EEF00EF31DF /* Cephei.framework */,
+				803BF8D7225C9D9600EF31DF /* libactivator.dylib */,
+				80F85DED225A099100320B63 /* Preferences.tbd */,
+				80F85DEB225A07F500320B63 /* IOSurface.framework */,
+				80F85DE9225A076500320B63 /* CoreImage.framework */,
 				80D701321EABD5D500EB959A /* Cephei.framework */,
-				80D7012D1EABD40600EB959A /* CepheiPrefs.framework */,
 				808716981CBE8BE9000CDC92 /* Preferences.framework */,
 				80BF234C1CA2C27500A0D210 /* QuartzCore.framework */,
 				80BF23371CA2A48E00A0D210 /* libactivator.dylib */,
@@ -158,6 +189,93 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		803BF8C1225C9D3D00EF31DF /* MolarToggle */ = {
+			isa = PBXGroup;
+			children = (
+				803BF8C8225C9D3D00EF31DF /* MolarToggle.m */,
+				803BF8C2225C9D3D00EF31DF /* Package */,
+				803BF8C6225C9D3D00EF31DF /* Supporting Files */,
+			);
+			path = MolarToggle;
+			sourceTree = "<group>";
+		};
+		803BF8C2225C9D3D00EF31DF /* Package */ = {
+			isa = PBXGroup;
+			children = (
+				803BF8C3225C9D3D00EF31DF /* DEBIAN */,
+				803BF8CA225C9D3D00EF31DF /* Library */,
+			);
+			name = Package;
+			sourceTree = "<group>";
+		};
+		803BF8C3225C9D3D00EF31DF /* DEBIAN */ = {
+			isa = PBXGroup;
+			children = (
+				803BF8C4225C9D3D00EF31DF /* control.txt */,
+				803BF8C5225C9D3D00EF31DF /* control */,
+			);
+			name = DEBIAN;
+			sourceTree = "<group>";
+		};
+		803BF8C6225C9D3D00EF31DF /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				803BF8C7225C9D3D00EF31DF /* PackageVersion.plist */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		803BF8CA225C9D3D00EF31DF /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				803BF8CB225C9D3D00EF31DF /* MobileSubstrate */,
+				803BF8CE225C9D3D00EF31DF /* Activator */,
+			);
+			name = Library;
+			sourceTree = "<group>";
+		};
+		803BF8CB225C9D3D00EF31DF /* MobileSubstrate */ = {
+			isa = PBXGroup;
+			children = (
+				803BF8CC225C9D3D00EF31DF /* DynamicLibraries */,
+			);
+			name = MobileSubstrate;
+			sourceTree = "<group>";
+		};
+		803BF8CC225C9D3D00EF31DF /* DynamicLibraries */ = {
+			isa = PBXGroup;
+			children = (
+				803BF8CD225C9D3D00EF31DF /* MolarToggle.plist */,
+			);
+			name = DynamicLibraries;
+			sourceTree = "<group>";
+		};
+		803BF8CE225C9D3D00EF31DF /* Activator */ = {
+			isa = PBXGroup;
+			children = (
+				803BF8CF225C9D3D00EF31DF /* Listeners */,
+			);
+			name = Activator;
+			sourceTree = "<group>";
+		};
+		803BF8CF225C9D3D00EF31DF /* Listeners */ = {
+			isa = PBXGroup;
+			children = (
+				803BF8D0225C9D3D00EF31DF /* ___VARIABLE_bundleIdentifierPrefix:bundleIdentifier___.___VARIABLE_productName:RFC1034Identifier___ */,
+			);
+			name = Listeners;
+			sourceTree = "<group>";
+		};
+		803BF8D0225C9D3D00EF31DF /* ___VARIABLE_bundleIdentifierPrefix:bundleIdentifier___.___VARIABLE_productName:RFC1034Identifier___ */ = {
+			isa = PBXGroup;
+			children = (
+				803BF8D1225C9D3D00EF31DF /* Info.plist */,
+				803BF8D2225C9D3D00EF31DF /* Icon-small.png */,
+				803BF8D3225C9D3D00EF31DF /* Icon-small@2x.png */,
+			);
+			name = "___VARIABLE_bundleIdentifierPrefix:bundleIdentifier___.___VARIABLE_productName:RFC1034Identifier___";
+			sourceTree = "<group>";
+		};
 		807B4F731CA332A90009CFE1 /* Molar */ = {
 			isa = PBXGroup;
 			children = (
@@ -165,11 +283,11 @@
 				8078BE021EA7C78B001C04A7 /* UIEvent+KIFAdditions.m */,
 				8078BDFE1EA7C288001C04A7 /* FixCategoryBug.h */,
 				80D7012F1EABD51600EB959A /* HBPreferences.h */,
+				807B4F811CA332A90009CFE1 /* Molar.xm */,
+				807B4F821CA332A90009CFE1 /* Molar.mm */,
 				8078BDFD1EA7BF92001C04A7 /* additions */,
 				804844F21D5DF0DA000FD6A0 /* SpringBoard */,
 				807B4F8A1CA332F00009CFE1 /* IOKit */,
-				807B4F811CA332A90009CFE1 /* Molar.xm */,
-				807B4F821CA332A90009CFE1 /* Molar.mm */,
 				807B4F741CA332A90009CFE1 /* Package */,
 				807B4F781CA332A90009CFE1 /* Supporting Files */,
 			);
@@ -361,6 +479,13 @@
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
+		803BF8BB225C9D3D00EF31DF /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		807B4F6E1CA332A90009CFE1 /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
@@ -382,6 +507,25 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
+		803BF8BD225C9D3D00EF31DF /* MolarToggle */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 803BF8D6225C9D3D00EF31DF /* Build configuration list for PBXNativeTarget "MolarToggle" */;
+			buildPhases = (
+				803BF8B9225C9D3D00EF31DF /* Sources */,
+				803BF8BA225C9D3D00EF31DF /* Frameworks */,
+				803BF8BB225C9D3D00EF31DF /* Headers */,
+				803BF8BC225C9D3D00EF31DF /* ShellScript */,
+				803BF8DB225CC72C00EF31DF /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MolarToggle;
+			productName = MolarToggle;
+			productReference = 803BF8BE225C9D3D00EF31DF /* MolarToggle.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
 		807B4F701CA332A90009CFE1 /* Molar */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 807B4F871CA332A90009CFE1 /* Build configuration list for PBXNativeTarget "Molar" */;
@@ -428,6 +572,11 @@
 			attributes = {
 				LastUpgradeCheck = 0640;
 				TargetAttributes = {
+					803BF8BD225C9D3D00EF31DF = {
+						CreatedOnToolsVersion = 10.2;
+						DevelopmentTeam = 6874T3739X;
+						ProvisioningStyle = Automatic;
+					};
 					807B4F701CA332A90009CFE1 = {
 						CreatedOnToolsVersion = 7.2.1;
 						DevelopmentTeam = 6874T3739X;
@@ -443,6 +592,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = 374F11BE1C21C6320070747D;
@@ -452,11 +602,46 @@
 			targets = (
 				807B4F701CA332A90009CFE1 /* Molar */,
 				80B172C41CA33B4300F60552 /* MolarSettings */,
+				803BF8BD225C9D3D00EF31DF /* MolarToggle */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		803BF8BC225C9D3D00EF31DF /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/opt/iOSOpenDev/bin/iosod --xcbp\n";
+		};
+		803BF8DB225CC72C00EF31DF /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cd \"$PROJECT_DIR\"\nif [ ! -d \"Molar/Package/Library/Activator/Listeners\" ]; then\nmkdir -p Molar/Package/Library/Activator/Listeners\nfi\nif [ -d \"Molar/Package/Library/MobileSubstrate/DynamicLibraries/MolarToggle.plist\" ]; then\nrm Molar/Package/Library/MobileSubstrate/DynamicLibraries/MolarToggle.plist\nfi\nif [ -d \"Molar/Package/Library/MobileSubstrate/DynamicLibraries/MolarToggle.dylib\" ]; then\nrm Molar/Package/Library/MobileSubstrate/DynamicLibraries/MolarToggle.dylib\nfi\ncp -r MolarToggle/Package/Library/MobileSubstrate/DynamicLibraries/MolarToggle.plist Molar/Package/Library/MobileSubstrate/DynamicLibraries/\ncp -r MolarToggle/Package/Library/MobileSubstrate/DynamicLibraries/MolarToggle.dylib Molar/Package/Library/MobileSubstrate/DynamicLibraries/\ncp -r MolarToggle/Package/Library/Activator/Listeners/de.hoenig.MolarToggle Molar/Package/Library/Activator/Listeners/\n";
+		};
 		807516391CA3C1F900D19C0D /* Run Script */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 12;
@@ -469,7 +654,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd \"$PROJECT_DIR\"\nif [ -d \"Molar/Package/Library/PreferenceBundles/Molar.bundle\" ]; then\n    rm -r Molar/Package/Library/PreferenceBundles/Molar.bundle\nfi\ncp -r MolarSettings/Package/Library/PreferenceBundles/MolarSettings.bundle Molar/Package/Library/PreferenceBundles/\nmv Molar/Package/Library/PreferenceBundles/MolarSettings.bundle Molar/Package/Library/PreferenceBundles/Molar.bundle";
+			shellScript = "cd \"$PROJECT_DIR\"\nif [ -d \"Molar/Package/Library/PreferenceBundles/Molar.bundle\" ]; then\n    rm -r Molar/Package/Library/PreferenceBundles/Molar.bundle\nfi\ncp -r MolarSettings/Package/Library/PreferenceBundles/MolarSettings.bundle Molar/Package/Library/PreferenceBundles/\nmv Molar/Package/Library/PreferenceBundles/MolarSettings.bundle Molar/Package/Library/PreferenceBundles/Molar.bundle\n";
 			showEnvVarsInLog = 0;
 		};
 		807B4F6B1CA332A90009CFE1 /* ShellScript */ = {
@@ -509,11 +694,19 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/opt/iOSOpenDev/bin/iosod --xcbp";
+			shellScript = "/opt/iOSOpenDev/bin/iosod --xcbp\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		803BF8B9225C9D3D00EF31DF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				803BF8C9225C9D3D00EF31DF /* MolarToggle.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		807B4F6C1CA332A90009CFE1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -592,6 +785,66 @@
 			};
 			name = Release;
 		};
+		803BF8D4225C9D3D00EF31DF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6874T3739X;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(iOSOpenDevPath)/frameworks/**",
+					"$(SDKROOT)/System/Library/PrivateFrameworks",
+					/opt/iOSOpenDev/frameworks,
+				);
+				INSTALL_PATH = /Library/MobileSubstrate/DynamicLibraries;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.2;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/iOSOpenDev/lib,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				iOSOpenDevBuildPackageOnAnyBuild = YES;
+				iOSOpenDevCopyOnBuild = NO;
+				iOSOpenDevDevice = 192.168.0.19;
+				iOSOpenDevInstallOnAnyBuild = NO;
+				iOSOpenDevInstallOnProfiling = YES;
+				iOSOpenDevRespringOnInstall = YES;
+				iOSOpenDevUsePackageVersionPList = YES;
+			};
+			name = Debug;
+		};
+		803BF8D5225C9D3D00EF31DF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6874T3739X;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(iOSOpenDevPath)/frameworks/**",
+					"$(SDKROOT)/System/Library/PrivateFrameworks",
+					/opt/iOSOpenDev/frameworks,
+				);
+				INSTALL_PATH = /Library/MobileSubstrate/DynamicLibraries;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.2;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/iOSOpenDev/lib,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				iOSOpenDevBuildPackageOnAnyBuild = YES;
+				iOSOpenDevCopyOnBuild = NO;
+				iOSOpenDevDevice = 192.168.0.19;
+				iOSOpenDevInstallOnAnyBuild = NO;
+				iOSOpenDevInstallOnProfiling = YES;
+				iOSOpenDevRespringOnInstall = YES;
+				iOSOpenDevUsePackageVersionPList = YES;
+			};
+			name = Release;
+		};
 		807B4F881CA332A90009CFE1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -599,6 +852,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
+				ENABLE_BITCODE = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Molar",
@@ -620,7 +874,7 @@
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Molar/**";
 				iOSOpenDevBuildPackageOnAnyBuild = YES;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = 192.168.178.65;
+				iOSOpenDevDevice = 169.254.211.9;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
@@ -635,6 +889,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
+				ENABLE_BITCODE = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Molar",
@@ -656,7 +911,7 @@
 				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Molar/**";
 				iOSOpenDevBuildPackageOnAnyBuild = YES;
 				iOSOpenDevCopyOnBuild = NO;
-				iOSOpenDevDevice = 192.168.178.65;
+				iOSOpenDevDevice = 169.254.211.9;
 				iOSOpenDevInstallOnAnyBuild = NO;
 				iOSOpenDevInstallOnProfiling = YES;
 				iOSOpenDevRespringOnInstall = YES;
@@ -667,9 +922,14 @@
 		80B172E61CA33B4300F60552 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_IDENTITY = "";
 				ENABLE_BITCODE = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/theos/lib,
+				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "MolarSettings/MolarSettings-Prefix.pch";
 				INFOPLIST_FILE = "MolarSettings/MolarSettings-Info.plist";
@@ -695,9 +955,14 @@
 		80B172E71CA33B4300F60552 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_IDENTITY = "";
 				ENABLE_BITCODE = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/theos/lib,
+				);
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "MolarSettings/MolarSettings-Prefix.pch";
 				INFOPLIST_FILE = "MolarSettings/MolarSettings-Info.plist";
@@ -728,6 +993,15 @@
 			buildConfigurations = (
 				374F11DD1C21C6320070747D /* Debug */,
 				374F11DE1C21C6320070747D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		803BF8D6225C9D3D00EF31DF /* Build configuration list for PBXNativeTarget "MolarToggle" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				803BF8D4225C9D3D00EF31DF /* Debug */,
+				803BF8D5225C9D3D00EF31DF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
